@@ -16,3 +16,10 @@ export const PALETTE = {
   park: 0x2f4a34,
   road: 0xe8e4d8,
 } as const;
+
+/** Colours for the debug overlay only. Never shown to players. */
+export const DEBUG_PALETTE = {
+  grid: 0x3a4048,
+  edge: 0x7fd1ff,
+  node: 0xffb454,
+} as const;

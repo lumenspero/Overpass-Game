@@ -10,7 +10,7 @@ import {
   Terrain,
   type TerrainKind,
 } from '@overpass-game/sim';
-import { PALETTE, TILE_SIZE } from '@overpass-game/render-style';
+import { DEBUG_PALETTE, PALETTE, TILE_SIZE } from '@overpass-game/render-style';
 import {
   createIntentMapper,
   type Intent,
@@ -38,7 +38,13 @@ import {
   worldToTile,
   zoomCamera,
 } from '../view/camera.ts';
+import { debugShapes } from '../view/debug-geometry.ts';
 import { roadShapes, terrainTiles } from '../view/geometry.ts';
+import {
+  createTickMeter,
+  sampleTickRate,
+  type TickMeter,
+} from '../view/tick-meter.ts';
 import {
   applyIntent,
   type Controller,
@@ -70,6 +76,11 @@ export class GameScene extends Phaser.Scene {
   private layer!: Phaser.GameObjects.Container;
   private roadGfx!: Phaser.GameObjects.Graphics;
   private roadsDirty = true;
+  private overlayGfx!: Phaser.GameObjects.Graphics;
+  private debugText!: Phaser.GameObjects.Text;
+  private debugOn = false;
+  private overlayDirty = true;
+  private meter!: TickMeter;
   private canvas!: HTMLCanvasElement;
 
   constructor() {
@@ -88,8 +99,21 @@ export class GameScene extends Phaser.Scene {
     this.layer = this.add.container(0, 0);
     const terrainGfx = this.add.graphics();
     this.roadGfx = this.add.graphics();
-    this.layer.add([terrainGfx, this.roadGfx]);
+    this.overlayGfx = this.add.graphics().setVisible(false);
+    this.layer.add([terrainGfx, this.roadGfx, this.overlayGfx]);
     this.drawTerrain(terrainGfx, grid);
+
+    // Screen-space text, not in the scaled layer, so it stays readable at any zoom.
+    this.debugText = this.add
+      .text(8, 8, '', {
+        fontFamily: 'monospace',
+        fontSize: '12px',
+        color: '#cfd6de',
+      })
+      .setScrollFactor(0)
+      .setDepth(10)
+      .setVisible(false);
+    this.meter = createTickMeter(this.time.now, this.sim.tick);
 
     this.canvas = this.game.canvas;
     this.canvas.style.touchAction = 'none';
@@ -101,6 +125,7 @@ export class GameScene extends Phaser.Scene {
     this.canvas.addEventListener('contextmenu', this.onContextMenu);
 
     this.input.keyboard?.on('keydown-E', this.toggleTool);
+    this.input.keyboard?.on('keydown-D', this.toggleDebug);
     this.scale.on('resize', this.onResize);
     this.events.once('shutdown', this.teardown);
     this.applyTransform();
@@ -116,6 +141,16 @@ export class GameScene extends Phaser.Scene {
     if (this.roadsDirty) {
       this.drawRoads();
       this.roadsDirty = false;
+    }
+    if (this.debugOn) {
+      if (this.overlayDirty) {
+        this.drawOverlay();
+        this.overlayDirty = false;
+      }
+      const rate = sampleTickRate(this.meter, time, this.sim.tick);
+      this.debugText.setText(
+        `ticks/s ${rate.toFixed(1)}  tick ${this.sim.tick}  budget ${this.sim.budget}`,
+      );
     }
     this.applyTransform();
   }
@@ -198,6 +233,7 @@ export class GameScene extends Phaser.Scene {
         );
       } else if (applyIntent(this.controller, intent, this.toTile)) {
         this.roadsDirty = true;
+        this.overlayDirty = true;
       }
     }
   }
@@ -230,6 +266,26 @@ export class GameScene extends Phaser.Scene {
       if (s.kind === 'circle') gfx.fillCircle(s.x, s.y, s.r);
       else gfx.fillRect(s.x, s.y, s.w, s.h);
     }
+  }
+
+  private toggleDebug = (): void => {
+    this.debugOn = !this.debugOn;
+    this.overlayGfx.setVisible(this.debugOn);
+    this.debugText.setVisible(this.debugOn);
+    this.overlayDirty = true;
+  };
+
+  /** Grid, graph edges and nodes, all read from the sim's own road graph. */
+  private drawOverlay(): void {
+    const gfx = this.overlayGfx;
+    const shapes = debugShapes(this.sim.grid, this.sim.graph);
+    gfx.clear();
+    gfx.lineStyle(1, DEBUG_PALETTE.grid, 1);
+    for (const l of shapes.grid) gfx.lineBetween(l.x1, l.y1, l.x2, l.y2);
+    gfx.lineStyle(3, DEBUG_PALETTE.edge, 1);
+    for (const e of shapes.edges) gfx.lineBetween(e.x1, e.y1, e.x2, e.y2);
+    gfx.fillStyle(DEBUG_PALETTE.node, 1);
+    for (const n of shapes.nodes) gfx.fillCircle(n.x, n.y, 5);
   }
 
   private teardown = (): void => {

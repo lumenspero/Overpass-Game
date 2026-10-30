@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEBUG_PALETTE,
   PACKAGE_NAME,
   PALETTE,
   ROAD_WIDTH_TILES,
@@ -21,7 +22,10 @@ describe('@overpass-game/render-style', () => {
   });
 
   it('defines every palette colour as a 24-bit hex number', () => {
-    for (const color of Object.values(PALETTE)) {
+    for (const color of [
+      ...Object.values(PALETTE),
+      ...Object.values(DEBUG_PALETTE),
+    ]) {
       expect(color).toBeGreaterThanOrEqual(0);
       expect(color).toBeLessThanOrEqual(0xffffff);
     }
