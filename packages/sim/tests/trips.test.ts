@@ -136,3 +136,41 @@ describe('trips', () => {
     expect(sim.homes[0].owned).toBe(1);
   });
 });
+
+describe('leaving the destination', () => {
+  it('starts the trip home at the entrance edge, not at the far edge', () => {
+    const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 100 });
+    placeBuilding(sim, {
+      kind: 'house',
+      color: 0,
+      tile: at(sim.grid, 0, 2),
+      entrance: 'e',
+    });
+    placeBuilding(sim, {
+      kind: 'destination',
+      color: 0,
+      tile: at(sim.grid, 4, 2),
+      entrance: 'w',
+    });
+    drawRoads(sim, [
+      at(sim.grid, 1, 2),
+      at(sim.grid, 2, 2),
+      at(sim.grid, 3, 2),
+    ]);
+    sim.demand[1].pins = 1;
+    let parkedAt = -1;
+    for (let i = 0; i < 2000; i++) {
+      const before = sim.cars[0]?.state;
+      step(sim);
+      const car = sim.cars[0];
+      if (!car) break;
+      if (before === 'parked' && car.state === 'returning') {
+        expect(car.progress).toBe(0);
+        expect(car.along).toBe(0);
+        parkedAt = i;
+        break;
+      }
+    }
+    expect(parkedAt).toBeGreaterThan(0);
+  });
+});

@@ -20,6 +20,8 @@ export interface TuningPanelOptions {
   onSpeed: (speed: Speed) => void;
   /** Called when Restart is pressed. */
   onRestart: () => void;
+  /** Called when a +1 button for a crossing is pressed (playtest aid). */
+  onGrant: (kind: 'bridge' | 'tunnel') => void;
 }
 
 export interface TuningPanel {
@@ -51,6 +53,17 @@ function button(label: string, onClick: () => void): HTMLButtonElement {
   b.style.cssText = 'margin:2px;font:12px monospace;cursor:pointer';
   b.addEventListener('click', onClick);
   return b;
+}
+
+function grantRow(
+  onGrant: (kind: 'bridge' | 'tunnel') => void,
+): HTMLDivElement {
+  const row = document.createElement('div');
+  row.append(
+    button('+1 bridge', () => onGrant('bridge')),
+    button('+1 tunnel', () => onGrant('tunnel')),
+  );
+  return row;
 }
 
 export function createTuningPanel(options: TuningPanelOptions): TuningPanel {
@@ -139,6 +152,7 @@ export function createTuningPanel(options: TuningPanelOptions): TuningPanel {
   setSpeed(1);
   document.body.appendChild(root);
 
+  root.append(grantRow(options.onGrant));
   return {
     setSpeed,
     refresh,

@@ -159,6 +159,11 @@ export function carShapes(
     x: ((tile % grid.cols) + 0.5) * TILE_SIZE,
     y: (Math.floor(tile / grid.cols) + 0.5) * TILE_SIZE,
   });
+  /** The road tile in front of a building's entrance. */
+  const entranceOf = (b: Building): number => {
+    const { dx, dy } = SIDE_STEP[b.entrance];
+    return b.tile + dy * grid.cols + dx;
+  };
   /** Unit step from tile `a` to the adjacent tile `b`. */
   const step = (a: number, b: number) => ({
     dx: Math.sign((b % grid.cols) - (a % grid.cols)),
@@ -192,6 +197,31 @@ export function carShapes(
       const u = 1 - along;
       x = u * u * ax + 2 * u * along * cx + along * along * bx;
       y = u * u * ay + 2 * u * along * cy + along * along * by;
+    }
+    // A car enters its building on arrival, parks at its centre, and leaves from that
+    // centre, so it never appears in the gap beside the road.
+    const arrival =
+      buildings[car.state === 'returning' ? car.house : car.destination];
+    const departure =
+      buildings[car.state === 'returning' ? car.destination : car.house];
+    if (
+      route.length > 1 &&
+      arrival &&
+      progress === route.length - 1 &&
+      tile === entranceOf(arrival)
+    ) {
+      const b = centre(arrival.tile);
+      x += (b.x - x) * along;
+      y += (b.y - y) * along;
+    } else if (
+      route.length > 1 &&
+      departure &&
+      progress === 0 &&
+      tile === entranceOf(departure)
+    ) {
+      const b = centre(departure.tile);
+      x = b.x + (x - b.x) * along;
+      y = b.y + (y - b.y) * along;
     }
     const house = buildings[car.house];
     out.push({

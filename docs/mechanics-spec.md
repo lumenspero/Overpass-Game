@@ -56,6 +56,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Car ownership:** each house owns `CARS_PER_HOUSE` cars when placed. A car that is lost (no way home) leaves its house owning one fewer. `approximated`
 - **Spawning:** a connected house with a car at home sends one out every `SPAWN_INTERVAL_TICKS`, to a connected destination of its colour that has an unclaimed demand pin (see Demand), picked at random with equal chance. If no such destination or no route exists, the house waits for the next interval. `approximated`
 - **Parking:** a car that reaches its destination parks on the destination's entrance tile for `PARK_TICKS`. Parked cars don't move, and they block their tile for others, as a queue would. `approximated`
+- **On screen:** a car drives into its building on arrival, parks at the building's centre, and leaves from that centre. A car leaving home starts at the house's entrance edge, so it never jumps. Parked cars at one destination are drawn on top of each other.
 - **Return:** after parking, the car drives home. A car that reaches home rejoins its house, which may send it out again. `approximated`
 - **Movement along routes:** not yet implemented (C3).
 
@@ -106,6 +107,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - Not a player feature. It is a playtesting aid, toggled with D.
 - Each slider sets one value in `config.ts` live, so a change takes effect on the next tick. Starting values (road budget, cars per house, building colours) apply to a new run, so use Restart run after changing them. Reset values puts every slider back to its default.
 - Speed: buttons or keys 1 to 4 set the clock to 1×, 2×, 4× or 8×.
+- Crossings (playtest aid): B and T pick the bridge and tunnel tools. A drag in a straight line across water (bridge) or mountain (tunnel) builds the crossing on release. The debug line shows stock and the last result. `+1 bridge` and `+1 tunnel` add stock directly.
 - Not included: click-to-spawn. It was a testing aid that doesn't match the intended game.
 
 ### Overflow

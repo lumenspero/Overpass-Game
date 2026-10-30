@@ -11,11 +11,13 @@ import { LONG_PRESS_MS, TOUCH_SLOP_PX, WHEEL_ZOOM_RATE } from './config.ts';
  *   long-press time erases instead; a tap places a single tile. A second finger
  *   cancels any stroke and starts pan + pinch-zoom until every finger is up.
  * - The erase tool turns every draw stroke into an erase stroke.
+ * - The bridge and tunnel tools turn a draw stroke into a crossing: built on release, from
+ *   where the drag began to where it ended. Nothing is laid during the drag.
  */
 
 export type PointerKind = 'mouse' | 'touch' | 'pen';
-export type StrokeMode = 'draw' | 'erase';
-export type Tool = 'draw' | 'erase';
+export type StrokeMode = 'draw' | 'erase' | 'bridge' | 'tunnel';
+export type Tool = 'draw' | 'erase' | 'bridge' | 'tunnel';
 
 export interface Vec2 {
   x: number;
@@ -73,7 +75,14 @@ export function setTool(mapper: IntentMapper, tool: Tool): void {
 }
 
 function strokeMode(mapper: IntentMapper, wanted: StrokeMode): StrokeMode {
-  return mapper.tool === 'erase' ? 'erase' : wanted;
+  if (mapper.tool === 'erase') return 'erase';
+  if (
+    wanted === 'draw' &&
+    (mapper.tool === 'bridge' || mapper.tool === 'tunnel')
+  ) {
+    return mapper.tool;
+  }
+  return wanted;
 }
 
 function touchPair(mapper: IntentMapper): [Vec2, Vec2] | undefined {

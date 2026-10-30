@@ -203,6 +203,8 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-E', this.toggleTool);
     this.input.keyboard?.on('keydown-D', this.toggleDebug);
     this.input.keyboard?.on('keydown-R', this.restartIfOver);
+    this.input.keyboard?.on('keydown-B', this.onBridgeKey);
+    this.input.keyboard?.on('keydown-T', this.onTunnelKey);
     this.input.keyboard?.on('keydown', this.onKey);
     this.scale.on('resize', this.onResize);
     this.events.once('shutdown', this.teardown);
@@ -232,7 +234,7 @@ export class GameScene extends Phaser.Scene {
       }
       const rate = sampleTickRate(this.meter, time, this.sim.tick);
       this.debugText.setText(
-        `ticks/s ${rate.toFixed(1)}  tick ${this.sim.tick}  budget ${this.sim.budget}`,
+        `ticks/s ${rate.toFixed(1)}  tick ${this.sim.tick}  budget ${this.sim.budget}  bridges ${this.sim.stock.bridge}  tunnels ${this.sim.stock.tunnel}${this.controller.note ? `  last: ${this.controller.note}` : ''}`,
       );
     }
     this.applyTransform();
@@ -298,6 +300,14 @@ export class GameScene extends Phaser.Scene {
   private onContextMenu = (e: Event): void => {
     e.preventDefault(); // right button erases; the menu would get in the way
   };
+
+  /** B and T pick the bridge and tunnel tools. Pressing the same key again returns to drawing. */
+  private onBridgeKey = (): void => this.pickCrossing('bridge');
+  private onTunnelKey = (): void => this.pickCrossing('tunnel');
+
+  private pickCrossing(kind: 'bridge' | 'tunnel'): void {
+    setTool(this.mapper, this.mapper.tool === kind ? 'draw' : kind);
+  }
 
   private toggleTool = (): void => {
     setTool(this.mapper, this.mapper.tool === 'draw' ? 'erase' : 'draw');
@@ -526,6 +536,9 @@ export class GameScene extends Phaser.Scene {
       this.panel = createTuningPanel({
         onSpeed: (s) => this.setGameSpeed(s),
         onRestart: () => this.scene.restart(),
+        onGrant: (kind) => {
+          this.sim.stock[kind] += 1;
+        },
       });
       this.panel.setSpeed(this.clock.speed);
     } else {
@@ -557,6 +570,8 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown-E', this.toggleTool);
     this.input.keyboard?.off('keydown-D', this.toggleDebug);
     this.input.keyboard?.off('keydown-R', this.restartIfOver);
+    this.input.keyboard?.off('keydown-B', this.onBridgeKey);
+    this.input.keyboard?.off('keydown-T', this.onTunnelKey);
     this.input.keyboard?.off('keydown', this.onKey);
     this.panel?.destroy();
     this.panel = null;

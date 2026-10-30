@@ -1,6 +1,7 @@
 import {
   linkPartners,
   linkTiles,
+  placeCrossing,
   placeRoads,
   removeRoads,
   type SimState,
@@ -43,13 +44,15 @@ interface Stroke {
 export interface Controller {
   sim: SimState;
   stroke: Stroke | null;
+  /** The outcome of the last bridge or tunnel, for the debug line. */
+  note: string | null;
 }
 
 /** Converts a screen point to tile units. The result is fractional: 3.5 is the centre of tile 3. */
 export type ToTile = (screen: Vec2) => TileXY;
 
 export function createController(sim: SimState): Controller {
-  return { sim, stroke: null };
+  return { sim, stroke: null, note: null };
 }
 
 function indexOf(sim: SimState, t: TileXY): number | null {
@@ -140,6 +143,35 @@ function extend(
   return changed;
 }
 
+function isCrossing(mode: StrokeMode): mode is 'bridge' | 'tunnel' {
+  return mode === 'bridge' || mode === 'tunnel';
+}
+
+/**
+ * Builds a bridge or tunnel from the tile where the stroke began to the tile where it was
+ * released. The sim decides whether it fits; the note says why it did not.
+ */
+function crossTo(
+  ctl: Controller,
+  stroke: Stroke,
+  at: Vec2,
+  toTile: ToTile,
+): boolean {
+  const kind = stroke.mode;
+  if (!isCrossing(kind)) return false;
+  const from = stroke.path[0];
+  const to = strokeTile(toTile(at), true);
+  const a = from ? indexOf(ctl.sim, from) : null;
+  const b = to ? indexOf(ctl.sim, to) : null;
+  if (a === null || b === null) {
+    ctl.note = `${kind} refused: off the map`;
+    return false;
+  }
+  const result = placeCrossing(ctl.sim, kind, a, b);
+  ctl.note = result.ok ? `${kind} built` : `${kind} refused: ${result.reason}`;
+  return result.ok;
+}
+
 function rollback(ctl: Controller, stroke: Stroke): boolean {
   // Undo newest first, so each restore sees the budget, tiles and links it expects.
   for (const c of [...stroke.changes].reverse()) {
@@ -168,15 +200,24 @@ export function applyIntent(
     case 'stroke-begin': {
       // A new stroke commits any unfinished one first.
       ctl.stroke = { mode: intent.mode, path: [], halted: false, changes: [] };
+      if (isCrossing(intent.mode)) {
+        // A crossing remembers where it began and is built on release.
+        const start = strokeTile(toTile(intent.at), true);
+        if (start) ctl.stroke.path = [start];
+        return false;
+      }
       return extend(ctl, ctl.stroke, intent.at, toTile, true);
     }
     case 'stroke-move':
-      return ctl.stroke
+      return ctl.stroke && !isCrossing(ctl.stroke.mode)
         ? extend(ctl, ctl.stroke, intent.at, toTile, false)
         : false;
     case 'stroke-end': {
       const stroke = ctl.stroke;
       ctl.stroke = null;
+      if (stroke && intent.at && isCrossing(stroke.mode)) {
+        return crossTo(ctl, stroke, intent.at, toTile);
+      }
       // Releasing a draw stroke takes the tile under the pointer, so the last step of the
       // drag is linked even if the pointer never settled on that tile's centre.
       if (stroke && intent.at && stroke.mode === 'draw') {

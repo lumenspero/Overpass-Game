@@ -63,6 +63,8 @@ export function updateTrips(state: SimState): void {
     } else if (car.state === 'parked') {
       car.timer -= 1;
       if (car.timer > 0) continue;
+      // The car leaves from its destination's entrance edge, so its new route starts at along 0.
+      car.along = 0;
       const next = sendHome(state, car);
       if (next) {
         Object.assign(car, next);

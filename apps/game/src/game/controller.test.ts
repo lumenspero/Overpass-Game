@@ -7,6 +7,7 @@ import {
   linkTiles,
   placeRoads,
   type SimState,
+  Terrain,
 } from '@overpass-game/sim';
 import { describe, expect, it } from 'vitest';
 import { applyIntent, createController } from './controller.ts';
@@ -179,5 +180,77 @@ describe('links that add no road', () => {
     }
     applyIntent(ctl, { type: 'stroke-end', at: { x: 4.8, y: 4.5 } }, identity);
     expect(hasLink(sim.links, idx(5, 4), idx(4, 4))).toBe(true);
+  });
+});
+
+/** A row of land with a gap of `kind` terrain at x=2..4 on row 1. */
+function gapWorld(
+  kind: typeof Terrain.Water | typeof Terrain.Mountain,
+): SimState {
+  const sim = world();
+  for (let x = 2; x <= 4; x++) sim.grid.terrain[idx(x, 1)] = kind;
+  return sim;
+}
+
+describe('bridges from a stroke', () => {
+  it('builds across the gap on release, and lays nothing during the drag', () => {
+    const sim = gapWorld(Terrain.Water);
+    sim.stock.bridge = 1;
+    const ctl = createController(sim);
+    applyIntent(
+      ctl,
+      { type: 'stroke-begin', mode: 'bridge', at: { x: 1.5, y: 1.5 } },
+      identity,
+    );
+    expect(
+      applyIntent(
+        ctl,
+        { type: 'stroke-move', at: { x: 3.5, y: 1.5 } },
+        identity,
+      ),
+    ).toBe(false);
+    expect(sim.roads.some((r) => r === 1)).toBe(false);
+    expect(
+      applyIntent(
+        ctl,
+        { type: 'stroke-end', at: { x: 5.5, y: 1.5 } },
+        identity,
+      ),
+    ).toBe(true);
+    for (let x = 1; x <= 5; x++) expect(sim.roads[idx(x, 1)]).toBe(1);
+    expect(sim.stock.bridge).toBe(0);
+    expect(ctl.note).toBe('bridge built');
+  });
+
+  it('is refused with a note when there is no bridge in stock', () => {
+    const sim = gapWorld(Terrain.Water);
+    const ctl = createController(sim);
+    applyIntent(
+      ctl,
+      { type: 'stroke-begin', mode: 'bridge', at: { x: 1.5, y: 1.5 } },
+      identity,
+    );
+    applyIntent(ctl, { type: 'stroke-end', at: { x: 5.5, y: 1.5 } }, identity);
+    expect(sim.roads.some((r) => r === 1)).toBe(false);
+    expect(ctl.note).toBe('bridge refused: no-stock');
+  });
+
+  it('a tunnel stroke runs through mountain, not water', () => {
+    const sim = gapWorld(Terrain.Mountain);
+    sim.stock.tunnel = 1;
+    const ctl = createController(sim);
+    applyIntent(
+      ctl,
+      { type: 'stroke-begin', mode: 'tunnel', at: { x: 1.5, y: 1.5 } },
+      identity,
+    );
+    expect(
+      applyIntent(
+        ctl,
+        { type: 'stroke-end', at: { x: 5.5, y: 1.5 } },
+        identity,
+      ),
+    ).toBe(true);
+    expect(sim.stock.tunnel).toBe(0);
   });
 });
