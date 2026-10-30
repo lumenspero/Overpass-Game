@@ -196,6 +196,9 @@ importers:
 
   apps/game:
     dependencies:
+      '@overpass-game/render-style':
+        specifier: workspace:*
+        version: link:../../packages/render-style
       '@overpass-game/sim':
         specifier: workspace:*
         version: link:../../packages/sim

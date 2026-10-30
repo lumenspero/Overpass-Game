@@ -20,3 +20,6 @@ Short log of choices and why. Newest at the bottom.
 | 2026-10-29 | Parks are buildable                                                         | Parks are decorative; spawn-blocking behaviour comes with M3                                                  |
 | 2026-10-29 | Input feel constants live in `apps/game/src/input/config.ts`                | Slop, long-press and wheel rate shape gesture reading, not game rules, so they stay out of the sim config     |
 | 2026-10-29 | Touch: draw starts after slop; still hold erases; 2nd finger cancels stroke | Keeps draw vs pan conflict-free; a cancelled stroke never reaches the sim                                     |
+| 2026-10-29 | Camera math is pure (`apps/game/src/view/camera.ts`); Phaser mirrors it     | Fit, pan and zoom-about-pointer are unit-tested without a browser                                             |
+| 2026-10-29 | Resize refits an untouched camera; a moved one keeps its centre             | Rotation shows the whole map until the player takes control, then never yanks the view                        |
+| 2026-10-29 | `TILE_SIZE` (32 world units) lives in `render-style`                        | Sizes are shared drawing data for the game and the Studio preview                                             |
