@@ -8,6 +8,7 @@ import {
   type Grid,
   type SimState,
   step,
+  summaryOf,
   Terrain,
   type TerrainKind,
 } from '@overpass-game/sim';
@@ -51,6 +52,8 @@ import {
   terrainTiles,
   ENTRANCE_WIDTH,
 } from '../view/geometry.ts';
+import { endLines, hudLine, OVERFLOW_RING_COLOR } from '../view/hud.ts';
+import { overflowRings } from '../view/overflow.ts';
 import {
   createTickMeter,
   sampleTickRate,
@@ -88,6 +91,11 @@ export class GameScene extends Phaser.Scene {
   private roadGfx!: Phaser.GameObjects.Graphics;
   private buildingGfx!: Phaser.GameObjects.Graphics;
   private carGfx!: Phaser.GameObjects.Graphics;
+  private ringGfx!: Phaser.GameObjects.Graphics;
+  private hudText!: Phaser.GameObjects.Text;
+  private endGfx!: Phaser.GameObjects.Graphics;
+  private endTexts: Phaser.GameObjects.Text[] = [];
+  private ended = false;
   private roadsDirty = true;
   private overlayGfx!: Phaser.GameObjects.Graphics;
   private debugText!: Phaser.GameObjects.Text;
@@ -117,12 +125,14 @@ export class GameScene extends Phaser.Scene {
     this.buildingGfx = this.add.graphics();
     this.roadGfx = this.add.graphics();
     this.carGfx = this.add.graphics();
+    this.ringGfx = this.add.graphics();
     this.overlayGfx = this.add.graphics().setVisible(false);
     this.layer.add([
       terrainGfx,
       this.buildingGfx,
       this.roadGfx,
       this.carGfx,
+      this.ringGfx,
       this.overlayGfx,
     ]);
     this.drawTerrain(terrainGfx, grid);
@@ -141,6 +151,24 @@ export class GameScene extends Phaser.Scene {
       .setVisible(false);
     this.meter = createTickMeter(this.time.now, this.sim.tick);
 
+    // The HUD and end screen are screen-space too, drawn over the map.
+    this.hudText = this.add
+      .text(this.scale.width / 2, 8, '', {
+        fontFamily: 'monospace',
+        fontSize: '14px',
+        color: '#cfd6de',
+      })
+      .setOrigin(0.5, 0)
+      .setScrollFactor(0)
+      .setDepth(10);
+    this.endGfx = this.add
+      .graphics()
+      .setScrollFactor(0)
+      .setDepth(20)
+      .setVisible(false);
+    this.endTexts = [];
+    this.ended = false;
+
     this.canvas = this.game.canvas;
     this.canvas.style.touchAction = 'none';
     this.canvas.addEventListener('pointerdown', this.onPointerDown);
@@ -152,6 +180,7 @@ export class GameScene extends Phaser.Scene {
 
     this.input.keyboard?.on('keydown-E', this.toggleTool);
     this.input.keyboard?.on('keydown-D', this.toggleDebug);
+    this.input.keyboard?.on('keydown-R', this.restartIfOver);
     this.scale.on('resize', this.onResize);
     this.events.once('shutdown', this.teardown);
     this.applyTransform();
@@ -169,6 +198,9 @@ export class GameScene extends Phaser.Scene {
       this.roadsDirty = false;
     }
     this.drawCars(); // cars move every tick, so they are redrawn every frame
+    this.drawRings();
+    this.hudText.setText(hudLine(this.sim));
+    if (this.sim.over && !this.ended) this.showEnd();
     if (this.debugOn) {
       if (this.overlayDirty) {
         this.drawOverlay();
@@ -209,6 +241,10 @@ export class GameScene extends Phaser.Scene {
 
   private onPointerDown = (e: PointerEvent): void => {
     e.preventDefault(); // stops middle-click autoscroll
+    if (this.sim.over) {
+      this.scene.restart();
+      return;
+    }
     const sample = this.sample(e);
     this.pressCount += 1;
     this.lastPress = `${sample.kind} button ${sample.button} at ${Math.round(sample.x)},${Math.round(sample.y)}`;
@@ -248,7 +284,14 @@ export class GameScene extends Phaser.Scene {
 
   private onResize = (): void => {
     this.view = resizeCamera(this.view, this.mapSize, this.viewport());
+    this.hudText.setX(this.scale.width / 2);
+    if (this.ended) this.showEnd();
     this.applyTransform();
+  };
+
+  /** Restarts the run, but only once it is over. R and taps during play do nothing. */
+  private restartIfOver = (): void => {
+    if (this.sim.over) this.scene.restart();
   };
 
   /** Fractional tile position, so the stroke can tell where the pointer sits within a tile. */
@@ -259,6 +302,10 @@ export class GameScene extends Phaser.Scene {
 
   private dispatch(intents: Intent[]): void {
     for (const intent of intents) {
+      // Once the game is over the board is frozen. Only the view can still move.
+      if (this.sim.over && intent.type !== 'pan' && intent.type !== 'zoom') {
+        continue;
+      }
       if (intent.type === 'pan') {
         panCamera(this.view, this.mapSize, intent.dx, intent.dy);
       } else if (intent.type === 'zoom') {
@@ -359,6 +406,55 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Draws each overflowing destination's countdown ring. Redrawn every frame, as the countdown moves. */
+  private drawRings(): void {
+    const gfx = this.ringGfx;
+    gfx.clear();
+    gfx.lineStyle(3, OVERFLOW_RING_COLOR, 1);
+    const rings = overflowRings(
+      this.sim.buildings,
+      this.sim.demand,
+      this.sim.grid,
+    );
+    for (const ring of rings) {
+      // Starts at the top and runs clockwise; the arc shrinks as the countdown runs out.
+      const start = -Math.PI / 2;
+      gfx.beginPath();
+      gfx.arc(
+        ring.x,
+        ring.y,
+        ring.r,
+        start,
+        start + 2 * Math.PI * ring.fraction,
+        false,
+      );
+      gfx.strokePath();
+    }
+  }
+
+  /** Shows the end screen over the frozen board, with the run's summary. */
+  private showEnd(): void {
+    this.ended = true;
+    const w = this.scale.width;
+    const h = this.scale.height;
+    this.endGfx.setVisible(true).clear();
+    this.endGfx.fillStyle(0x000000, 0.7);
+    this.endGfx.fillRect(0, 0, w, h);
+    for (const t of this.endTexts) t.destroy();
+    const lines = endLines(summaryOf(this.sim));
+    this.endTexts = lines.map((line, i) =>
+      this.add
+        .text(w / 2, h / 2 + (i - (lines.length - 1) / 2) * 36, line, {
+          fontFamily: 'monospace',
+          fontSize: i === 0 ? '28px' : '18px',
+          color: '#f0f3f6',
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(21),
+    );
+  }
+
   private toggleDebug = (): void => {
     this.debugOn = !this.debugOn;
     this.overlayGfx.setVisible(this.debugOn);
@@ -386,6 +482,9 @@ export class GameScene extends Phaser.Scene {
     this.canvas.removeEventListener('pointercancel', this.onPointerCancel);
     this.canvas.removeEventListener('wheel', this.onWheel);
     this.canvas.removeEventListener('contextmenu', this.onContextMenu);
+    this.input.keyboard?.off('keydown-E', this.toggleTool);
+    this.input.keyboard?.off('keydown-D', this.toggleDebug);
+    this.input.keyboard?.off('keydown-R', this.restartIfOver);
     this.scale.off('resize', this.onResize);
   };
 }

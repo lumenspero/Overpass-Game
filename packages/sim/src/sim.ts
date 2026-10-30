@@ -28,6 +28,8 @@ export interface SimState {
   nextCarId: number;
   /** Set when a destination's overflow countdown runs out. The game is over and step does nothing. */
   over: GameOver | null;
+  /** Trips finished so far: cars that reached a destination and served a pin. This is the score. */
+  tripsCompleted: number;
 }
 
 export interface GameOver {
@@ -67,6 +69,7 @@ export function createSim({
     cars: [],
     nextCarId: 0,
     over: null,
+    tripsCompleted: 0,
   };
 }
 

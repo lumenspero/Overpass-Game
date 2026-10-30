@@ -1,0 +1,33 @@
+import {
+  summaryOf,
+  type GameSummary,
+  type SimState,
+  ticksLeftInWeek,
+  TICKS_PER_SECOND,
+} from '@overpass-game/sim';
+
+/**
+ * Text for the HUD and the end screen. Pure: the scene shows these strings, and the
+ * rules behind them live in the sim.
+ */
+
+/** Colour of an overflow countdown ring. */
+export const OVERFLOW_RING_COLOR = 0xe5484d;
+
+/** The line across the top of the screen: week, time left in it, trips so far. */
+export function hudLine(state: SimState): string {
+  const summary = summaryOf(state);
+  const secondsLeft = Math.ceil(ticksLeftInWeek(state.tick) / TICKS_PER_SECOND);
+  return `Week ${summary.week} · ${secondsLeft}s left · Trips ${summary.trips}`;
+}
+
+/** The lines of the end screen, or none while the game is still on. */
+export function endLines(summary: GameSummary): string[] {
+  if (!summary.over) return [];
+  return [
+    'Game over',
+    `Week ${summary.week}`,
+    `Trips completed: ${summary.trips}`,
+    'Tap or press R to play again',
+  ];
+}

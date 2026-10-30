@@ -68,6 +68,12 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Roads:** a road cannot be placed on a building tile.
 - **Removal:** buildings are never removed in M3.
 
+### Score and clock
+
+- **Score:** trips completed. A trip counts when a car reaches its destination and uses up a pin. A car sent home without arriving doesn't count. `approximated`
+- **Weeks:** the clock counts weeks of `WEEK_TICKS` ticks from week 1. A finished game reports the week it ended in. `approximated`
+- **Not yet:** the map expansion schedule. Weekly rewards are in M5.
+
 ### Overflow
 
 - **Limit:** a destination holding more than `OVERFLOW_PIN_LIMIT` waiting pins overflows. `approximated`
@@ -75,7 +81,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Reset:** serving a pin resets that destination's countdown to full, so a busy destination that keeps being served never runs out.
 - **Clear:** dropping back to the limit clears the countdown. It starts again from full the next time the destination overflows.
 - **Game over:** when any countdown runs out, the game ends. The sim stops advancing and records the tick and destination.
-- **Not yet:** the countdown is not drawn, and there is no end screen (later M4 chunks).
+- **On screen:** each overflowing destination has a ring round it that empties as its countdown runs out. The HUD shows the week, the seconds left in it, and trips. The end screen shows the week and trips.
 
 ### Demand
 

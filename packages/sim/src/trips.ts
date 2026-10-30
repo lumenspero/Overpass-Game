@@ -55,6 +55,7 @@ export function updateTrips(state: SimState): void {
   for (const car of [...state.cars]) {
     if (car.state === 'driving' && atRouteEnd(car)) {
       servePin(state, car.destination);
+      state.tripsCompleted += 1;
       car.state = 'parked';
       car.timer = PARK_TICKS;
     } else if (car.state === 'parked') {

@@ -42,3 +42,6 @@ export const OVERFLOW_PIN_LIMIT = 4; // approximated
 
 /** Ticks an overflowing destination has before the game ends. Serving a pin resets it. */
 export const OVERFLOW_TICKS = 900; // approximated
+
+/** Ticks in one week. The clock counts weeks; the first week is week 1. */
+export const WEEK_TICKS = 1800; // approximated

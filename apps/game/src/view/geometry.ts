@@ -96,7 +96,7 @@ export type BuildingShape =
   | { kind: 'circle'; x: number; y: number; r: number; color: number }
   | { kind: 'entrance'; x1: number; y1: number; x2: number; y2: number };
 
-const BUILDING_SCALE = 0.6; // building body as a fraction of one tile
+export const BUILDING_SCALE = 0.6; // building body as a fraction of one tile
 export const ENTRANCE_WIDTH = 3;
 
 /** Unit step for each entrance side (y grows downwards). */
