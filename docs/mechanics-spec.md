@@ -20,7 +20,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 - **Grid:** tiles in a rectangle, stored row by row. Tiles outside the grid are not playable.
 - **Terrain kinds:** land, water, mountain, park, out-of-bounds.
-- **Buildable:** roads may be placed on land and parks. Water and mountains block roads until M5 (bridges and tunnels). `approximated`
+- **Buildable:** roads may be placed on land and parks. Water and mountains block roads, except where a bridge or tunnel crosses them (see Bridges and tunnels). `approximated`
 
 ### Roads and road graph
 
@@ -86,9 +86,20 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 - **Weekly reward:** at each week boundary, the road budget gains `WEEKLY_ROAD_REWARD` tiles (20). No reward once the game is over. `approximated`
 - **Offer:** each week the player is offered `UPGRADE_CHOICE_COUNT` (2) different upgrades, drawn without repeats. Each kind's chance is its weight: `UPGRADE_WEIGHT_BRIDGE`, `_TUNNEL`, `_MOTORWAY`, `_ROUNDABOUT`, `_LIGHT` (each 1). A weight of 0 means never offered. `approximated`
-- **Implemented only:** only upgrades the sim can apply are offered. The list is `IMPLEMENTED_UPGRADES`, and it grows as each upgrade lands in M5. An offer needs at least two implemented kinds.
+- **Implemented only:** only upgrades the sim can apply are offered. The list is `IMPLEMENTED_UPGRADES`: bridge and tunnel so far. It grows as each upgrade lands in M5. An offer needs at least two implemented kinds.
+- **Stock:** answering an offer adds its kind to stock. Placing a bridge or tunnel uses one. Stock is not refunded when a crossing is removed.
 - **Queue:** offers wait in `offers`, oldest first, until the player answers.
 - **Pool:** bridge, tunnel, motorway, roundabout, light. Each is added to the offer list as it is built.
+
+### Bridges and tunnels
+
+- **Bridge:** a road over a straight, orthogonal run of water. Both ends are land or park, and every tile between them is water. `approximated`
+- **Tunnel:** a road through a straight run of mountain, with the same end rules. `approximated`
+- **Span limits:** a bridge spans at most `BRIDGE_MAX_SPAN` (3) water tiles. A tunnel runs through at most `TUNNEL_MAX_SPAN` (4) mountain tiles. `approximated`
+- **Cost:** a crossing needs one bridge or tunnel from stock, and every road tile on it costs 1 from the budget, like any road. `approximated`
+- **Refusals:** a crossing is refused with no stock, when its ends are not aligned or not land, when its span is empty or too long, when a gap tile is the wrong terrain, when a tile is locked, or when the budget cannot pay. Nothing is placed on refusal.
+- **Existing bridge tiles:** a drag over a road that is already on water is accepted at no cost.
+- **Routing:** a bridge or tunnel is an ordinary road for cars, so routes cross it like any other.
 
 ### Debug panel
 

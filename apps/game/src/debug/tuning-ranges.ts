@@ -34,4 +34,6 @@ export const TUNING_RANGES: Record<TuningKey, TuningRange> = {
   UPGRADE_WEIGHT_MOTORWAY: { min: 0, max: 5, step: 1 },
   UPGRADE_WEIGHT_ROUNDABOUT: { min: 0, max: 5, step: 1 },
   UPGRADE_WEIGHT_LIGHT: { min: 0, max: 5, step: 1 },
+  BRIDGE_MAX_SPAN: { min: 1, max: 8, step: 1 },
+  TUNNEL_MAX_SPAN: { min: 1, max: 8, step: 1 },
 };

@@ -21,7 +21,17 @@ export const UPGRADE_KINDS = [
 export type UpgradeKind = (typeof UPGRADE_KINDS)[number];
 
 /** Upgrades the sim can apply, and so the only ones it offers. */
-export const IMPLEMENTED_UPGRADES: readonly UpgradeKind[] = [];
+export const IMPLEMENTED_UPGRADES: readonly UpgradeKind[] = [
+  'bridge',
+  'tunnel',
+];
+
+/** How many of each upgrade the player holds, ready to place. */
+export type Stock = Record<UpgradeKind, number>;
+
+export function emptyStock(): Stock {
+  return { bridge: 0, tunnel: 0, motorway: 0, roundabout: 0, light: 0 };
+}
 
 /** How many upgrades each weekly offer gives the player to choose from. */
 export const UPGRADE_CHOICE_COUNT = 2;
@@ -69,6 +79,25 @@ export function drawChoices(
  * Grants the week's road reward and queues an offer. Called once at each week boundary.
  * No reward is given once the game has ended.
  */
+export type ChooseResult =
+  { ok: true } | { ok: false; reason: 'no-offer' | 'not-offered' };
+
+/**
+ * Answers the oldest offer: the chosen kind goes into stock and the offer is closed.
+ * An offer that does not include the kind is left open.
+ */
+export function chooseUpgrade(
+  state: SimState,
+  kind: UpgradeKind,
+): ChooseResult {
+  const offer = state.offers[0];
+  if (!offer) return { ok: false, reason: 'no-offer' };
+  if (!offer.includes(kind)) return { ok: false, reason: 'not-offered' };
+  state.offers.shift();
+  state.stock[kind] += 1;
+  return { ok: true };
+}
+
 export function grantWeeklyReward(
   state: SimState,
   candidates: readonly UpgradeKind[] = IMPLEMENTED_UPGRADES,

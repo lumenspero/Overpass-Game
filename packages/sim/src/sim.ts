@@ -18,7 +18,12 @@ import {
 import { moveCars } from './movement.ts';
 import { createRng, type RngState } from './rng.ts';
 import { spawnCars, updateTrips } from './trips.ts';
-import { grantWeeklyReward, type UpgradeKind } from './upgrades.ts';
+import {
+  emptyStock,
+  grantWeeklyReward,
+  type Stock,
+  type UpgradeKind,
+} from './upgrades.ts';
 
 /** Everything the simulation remembers. Plain data only, so it serializes to JSON. */
 export interface SimState {
@@ -48,6 +53,8 @@ export interface SimState {
   tripsCompleted: number;
   /** Upgrade offers waiting for an answer, oldest first. Each offer is a pair of kinds. */
   offers: UpgradeKind[][];
+  /** Upgrades the player holds, ready to place. */
+  stock: Stock;
 }
 
 export interface GameOver {
@@ -98,6 +105,7 @@ export function createSim({
     over: null,
     tripsCompleted: 0,
     offers: [],
+    stock: emptyStock(),
   };
 }
 
@@ -110,7 +118,11 @@ export function placeRoads(state: SimState, tiles: number[]): PlaceResult {
   for (const i of unique) {
     if (!isInBounds(state.grid, i))
       return { ok: false, reason: 'out-of-bounds' };
-    if (!isBuildable(state.grid, i) || state.buildingAt[i] !== -1)
+    // A tile that already has a road (a bridge or tunnel) is always accepted; it is free.
+    if (
+      state.roads[i] === 0 &&
+      (!isBuildable(state.grid, i) || state.buildingAt[i] !== -1)
+    )
       return { ok: false, reason: 'unbuildable' };
     if (!isOpenTile(state, i)) return { ok: false, reason: 'locked' };
   }

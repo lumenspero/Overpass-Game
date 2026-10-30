@@ -1,6 +1,7 @@
 export * from './buildings.ts';
 export * from './cars.ts';
 export * from './clock.ts';
+export * from './crossings.ts';
 export * from './config.ts';
 export * from './demand.ts';
 export * from './expansion.ts';

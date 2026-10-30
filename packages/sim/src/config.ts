@@ -49,6 +49,10 @@ export const DEFAULT_TUNING = {
   UPGRADE_WEIGHT_MOTORWAY: 1, // approximated
   UPGRADE_WEIGHT_ROUNDABOUT: 1, // approximated
   UPGRADE_WEIGHT_LIGHT: 1, // approximated
+  /** Most water tiles a bridge may span between its two banks (spec: Bridges and tunnels). */
+  BRIDGE_MAX_SPAN: 3, // approximated
+  /** Most mountain tiles a tunnel may run through (spec: Bridges and tunnels). */
+  TUNNEL_MAX_SPAN: 4, // approximated
 };
 
 export type Tuning = typeof DEFAULT_TUNING;
@@ -86,3 +90,5 @@ export const UPGRADE_WEIGHT_MOTORWAY = DEFAULT_TUNING.UPGRADE_WEIGHT_MOTORWAY;
 export const UPGRADE_WEIGHT_ROUNDABOUT =
   DEFAULT_TUNING.UPGRADE_WEIGHT_ROUNDABOUT;
 export const UPGRADE_WEIGHT_LIGHT = DEFAULT_TUNING.UPGRADE_WEIGHT_LIGHT;
+export const BRIDGE_MAX_SPAN = DEFAULT_TUNING.BRIDGE_MAX_SPAN;
+export const TUNNEL_MAX_SPAN = DEFAULT_TUNING.TUNNEL_MAX_SPAN;
