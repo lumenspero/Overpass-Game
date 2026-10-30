@@ -12,3 +12,4 @@ export * from './rng.ts';
 export * from './score.ts';
 export * from './sim.ts';
 export * from './trips.ts';
+export * from './upgrades.ts';

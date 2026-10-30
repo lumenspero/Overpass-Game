@@ -28,4 +28,10 @@ export const TUNING_RANGES: Record<TuningKey, TuningRange> = {
   WEEK_TICKS: { min: 300, max: 7200, step: 60 },
   EXPANSION_WEEK_1: { min: 1, max: 52, step: 1 },
   EXPANSION_WEEK_2: { min: 1, max: 52, step: 1 },
+  WEEKLY_ROAD_REWARD: { min: 0, max: 100, step: 5 },
+  UPGRADE_WEIGHT_BRIDGE: { min: 0, max: 5, step: 1 },
+  UPGRADE_WEIGHT_TUNNEL: { min: 0, max: 5, step: 1 },
+  UPGRADE_WEIGHT_MOTORWAY: { min: 0, max: 5, step: 1 },
+  UPGRADE_WEIGHT_ROUNDABOUT: { min: 0, max: 5, step: 1 },
+  UPGRADE_WEIGHT_LIGHT: { min: 0, max: 5, step: 1 },
 };

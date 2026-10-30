@@ -18,6 +18,7 @@ import {
 import { moveCars } from './movement.ts';
 import { createRng, type RngState } from './rng.ts';
 import { spawnCars, updateTrips } from './trips.ts';
+import { grantWeeklyReward, type UpgradeKind } from './upgrades.ts';
 
 /** Everything the simulation remembers. Plain data only, so it serializes to JSON. */
 export interface SimState {
@@ -45,6 +46,8 @@ export interface SimState {
   over: GameOver | null;
   /** Trips finished so far: cars that reached a destination and served a pin. This is the score. */
   tripsCompleted: number;
+  /** Upgrade offers waiting for an answer, oldest first. Each offer is a pair of kinds. */
+  offers: UpgradeKind[][];
 }
 
 export interface GameOver {
@@ -94,6 +97,7 @@ export function createSim({
     nextCarId: 0,
     over: null,
     tripsCompleted: 0,
+    offers: [],
   };
 }
 
@@ -167,6 +171,7 @@ export function unlinkTiles(state: SimState, a: number, b: number): boolean {
 export function step(state: SimState): void {
   if (state.over) return;
   state.tick += 1;
+  if (state.tick % tuning.WEEK_TICKS === 0) grantWeeklyReward(state);
   generateDemand(state);
   updateOverflow(state);
   if (state.over) return;

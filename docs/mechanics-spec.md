@@ -35,7 +35,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Cost:** each newly placed road tile costs 1. Tiles that already have a road cost nothing.
 - **Refund:** removing a road tile refunds 1.
 - **Placement is all or nothing:** if the whole path doesn't fit in the budget, nothing is placed.
-- **Weekly reward:** not yet implemented (M5).
+- **Weekly reward:** at each week boundary the budget gains `WEEKLY_ROAD_REWARD` tiles (see Upgrades). `approximated`
 
 ### Cars and routing
 
@@ -73,7 +73,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Score:** trips completed. A trip counts when a car reaches its destination and uses up a pin. A car sent home without arriving doesn't count. `approximated`
 - **Weeks:** the clock counts weeks of `WEEK_TICKS` ticks from week 1. A finished game reports the week it ended in. `approximated`
 - **End screen:** shows the week reached and trips completed. Pins served are the same number as trips, so they aren't shown separately. Roads placed is not shown, since the original doesn't report it.
-- **Weekly rewards** are in M5.
+- **Weekly rewards:** see Upgrades.
 
 ### Expansion
 
@@ -81,6 +81,14 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Locked land:** tiles in a district that isn't open take no roads. Buildings on locked land are inactive (they send and collect nothing) and are hidden. The land is dimmed.
 - **Opening only:** districts never close. A district beyond the schedule stays locked for the whole game (for example, land across a river until bridges in M5).
 - **Test map:** three districts west of the river, plus one east of it that stays locked.
+
+### Upgrades
+
+- **Weekly reward:** at each week boundary, the road budget gains `WEEKLY_ROAD_REWARD` tiles (20). No reward once the game is over. `approximated`
+- **Offer:** each week the player is offered `UPGRADE_CHOICE_COUNT` (2) different upgrades, drawn without repeats. Each kind's chance is its weight: `UPGRADE_WEIGHT_BRIDGE`, `_TUNNEL`, `_MOTORWAY`, `_ROUNDABOUT`, `_LIGHT` (each 1). A weight of 0 means never offered. `approximated`
+- **Implemented only:** only upgrades the sim can apply are offered. The list is `IMPLEMENTED_UPGRADES`, and it grows as each upgrade lands in M5. An offer needs at least two implemented kinds.
+- **Queue:** offers wait in `offers`, oldest first, until the player answers.
+- **Pool:** bridge, tunnel, motorway, roundabout, light. Each is added to the offer list as it is built.
 
 ### Debug panel
 
