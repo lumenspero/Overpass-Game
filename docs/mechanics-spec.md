@@ -37,4 +37,13 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Placement is all or nothing:** if the whole path doesn't fit in the budget, nothing is placed.
 - **Weekly reward:** not yet implemented (M5).
 
-_Still to write: houses and cars, trips, spawning, demand, scoring, clock and expansion, upgrades, bridges and tunnels, roundabouts and lights, congestion, unlocks, audio events. Each arrives with its milestone._
+### Buildings
+
+- **Kinds:** houses (where cars start and end) and destinations (where cars go). Both occupy one tile.
+- **Colours:** `BUILDING_COLOR_COUNT` colours. A house pairs with destinations of its own colour. `approximated`
+- **Placement:** on land or park, on a tile with no road or building. Water and mountains are refused.
+- **Entrance:** each building has one entrance side. It is connected only while the neighbour on that side is a road. A building can be placed before its road.
+- **Roads:** a road cannot be placed on a building tile.
+- **Removal:** buildings are never removed in M3.
+
+_Still to write: cars and trips, spawning, demand, scoring, clock and expansion, upgrades, bridges and tunnels, roundabouts and lights, congestion, unlocks, audio events. Each arrives with its milestone._

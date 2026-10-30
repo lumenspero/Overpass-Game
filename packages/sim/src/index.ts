@@ -1,3 +1,4 @@
+export * from './buildings.ts';
 export * from './clock.ts';
 export * from './config.ts';
 export * from './graph.ts';

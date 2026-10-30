@@ -1,3 +1,4 @@
+import type { Building } from './buildings.ts';
 import { ROAD_BUDGET_START } from './config.ts';
 import { buildRoadGraph, type RoadGraph, updateRoadGraph } from './graph.ts';
 import { type Grid, isBuildable, isInBounds } from './grid.ts';
@@ -12,6 +13,9 @@ export interface SimState {
   roads: number[];
   budget: number;
   graph: RoadGraph;
+  buildings: Building[];
+  /** One entry per grid tile: the id of the building on it, or -1. */
+  buildingAt: number[];
 }
 
 export interface CreateSimOptions {
@@ -37,6 +41,8 @@ export function createSim({
     roads,
     budget: roadBudget,
     graph: buildRoadGraph(grid, roads),
+    buildings: [],
+    buildingAt: new Array<number>(grid.cols * grid.rows).fill(-1),
   };
 }
 
@@ -49,7 +55,7 @@ export function placeRoads(state: SimState, tiles: number[]): PlaceResult {
   for (const i of unique) {
     if (!isInBounds(state.grid, i))
       return { ok: false, reason: 'out-of-bounds' };
-    if (!isBuildable(state.grid, i))
+    if (!isBuildable(state.grid, i) || state.buildingAt[i] !== -1)
       return { ok: false, reason: 'unbuildable' };
   }
   const added = unique.filter((i) => state.roads[i] === 0);

@@ -4,13 +4,19 @@ import {
   type Clock,
   createClock,
   createSim,
+  placeBuilding,
   type Grid,
   type SimState,
   step,
   Terrain,
   type TerrainKind,
 } from '@overpass-game/sim';
-import { DEBUG_PALETTE, PALETTE, TILE_SIZE } from '@overpass-game/render-style';
+import {
+  BUILDING_COLORS,
+  DEBUG_PALETTE,
+  PALETTE,
+  TILE_SIZE,
+} from '@overpass-game/render-style';
 import {
   createIntentMapper,
   type Intent,
@@ -39,7 +45,12 @@ import {
   zoomCamera,
 } from '../view/camera.ts';
 import { debugShapes } from '../view/debug-geometry.ts';
-import { roadShapes, terrainTiles } from '../view/geometry.ts';
+import {
+  buildingShapes,
+  roadShapes,
+  terrainTiles,
+  ENTRANCE_WIDTH,
+} from '../view/geometry.ts';
 import {
   createTickMeter,
   sampleTickRate,
@@ -50,7 +61,7 @@ import {
   type Controller,
   createController,
 } from './controller.ts';
-import { buildTestGrid } from './test-map.ts';
+import { buildTestGrid, TEST_BUILDINGS } from './test-map.ts';
 
 const TERRAIN_COLOR: Partial<Record<TerrainKind, number>> = {
   [Terrain.Water]: PALETTE.water,
@@ -75,6 +86,7 @@ export class GameScene extends Phaser.Scene {
   private mapSize!: Size;
   private layer!: Phaser.GameObjects.Container;
   private roadGfx!: Phaser.GameObjects.Graphics;
+  private buildingGfx!: Phaser.GameObjects.Graphics;
   private roadsDirty = true;
   private overlayGfx!: Phaser.GameObjects.Graphics;
   private debugText!: Phaser.GameObjects.Text;
@@ -98,10 +110,18 @@ export class GameScene extends Phaser.Scene {
 
     this.layer = this.add.container(0, 0);
     const terrainGfx = this.add.graphics();
+    this.buildingGfx = this.add.graphics();
     this.roadGfx = this.add.graphics();
     this.overlayGfx = this.add.graphics().setVisible(false);
-    this.layer.add([terrainGfx, this.roadGfx, this.overlayGfx]);
+    this.layer.add([
+      terrainGfx,
+      this.buildingGfx,
+      this.roadGfx,
+      this.overlayGfx,
+    ]);
     this.drawTerrain(terrainGfx, grid);
+    this.placeTestBuildings();
+    this.drawBuildings();
 
     // Screen-space text, not in the scaled layer, so it stays readable at any zoom.
     this.debugText = this.add
@@ -255,6 +275,41 @@ export class GameScene extends Phaser.Scene {
     for (const t of terrainTiles(grid)) {
       gfx.fillStyle(TERRAIN_COLOR[t.kind] ?? PALETTE.land, 1);
       gfx.fillRect(t.x, t.y, TILE_SIZE, TILE_SIZE);
+    }
+  }
+
+  private placeTestBuildings(): void {
+    for (const b of TEST_BUILDINGS) {
+      const tile = b.row * this.sim.grid.cols + b.col;
+      const result = placeBuilding(this.sim, {
+        kind: b.kind,
+        color: b.color,
+        tile,
+        entrance: b.entrance,
+      });
+      if (!result.ok)
+        throw new Error(`test building refused: ${result.reason}`);
+    }
+  }
+
+  private drawBuildings(): void {
+    const gfx = this.buildingGfx;
+    gfx.clear();
+    for (const s of buildingShapes(
+      this.sim.buildings,
+      this.sim.grid,
+      BUILDING_COLORS,
+    )) {
+      if (s.kind === 'square') {
+        gfx.fillStyle(s.color, 1);
+        gfx.fillRect(s.x, s.y, s.size, s.size);
+      } else if (s.kind === 'circle') {
+        gfx.fillStyle(s.color, 1);
+        gfx.fillCircle(s.x, s.y, s.r);
+      } else {
+        gfx.lineStyle(ENTRANCE_WIDTH, PALETTE.road, 1);
+        gfx.lineBetween(s.x1, s.y1, s.x2, s.y2);
+      }
     }
   }
 

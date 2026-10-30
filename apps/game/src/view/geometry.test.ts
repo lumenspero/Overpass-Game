@@ -1,7 +1,7 @@
 import { ROAD_WIDTH_TILES, TILE_SIZE } from '@overpass-game/render-style';
-import { createGrid, Terrain } from '@overpass-game/sim';
+import { createGrid, type Building, Terrain } from '@overpass-game/sim';
 import { describe, expect, it } from 'vitest';
-import { roadShapes, terrainTiles } from './geometry.ts';
+import { buildingShapes, roadShapes, terrainTiles } from './geometry.ts';
 
 const R = (ROAD_WIDTH_TILES * TILE_SIZE) / 2;
 const centre = (col: number, row: number) => ({
@@ -78,5 +78,58 @@ describe('terrainTiles', () => {
 
   it('returns nothing for an all-land grid', () => {
     expect(terrainTiles(createGrid(4, 4))).toEqual([]);
+  });
+});
+
+describe('buildingShapes', () => {
+  const colors = [0xff0000, 0x00ff00];
+  const grid = createGrid(3, 3);
+  const house: Building = {
+    id: 0,
+    kind: 'house',
+    color: 1,
+    tile: 4,
+    entrance: 'e',
+  };
+  const dest: Building = {
+    id: 1,
+    kind: 'destination',
+    color: 0,
+    tile: 0,
+    entrance: 's',
+  };
+
+  it('draws houses as squares and destinations as discs, in their colours', () => {
+    const shapes = buildingShapes([house, dest], grid, colors);
+    expect(shapes.find((s) => s.kind === 'square')).toMatchObject({
+      color: 0x00ff00,
+    });
+    expect(shapes.find((s) => s.kind === 'circle')).toMatchObject({
+      color: 0xff0000,
+    });
+  });
+
+  it('centres the body on its tile', () => {
+    const [body] = buildingShapes([house], grid, colors);
+    expect(body.kind).toBe('square');
+    if (body.kind !== 'square') return;
+    expect(body.x + body.size / 2).toBeCloseTo(1.5 * TILE_SIZE);
+    expect(body.y + body.size / 2).toBeCloseTo(1.5 * TILE_SIZE);
+  });
+
+  it('runs the entrance tick from the body edge to the tile edge, on the entrance side', () => {
+    const [, tick] = buildingShapes([house], grid, colors);
+    expect(tick.kind).toBe('entrance');
+    if (tick.kind !== 'entrance') return;
+    // House on tile (1,1) facing east: tick ends on the right edge of the tile.
+    expect(tick.x2).toBeCloseTo(2 * TILE_SIZE);
+    expect(tick.y2).toBeCloseTo(1.5 * TILE_SIZE);
+    expect(tick.x1).toBeLessThan(tick.x2);
+    expect(tick.y1).toBeCloseTo(tick.y2);
+  });
+
+  it('falls back to the first colour for an unknown colour index', () => {
+    const [body] = buildingShapes([{ ...house, color: 9 }], grid, colors);
+    expect(body).toMatchObject({ color: 0xff0000 });
   });
 });

@@ -1,5 +1,10 @@
 import { ROAD_WIDTH_TILES, TILE_SIZE } from '@overpass-game/render-style';
-import { type Grid, Terrain, type TerrainKind } from '@overpass-game/sim';
+import {
+  type Building,
+  type Grid,
+  Terrain,
+  type TerrainKind,
+} from '@overpass-game/sim';
 
 /**
  * Drawing geometry derived from sim state. Pure: no Phaser, so it is unit-tested
@@ -53,6 +58,60 @@ export function terrainTiles(grid: Grid): TerrainTile[] {
       x: (i % grid.cols) * TILE_SIZE,
       y: Math.floor(i / grid.cols) * TILE_SIZE,
       kind,
+    });
+  }
+  return out;
+}
+
+export type BuildingShape =
+  | { kind: 'square'; x: number; y: number; size: number; color: number }
+  | { kind: 'circle'; x: number; y: number; r: number; color: number }
+  | { kind: 'entrance'; x1: number; y1: number; x2: number; y2: number };
+
+const BUILDING_SCALE = 0.6; // building body as a fraction of one tile
+export const ENTRANCE_WIDTH = 3;
+
+/** Unit step for each entrance side (y grows downwards). */
+const SIDE_STEP = {
+  n: { dx: 0, dy: -1 },
+  e: { dx: 1, dy: 0 },
+  s: { dx: 0, dy: 1 },
+  w: { dx: -1, dy: 0 },
+} as const;
+
+/**
+ * Houses are squares, destinations are discs, each with a tick from the body to
+ * the tile edge on its entrance side, so the player can see which way it faces.
+ */
+export function buildingShapes(
+  buildings: readonly Building[],
+  grid: Grid,
+  colors: readonly number[],
+): BuildingShape[] {
+  const out: BuildingShape[] = [];
+  const half = (TILE_SIZE * BUILDING_SCALE) / 2;
+  for (const b of buildings) {
+    const cx = ((b.tile % grid.cols) + 0.5) * TILE_SIZE;
+    const cy = (Math.floor(b.tile / grid.cols) + 0.5) * TILE_SIZE;
+    const color = colors[b.color] ?? colors[0];
+    if (b.kind === 'house') {
+      out.push({
+        kind: 'square',
+        x: cx - half,
+        y: cy - half,
+        size: 2 * half,
+        color,
+      });
+    } else {
+      out.push({ kind: 'circle', x: cx, y: cy, r: half, color });
+    }
+    const { dx, dy } = SIDE_STEP[b.entrance];
+    out.push({
+      kind: 'entrance',
+      x1: cx + dx * half,
+      y1: cy + dy * half,
+      x2: cx + (dx * TILE_SIZE) / 2,
+      y2: cy + (dy * TILE_SIZE) / 2,
     });
   }
   return out;

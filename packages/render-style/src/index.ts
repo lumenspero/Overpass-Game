@@ -17,6 +17,11 @@ export const PALETTE = {
   road: 0xe8e4d8,
 } as const;
 
+/** Building colours, by index. Colour-blind symbols arrive in M10. */
+export const BUILDING_COLORS = [
+  0xe76f51, 0x2a9d8f, 0xe9c46a, 0x8ab17d,
+] as const;
+
 /** Colours for the debug overlay only. Never shown to players. */
 export const DEBUG_PALETTE = {
   grid: 0x3a4048,

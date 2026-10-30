@@ -12,3 +12,6 @@ export const MAX_CATCHUP_TICKS = 15; // approximated
 
 /** Road tiles the player can place before the first weekly reward. */
 export const ROAD_BUDGET_START = 120; // approximated
+
+/** Number of building colours. A house pairs with destinations of its own colour. */
+export const BUILDING_COLOR_COUNT = 4; // approximated
