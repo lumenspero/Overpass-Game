@@ -63,7 +63,14 @@ export function addCar(
   const end = roadEntrance(state, destination);
   if (start === null || end === null)
     return { ok: false, reason: 'not-connected' };
-  const route = findRoute(state.grid, state.roads, state.links, start, end);
+  const route = findRoute(
+    state.grid,
+    state.roads,
+    state.links,
+    start,
+    end,
+    state.motorways,
+  );
   if (!route) return { ok: false, reason: 'no-route' };
 
   const id = state.nextCarId;
@@ -101,7 +108,14 @@ function routeHome(
 ): Car | null {
   const home = roadEntrance(state, car.house);
   if (home === null) return null;
-  const route = findRoute(state.grid, state.roads, state.links, from, home);
+  const route = findRoute(
+    state.grid,
+    state.roads,
+    state.links,
+    from,
+    home,
+    state.motorways,
+  );
   if (!route) return null;
   return { ...car, state: 'returning', route, progress: 0, along };
 }
@@ -131,7 +145,8 @@ export function onRoadsChanged(
     const here = Math.min(car.progress, car.route.length - 1);
     const onDeleted = state.roads[car.route[here]] !== 1;
     const routeBroken =
-      removed.length > 0 && !routeIsLinked(state.roads, state.links, car.route);
+      removed.length > 0 &&
+      !routeIsLinked(state.roads, state.links, car.route, state.motorways);
 
     if (onDeleted) {
       // Walk back along the route to the last tile that is still a road.
@@ -154,12 +169,19 @@ export function onRoadsChanged(
       const fresh =
         goal === null
           ? null
-          : findRoute(state.grid, state.roads, state.links, current, goal);
+          : findRoute(
+              state.grid,
+              state.roads,
+              state.links,
+              current,
+              goal,
+              state.motorways,
+            );
       if (fresh) {
         // Only the route ahead matters, so the new route starts at the car's tile.
         const improves =
-          routeLength(state.grid, fresh) <
-          routeLength(state.grid, car.route.slice(here));
+          routeLength(state.grid, fresh, state.motorways) <
+          routeLength(state.grid, car.route.slice(here), state.motorways);
         if (routeBroken || improves) {
           survivors.push({ ...car, route: fresh, progress: 0 });
           continue;

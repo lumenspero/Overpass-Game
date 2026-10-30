@@ -16,8 +16,11 @@ import { LONG_PRESS_MS, TOUCH_SLOP_PX, WHEEL_ZOOM_RATE } from './config.ts';
  */
 
 export type PointerKind = 'mouse' | 'touch' | 'pen';
-export type StrokeMode = 'draw' | 'erase' | 'bridge' | 'tunnel';
-export type Tool = 'draw' | 'erase' | 'bridge' | 'tunnel';
+export type StrokeMode =
+  'select' | 'draw' | 'erase' | 'bridge' | 'tunnel' | 'motorway';
+/** The road tool is 'draw'. 'select' lays nothing: it only picks and nudges motorways. */
+export type Tool =
+  'select' | 'draw' | 'erase' | 'bridge' | 'tunnel' | 'motorway';
 
 export interface Vec2 {
   x: number;
@@ -66,8 +69,8 @@ export interface IntentMapper {
   mode: Mode;
 }
 
-export function createIntentMapper(): IntentMapper {
-  return { tool: 'draw', pointers: new Map(), mode: { kind: 'idle' } };
+export function createIntentMapper(tool: Tool = 'draw'): IntentMapper {
+  return { tool, pointers: new Map(), mode: { kind: 'idle' } };
 }
 
 export function setTool(mapper: IntentMapper, tool: Tool): void {
@@ -76,9 +79,12 @@ export function setTool(mapper: IntentMapper, tool: Tool): void {
 
 function strokeMode(mapper: IntentMapper, wanted: StrokeMode): StrokeMode {
   if (mapper.tool === 'erase') return 'erase';
+  if (wanted === 'draw' && mapper.tool === 'select') return 'select';
   if (
     wanted === 'draw' &&
-    (mapper.tool === 'bridge' || mapper.tool === 'tunnel')
+    (mapper.tool === 'bridge' ||
+      mapper.tool === 'tunnel' ||
+      mapper.tool === 'motorway')
   ) {
     return mapper.tool;
   }

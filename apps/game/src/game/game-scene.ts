@@ -17,10 +17,12 @@ import {
   Terrain,
   type TerrainKind,
 } from '@overpass-game/sim';
+import { type CurvePoint, motorwayCurve } from '@overpass-game/sim';
 import {
   BUILDING_COLORS,
   DEBUG_PALETTE,
   PALETTE,
+  ROAD_WIDTH_TILES,
   TILE_SIZE,
 } from '@overpass-game/render-style';
 import {
@@ -61,12 +63,14 @@ import {
 import { createTuningPanel, type TuningPanel } from '../debug/tuning-panel.ts';
 import { createOfferPanel, type OfferPanel } from '../ui/offer-panel.ts';
 import { previewRoads } from '../view/crossing-preview.ts';
+import { motorwayPreview, motorwayParts } from '../view/motorway-view.ts';
 import { lockedTileRects } from '../view/districts.ts';
 import { endLines, hudLine, OVERFLOW_RING_COLOR } from '../view/hud.ts';
 import {
   CROSSING_MESSAGE_MS,
   crossingHint,
   crossingMessage,
+  motorwayMessage,
 } from '../view/crossing-message.ts';
 import { overflowRings } from '../view/overflow.ts';
 import {
@@ -110,6 +114,7 @@ export class GameScene extends Phaser.Scene {
   private roadGfx!: Phaser.GameObjects.Graphics;
   private previewGfx!: Phaser.GameObjects.Graphics;
   private buildingGfx!: Phaser.GameObjects.Graphics;
+  private motorwayGfx!: Phaser.GameObjects.Graphics;
   private carGfx!: Phaser.GameObjects.Graphics;
   private ringGfx!: Phaser.GameObjects.Graphics;
   private hudText!: Phaser.GameObjects.Text;
@@ -146,7 +151,7 @@ export class GameScene extends Phaser.Scene {
       districts: buildTestDistricts(grid),
     });
     this.clock = createClock();
-    this.mapper = createIntentMapper();
+    this.mapper = createIntentMapper('select');
     this.controller = createController(this.sim);
     this.offerPanel = createOfferPanel(() => this.sim);
     this.mapSize = worldSize(grid.cols, grid.rows);
@@ -160,6 +165,7 @@ export class GameScene extends Phaser.Scene {
     // Roads sit under buildings, so a road that meets a building tucks in beneath its body.
     this.roadGfx = this.add.graphics();
     this.buildingGfx = this.add.graphics();
+    this.motorwayGfx = this.add.graphics();
     this.carGfx = this.add.graphics();
     this.previewGfx = this.add.graphics();
     this.previewGfx.setAlpha(0.4);
@@ -170,6 +176,7 @@ export class GameScene extends Phaser.Scene {
       this.lockGfx,
       this.roadGfx,
       this.buildingGfx,
+      this.motorwayGfx,
       this.carGfx,
       this.previewGfx,
       this.ringGfx,
@@ -233,6 +240,8 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-R', this.restartIfOver);
     this.input.keyboard?.on('keydown-B', this.onBridgeKey);
     this.input.keyboard?.on('keydown-T', this.onTunnelKey);
+    this.input.keyboard?.on('keydown-M', this.onMotorwayKey);
+    this.input.keyboard?.on('keydown-F', this.onRoadKey);
     this.input.keyboard?.on('keydown', this.onKey);
     this.scale.on('resize', this.onResize);
     this.events.once('shutdown', this.teardown);
@@ -253,6 +262,7 @@ export class GameScene extends Phaser.Scene {
     this.syncDistricts();
     this.drawCars(); // cars move every tick, so they are redrawn every frame
     this.drawCrossingPreview();
+    this.drawMotorways();
     this.drawRings();
     this.hudText.setText(hudLine(this.sim));
     this.showCrossingLine(time);
@@ -280,12 +290,18 @@ export class GameScene extends Phaser.Scene {
     if (report && report.seq !== this.crossingSeq) {
       this.crossingSeq = report.seq;
       this.crossingUntil = now + CROSSING_MESSAGE_MS;
-      this.setCrossingLine(crossingMessage(report.kind, report.result));
+      this.setCrossingLine(
+        report.kind === 'motorway'
+          ? motorwayMessage(report.result)
+          : crossingMessage(report.kind, report.result),
+      );
     }
     if (now >= this.crossingUntil) {
       const tool = this.mapper.tool;
-      if (tool === 'bridge' || tool === 'tunnel') {
+      if (tool === 'bridge' || tool === 'tunnel' || tool === 'motorway') {
         this.setCrossingLine(crossingHint(tool, this.sim.stock[tool]));
+      } else if (tool === 'draw') {
+        this.setCrossingLine('Road tool');
       } else {
         this.setCrossingLine('');
       }
@@ -362,13 +378,17 @@ export class GameScene extends Phaser.Scene {
   /** B and T pick the bridge and tunnel tools. Pressing the same key again returns to drawing. */
   private onBridgeKey = (): void => this.pickCrossing('bridge');
   private onTunnelKey = (): void => this.pickCrossing('tunnel');
+  private onMotorwayKey = (): void => this.pickCrossing('motorway');
+  private onRoadKey = (): void => {
+    setTool(this.mapper, this.mapper.tool === 'draw' ? 'select' : 'draw');
+  };
 
-  private pickCrossing(kind: 'bridge' | 'tunnel'): void {
-    setTool(this.mapper, this.mapper.tool === kind ? 'draw' : kind);
+  private pickCrossing(kind: 'bridge' | 'tunnel' | 'motorway'): void {
+    setTool(this.mapper, this.mapper.tool === kind ? 'select' : kind);
   }
 
   private toggleTool = (): void => {
-    setTool(this.mapper, this.mapper.tool === 'draw' ? 'erase' : 'draw');
+    setTool(this.mapper, this.mapper.tool === 'erase' ? 'select' : 'erase');
   };
 
   private onResize = (): void => {
@@ -490,6 +510,56 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** A bridge or tunnel being dragged shows its path, translucent, before it is built. */
+  /**
+   * Draws each motorway: its ramps in road colour where they meet the ground, and the raised
+   * middle in motorway colour with a shadow. Handles show on the selected one, and a drag still
+   * going shows as a translucent curve.
+   */
+  private drawMotorways(): void {
+    const gfx = this.motorwayGfx;
+    gfx.clear();
+    const line = (
+      points: CurvePoint[],
+      width: number,
+      colour: number,
+      alpha: number,
+    ): void => {
+      gfx.lineStyle(width, colour, alpha);
+      gfx.beginPath();
+      points.forEach((p, k) => {
+        if (k === 0) gfx.moveTo(p.x, p.y);
+        else gfx.lineTo(p.x, p.y);
+      });
+      gfx.strokePath();
+    };
+    const px = (points: CurvePoint[]): CurvePoint[] =>
+      points.map((p) => ({ x: p.x * TILE_SIZE, y: p.y * TILE_SIZE }));
+    const width = TILE_SIZE * ROAD_WIDTH_TILES;
+    for (const m of this.sim.motorways) {
+      const parts = motorwayParts(motorwayCurve(this.sim.grid, m));
+      // The shadow is only under the raised middle, so it does not show at the ramps.
+      line(
+        px(parts.middle).map((p) => ({ x: p.x + 3, y: p.y + 4 })),
+        width,
+        0x000000,
+        0.2,
+      );
+      line(px(parts.start), width, PALETTE.road, 1);
+      line(px(parts.end), width, PALETTE.road, 1);
+      line(px(parts.middle), width, PALETTE.motorway, 1);
+      if (this.controller.selected === m.id) {
+        gfx.fillStyle(0xffffff, 1);
+        for (const h of m.handles)
+          gfx.fillCircle(h.x * TILE_SIZE, h.y * TILE_SIZE, 5);
+      }
+    }
+    const s = this.controller.stroke;
+    if (s && s.mode === 'motorway') {
+      const preview = motorwayPreview(this.sim.grid, s.drag);
+      if (preview) line(px(preview), width, PALETTE.motorway, 0.4);
+    }
+  }
+
   private drawCrossingPreview(): void {
     const gfx = this.previewGfx;
     gfx.clear();
@@ -520,6 +590,7 @@ export class GameScene extends Phaser.Scene {
       this.sim.buildings,
       this.sim.grid,
       BUILDING_COLORS,
+      this.sim.motorways,
     )) {
       gfx.fillStyle(c.color, 1);
       gfx.fillCircle(c.x, c.y, c.r);
@@ -654,6 +725,8 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown-R', this.restartIfOver);
     this.input.keyboard?.off('keydown-B', this.onBridgeKey);
     this.input.keyboard?.off('keydown-T', this.onTunnelKey);
+    this.input.keyboard?.off('keydown-M', this.onMotorwayKey);
+    this.input.keyboard?.off('keydown-F', this.onRoadKey);
     this.offerPanel.destroy();
     this.input.keyboard?.off('keydown', this.onKey);
     this.panel?.destroy();

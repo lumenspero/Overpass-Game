@@ -76,6 +76,21 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **End screen:** shows the week reached and trips completed. Pins served are the same number as trips, so they aren't shown separately. Roads placed is not shown, since the original doesn't report it.
 - **Weekly rewards:** see Upgrades.
 
+### Motorways
+
+Elevated links for faster travel between two points on the ground network. `approximated`
+
+- **Placement:** the player presses on a start road tile and releases on an end road tile. Only the two ends align to the grid. The curve between them is free: it does not follow tiles. The drag shapes it: the points the drag passes become candidate control points, reduced to at most `MOTORWAY_MAX_NODES` handles so the curve stays readable. Both ends must be road tiles on the ground network, or they are refused (`bad-endpoint`).
+- **Elevated:** the motorway passes over roads, water, mountains and buildings freely. It does not join ground roads except at its two ramp ends. It is drawn above roads and buildings with a soft shadow, so the ground stays visible beneath it.
+- **Length:** the curve may be at most `MOTORWAY_MAX_LENGTH` tiles long. Longer is refused (`too-long`).
+- **Cost:** one motorway from stock, and its curve length in tiles from budget (`MOTORWAY_COST_PER_TILE` each).
+- **Travel:** cars may use a motorway between its ramps. Travel along it is `MOTORWAY_SPEED` times faster than ground roads. A car joins or leaves only at a ramp.
+- **Nudging:** click a motorway to select it. Its handles appear, and dragging a handle moves that control point while the curve updates live. A nudge that breaks a rule (length, a ramp off the ground network) is refused and the handle snaps back. Clicking empty ground or pressing Escape deselects.
+- **Erase:** erasing either ramp tile removes the whole motorway and returns its stock and the budget it cost. Undoing the erase restores it.
+- **Cost on nudge:** a nudge that lengthens or shortens the curve changes its cost by the difference. A nudge the budget cannot cover is refused.
+- **Preview:** while the player drags, a translucent curve follows the cursor, as bridges do.
+- **Tools:** roads are laid only with the road tool (F). The default select tool only picks and nudges motorways, so a click on empty ground lays nothing. Erase is E, bridge B, tunnel T, motorway M. Each tool is a toggle, to be tidied into UI later.
+
 ### Expansion
 
 - **Districts:** the map is split into districts numbered from 0. District 0 is open at the start. `EXPANSION_WEEK_1` (3) opens district 1 and `EXPANSION_WEEK_2` (6) opens district 2, and `EXPANSION_WEEK_3` (9) opens district 3. All three are live debug-panel values. `approximated`

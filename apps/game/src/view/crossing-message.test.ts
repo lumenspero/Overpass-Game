@@ -1,6 +1,10 @@
 import { tuning } from '@overpass-game/sim';
 import { describe, expect, it } from 'vitest';
-import { crossingHint, crossingMessage } from './crossing-message.ts';
+import {
+  crossingHint,
+  crossingMessage,
+  motorwayMessage,
+} from './crossing-message.ts';
 
 describe('crossingMessage', () => {
   it('says what was built', () => {
@@ -49,9 +53,34 @@ describe('crossingMessage', () => {
   });
 });
 
+describe('motorwayMessage', () => {
+  it('says when a motorway is built', () => {
+    expect(motorwayMessage({ ok: true, id: 1, length: 8, cost: 8 })).toBe(
+      'Motorway built',
+    );
+  });
+
+  it('has a non-empty line for every refusal', () => {
+    const reasons = [
+      'out-of-bounds',
+      'bad-endpoint',
+      'locked',
+      'blocked',
+      'too-long',
+      'no-stock',
+      'no-budget',
+      'bad-handle',
+    ] as const;
+    for (const reason of reasons) {
+      expect(motorwayMessage({ ok: false, reason }).length).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe('crossingHint', () => {
   it('shows the stock of the picked tool', () => {
     expect(crossingHint('bridge', 0)).toBe('Bridge tool · 0 in stock');
     expect(crossingHint('tunnel', 2)).toBe('Tunnel tool · 2 in stock');
+    expect(crossingHint('motorway', 1)).toBe('Motorway tool · 1 in stock');
   });
 });

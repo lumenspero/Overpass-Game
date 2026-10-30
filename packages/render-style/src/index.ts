@@ -15,6 +15,7 @@ export const PALETTE = {
   mountain: 0x59606a,
   park: 0x2f4a34,
   road: 0xe8e4d8,
+  motorway: 0x9aa7b8,
 } as const;
 
 /** Building colours, by index. Colour-blind symbols arrive in M10. */

@@ -1,6 +1,7 @@
 import type { Car } from './cars.ts';
 import { tuning } from './config.ts';
 import { DIAGONAL_STEP, type Grid, isDiagonal, roadLinks } from './grid.ts';
+import { motorwayBetween } from './motorways.ts';
 import type { SimState } from './sim.ts';
 
 /**
@@ -49,21 +50,38 @@ export function laneOf(grid: Grid, car: Car): number {
   return NO_LANE;
 }
 
+/** The budget a step costs: a motorway's curve over MOTORWAY_SPEED, or 1 for a ground step (DIAGONAL_STEP across a corner). */
+function stepLength(state: SimState, a: number, b: number): number {
+  const m = motorwayBetween(state.motorways, a, b);
+  if (m) return m.length / tuning.MOTORWAY_SPEED;
+  return isDiagonal(state.grid, a, b) ? DIAGONAL_STEP : 1;
+}
+
 /**
- * Length of the step the car is on, in tile units: the step out of its tile, or into it
- * on the last tile. `along` runs over this length, so a corner step takes longer.
+ * Length of the step the car is on, in budget units: the step out of its tile, or into it on
+ * the last tile. On the last tile a motorway arrival costs 1, since the ride was paid on the
+ * tile before it.
+ *
+ * A tile reached by motorway is drawn only from its centre to its exit edge, half a tile, so
+ * its step out costs half a ground step. That keeps the car's drawn speed even across the ramp.
  */
-function segmentLength(grid: Grid, car: Car): number {
+function segmentLength(state: SimState, car: Car): number {
   const { route, progress } = car;
   if (progress < route.length - 1) {
-    return isDiagonal(grid, route[progress], route[progress + 1])
-      ? DIAGONAL_STEP
-      : 1;
+    const a = route[progress];
+    const b = route[progress + 1];
+    const arrivedByMotorway =
+      progress > 0 &&
+      motorwayBetween(state.motorways, route[progress - 1], a) !== null;
+    const leavesByMotorway = motorwayBetween(state.motorways, a, b) !== null;
+    // The curve already reaches this tile's exit edge, so the tile is passed at once.
+    if (arrivedByMotorway && !leavesByMotorway) return 0;
+    return stepLength(state, a, b);
   }
   if (progress > 0) {
-    return isDiagonal(grid, route[progress - 1], route[progress])
-      ? DIAGONAL_STEP
-      : 1;
+    const a = route[progress - 1];
+    const b = route[progress];
+    return motorwayBetween(state.motorways, a, b) ? 1 : stepLength(state, a, b);
   }
   return 1;
 }
@@ -111,7 +129,7 @@ function advance(state: SimState, car: Car): void {
   while (budget > EPSILON) {
     const room = roomAhead(state, car);
     if (car.along < room) {
-      const length = segmentLength(state.grid, car);
+      const length = segmentLength(state, car);
       const step = Math.min(budget / length, room - car.along);
       car.along += step;
       budget -= step * length;

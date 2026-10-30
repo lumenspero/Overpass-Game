@@ -21,7 +21,7 @@ export interface TuningPanelOptions {
   /** Called when Restart is pressed. */
   onRestart: () => void;
   /** Called when a +1 button for a crossing is pressed (playtest aid). */
-  onGrant: (kind: 'bridge' | 'tunnel') => void;
+  onGrant: (kind: 'bridge' | 'tunnel' | 'motorway') => void;
 }
 
 export interface TuningPanel {
@@ -56,12 +56,13 @@ function button(label: string, onClick: () => void): HTMLButtonElement {
 }
 
 function grantRow(
-  onGrant: (kind: 'bridge' | 'tunnel') => void,
+  onGrant: (kind: 'bridge' | 'tunnel' | 'motorway') => void,
 ): HTMLDivElement {
   const row = document.createElement('div');
   row.append(
     button('+1 bridge', () => onGrant('bridge')),
     button('+1 tunnel', () => onGrant('tunnel')),
+    button('+1 motorway', () => onGrant('motorway')),
   );
   return row;
 }

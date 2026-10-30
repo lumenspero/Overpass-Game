@@ -2,6 +2,8 @@ export * from './buildings.ts';
 export * from './cars.ts';
 export * from './clock.ts';
 export * from './crossings.ts';
+export * from './motorway-placement.ts';
+export * from './motorways.ts';
 export * from './config.ts';
 export * from './demand.ts';
 export * from './expansion.ts';

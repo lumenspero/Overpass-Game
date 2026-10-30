@@ -2,6 +2,18 @@ import type {
   CrossingKind,
   CrossingResult,
   CrossingTileRecord,
+  CurvePoint,
+  Motorway,
+  MotorwayResult,
+} from '@overpass-game/sim';
+import {
+  distanceToCurve,
+  motorwayCurve,
+  motorwaysTouching,
+  nudgeMotorway,
+  placeMotorway,
+  removeMotorway,
+  restoreMotorway,
 } from '@overpass-game/sim';
 import {
   linkPartners,
@@ -39,8 +51,11 @@ type Change =
       partners: number[];
       /** The crossing run the tile was in before an erase took it out. Restored on rollback. */
       crossing?: CrossingTileRecord | null;
+      /** Motorways whose ramp this erase took out. Restored on rollback. */
+      motorways?: Motorway[];
     }
-  | { kind: 'link'; a: number; b: number };
+  | { kind: 'link'; a: number; b: number }
+  | { kind: 'motorway'; motorway: Motorway };
 
 interface Stroke {
   mode: StrokeMode;
@@ -48,14 +63,16 @@ interface Stroke {
   /** Set when a tile refuses (water, mountain, out of bounds, no budget). The stroke stops there. */
   halted: boolean;
   changes: Change[];
+  /** A motorway's pointer path in tile units: its shape is the curve. */
+  drag: CurvePoint[];
+  /** Set when the stroke moves a handle of a motorway instead of drawing. */
+  nudge: { id: number; handle: number } | null;
 }
 
-/** The outcome of one bridge or tunnel release. `seq` rises with every release. */
-export interface CrossingReport {
-  seq: number;
-  kind: CrossingKind;
-  result: CrossingResult;
-}
+/** The outcome of one bridge, tunnel or motorway release. `seq` rises with every release. */
+export type CrossingReport =
+  | { seq: number; kind: CrossingKind; result: CrossingResult }
+  | { seq: number; kind: 'motorway'; result: MotorwayResult };
 
 export interface Controller {
   sim: SimState;
@@ -64,13 +81,15 @@ export interface Controller {
   note: string | null;
   /** The same outcome as data, so the scene can say it on screen. */
   crossing: CrossingReport | null;
+  /** The motorway currently selected, whose handles can be nudged. */
+  selected: number | null;
 }
 
 /** Converts a screen point to tile units. The result is fractional: 3.5 is the centre of tile 3. */
 export type ToTile = (screen: Vec2) => TileXY;
 
 export function createController(sim: SimState): Controller {
-  return { sim, stroke: null, note: null, crossing: null };
+  return { sim, stroke: null, note: null, crossing: null, selected: null };
 }
 
 function indexOf(sim: SimState, t: TileXY): number | null {
@@ -84,6 +103,7 @@ function touchTile(ctl: Controller, stroke: Stroke, t: TileXY): boolean {
   if (stroke.mode === 'erase') {
     if (i === null || ctl.sim.roads[i] !== 1) return false;
     const partners = [...linkPartners(ctl.sim.links, i)];
+    const motorways = motorwaysTouching(ctl.sim.motorways, i);
     const crossing = releaseCrossingTile(ctl.sim, i);
     removeRoads(ctl.sim, [i]);
     stroke.changes.push({
@@ -92,6 +112,7 @@ function touchTile(ctl: Controller, stroke: Stroke, t: TileXY): boolean {
       wasRoad: 1,
       partners,
       crossing,
+      motorways,
     });
     return true;
   }
@@ -203,17 +224,112 @@ function crossTo(
   return result.ok;
 }
 
+/** How close a press must be to a handle, or to a curve, to take it, in tile units. */
+const HANDLE_RADIUS = 0.45;
+const CURVE_RADIUS = 0.35;
+
+type Grab =
+  | { kind: 'handle'; id: number; handle: number }
+  | { kind: 'curve'; id: number };
+
+/** The motorway whose curve is under `at`, or null. */
+function curveAt(ctl: Controller, at: TileXY): number | null {
+  let best: { id: number; d: number } | null = null;
+  for (const m of ctl.sim.motorways) {
+    const d = distanceToCurve(motorwayCurve(ctl.sim.grid, m), at);
+    if (d <= CURVE_RADIUS && (best === null || d < best.d)) {
+      best = { id: m.id, d };
+    }
+  }
+  return best ? best.id : null;
+}
+
+/** Removes a motorway the erase stroke touched. Undo puts it back. */
+function eraseMotorway(ctl: Controller, stroke: Stroke, id: number): boolean {
+  const motorway = removeMotorway(ctl.sim, id);
+  if (!motorway) return false;
+  if (ctl.selected === id) ctl.selected = null;
+  stroke.changes.push({ kind: 'motorway', motorway });
+  return true;
+}
+
+/** What a press at `at` takes: a handle of the selected motorway, or the curve of any motorway. */
+function grabAt(ctl: Controller, at: TileXY): Grab | null {
+  const selected = ctl.sim.motorways.find((m) => m.id === ctl.selected);
+  if (selected) {
+    const handle = selected.handles.findIndex(
+      (h) => Math.hypot(h.x - at.x, h.y - at.y) <= HANDLE_RADIUS,
+    );
+    if (handle >= 0) return { kind: 'handle', id: selected.id, handle };
+  }
+  const id = curveAt(ctl, at);
+  return id === null ? null : { kind: 'curve', id };
+}
+
+function newStroke(
+  mode: StrokeMode,
+  nudge: { id: number; handle: number } | null = null,
+): Stroke {
+  return { mode, path: [], halted: false, changes: [], drag: [], nudge };
+}
+
+/** Keeps a motorway's drag path, skipping points too close to the last one to shape the curve. */
+function addDragPoint(stroke: Stroke, at: TileXY): void {
+  const last = stroke.drag[stroke.drag.length - 1];
+  if (!last || Math.hypot(at.x - last.x, at.y - last.y) >= 0.1) {
+    stroke.drag.push({ x: at.x, y: at.y });
+  }
+}
+
+/** Moves the handle a nudge holds to the pointer. A refused position leaves the handle where it was. */
+function nudgeTo(ctl: Controller, stroke: Stroke, at: TileXY): boolean {
+  if (!stroke.nudge) return false;
+  const { id, handle } = stroke.nudge;
+  return nudgeMotorway(ctl.sim, id, handle, { x: at.x, y: at.y }).ok;
+}
+
+/** Places a motorway from where the drag started to where it was released. The drag shapes it. */
+function motorwayTo(ctl: Controller, stroke: Stroke, at: TileXY): boolean {
+  const release = { x: at.x, y: at.y };
+  const drag = stroke.drag.length > 0 ? [...stroke.drag, release] : [release];
+  const start = drag[0];
+  const a = indexOf(ctl.sim, {
+    x: Math.floor(start.x),
+    y: Math.floor(start.y),
+  });
+  const b = indexOf(ctl.sim, {
+    x: Math.floor(release.x),
+    y: Math.floor(release.y),
+  });
+  const result: MotorwayResult =
+    a === null || b === null
+      ? { ok: false, reason: 'out-of-bounds' }
+      : placeMotorway(ctl.sim, a, b, drag);
+  ctl.note = result.ok
+    ? 'motorway built'
+    : `motorway refused: ${result.reason}`;
+  ctl.crossing = {
+    seq: (ctl.crossing?.seq ?? 0) + 1,
+    kind: 'motorway',
+    result,
+  };
+  return result.ok;
+}
+
 function rollback(ctl: Controller, stroke: Stroke): boolean {
   // Undo newest first, so each restore sees the budget, tiles and links it expects.
   for (const c of [...stroke.changes].reverse()) {
     if (c.kind === 'link') {
       unlinkTiles(ctl.sim, c.a, c.b);
+    } else if (c.kind === 'motorway') {
+      restoreMotorway(ctl.sim, c.motorway);
     } else if (c.wasRoad === 0) {
       removeRoads(ctl.sim, [c.index]);
     } else {
       placeRoads(ctl.sim, [c.index]);
       for (const p of c.partners) linkTiles(ctl.sim, c.index, p);
       if (c.crossing) restoreCrossingTile(ctl.sim, c.index, c.crossing);
+      for (const m of c.motorways ?? []) restoreMotorway(ctl.sim, m);
     }
   }
   return stroke.changes.length > 0;
@@ -231,10 +347,41 @@ export function applyIntent(
   switch (intent.type) {
     case 'stroke-begin': {
       // A new stroke commits any unfinished one first.
-      ctl.stroke = { mode: intent.mode, path: [], halted: false, changes: [] };
+      const at = toTile(intent.at);
+      if (intent.mode === 'erase') {
+        const id = curveAt(ctl, at);
+        if (id !== null) {
+          ctl.stroke = newStroke('erase');
+          return eraseMotorway(ctl, ctl.stroke, id);
+        }
+      }
+      if (intent.mode === 'draw' || intent.mode === 'select') {
+        // A press on a selected motorway's handle nudges it; a press on any motorway's curve
+        // selects it; anywhere else starts a road as before.
+        const grab = grabAt(ctl, at);
+        if (grab?.kind === 'handle') {
+          ctl.stroke = newStroke('draw', { id: grab.id, handle: grab.handle });
+          return false;
+        }
+        if (grab?.kind === 'curve') {
+          ctl.selected = grab.id;
+          ctl.stroke = null;
+          return false;
+        }
+        ctl.selected = null;
+      }
+      if (intent.mode === 'select') {
+        ctl.stroke = null;
+        return false;
+      }
+      ctl.stroke = newStroke(intent.mode);
+      if (intent.mode === 'motorway') {
+        ctl.stroke.drag = [{ x: at.x, y: at.y }];
+        return false;
+      }
       if (isCrossing(intent.mode)) {
         // A crossing remembers where it began and is built on release.
-        const start = strokeTile(toTile(intent.at), true);
+        const start = strokeTile(at, true);
         if (start) ctl.stroke.path = [start];
         return false;
       }
@@ -242,15 +389,31 @@ export function applyIntent(
     }
     case 'stroke-move': {
       const current = ctl.stroke;
-      if (current && isCrossing(current.mode)) {
+      if (!current) return false;
+      if (current.nudge) return nudgeTo(ctl, current, toTile(intent.at));
+      if (current.mode === 'erase') {
+        const id = curveAt(ctl, toTile(intent.at));
+        if (id !== null && eraseMotorway(ctl, current, id)) return true;
+      }
+      if (current.mode === 'motorway') {
+        addDragPoint(current, toTile(intent.at));
+        return false;
+      }
+      if (isCrossing(current.mode)) {
         trace(current, intent.at, toTile);
         return false;
       }
-      return current ? extend(ctl, current, intent.at, toTile, false) : false;
+      return extend(ctl, current, intent.at, toTile, false);
     }
     case 'stroke-end': {
       const stroke = ctl.stroke;
       ctl.stroke = null;
+      if (stroke && intent.at && stroke.nudge) {
+        return nudgeTo(ctl, stroke, toTile(intent.at));
+      }
+      if (stroke && intent.at && stroke.mode === 'motorway') {
+        return motorwayTo(ctl, stroke, toTile(intent.at));
+      }
       if (stroke && intent.at && isCrossing(stroke.mode)) {
         return crossTo(ctl, stroke, intent.at, toTile);
       }

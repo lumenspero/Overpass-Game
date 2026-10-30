@@ -24,6 +24,7 @@ export type UpgradeKind = (typeof UPGRADE_KINDS)[number];
 export const IMPLEMENTED_UPGRADES: readonly UpgradeKind[] = [
   'bridge',
   'tunnel',
+  'motorway',
 ];
 
 /** How many of each upgrade the player holds, ready to place. */

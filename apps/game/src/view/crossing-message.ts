@@ -1,6 +1,7 @@
 import {
   type CrossingKind,
   type CrossingResult,
+  type MotorwayResult,
   tuning,
 } from '@overpass-game/sim';
 
@@ -43,8 +44,35 @@ export function crossingMessage(
   }
 }
 
+/** The line shown after a motorway is released: what was built, or why not. */
+export function motorwayMessage(result: MotorwayResult): string {
+  if (result.ok) return 'Motorway built';
+  switch (result.reason) {
+    case 'no-stock':
+      return 'No motorways to lay. Pick one from the reward panel.';
+    case 'bad-endpoint':
+      return 'Start and finish on road tiles, not next to each other.';
+    case 'locked':
+      return 'That land is not open yet.';
+    case 'blocked':
+      return 'A road already has a motorway ramp there.';
+    case 'too-long':
+      return `A motorway can span at most ${tuning.MOTORWAY_MAX_LENGTH} tiles.`;
+    case 'no-budget':
+      return 'Not enough budget for that motorway.';
+    case 'out-of-bounds':
+      return 'Keep the motorway on the map.';
+    case 'bad-handle':
+      return 'Press a handle of the motorway to move it.';
+  }
+}
+
 /** The line shown while a crossing tool is picked: how many are in stock. */
-export function crossingHint(kind: CrossingKind, stock: number): string {
-  const name = kind === 'bridge' ? 'Bridge' : 'Tunnel';
+export function crossingHint(
+  kind: CrossingKind | 'motorway',
+  stock: number,
+): string {
+  const name =
+    kind === 'bridge' ? 'Bridge' : kind === 'tunnel' ? 'Tunnel' : 'Motorway';
   return `${name} tool · ${stock} in stock`;
 }

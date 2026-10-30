@@ -37,4 +37,8 @@ export const TUNING_RANGES: Record<TuningKey, TuningRange> = {
   UPGRADE_WEIGHT_LIGHT: { min: 0, max: 5, step: 1 },
   BRIDGE_MAX_SPAN: { min: 1, max: 8, step: 1 },
   TUNNEL_MAX_SPAN: { min: 1, max: 8, step: 1 },
+  MOTORWAY_MAX_NODES: { min: 0, max: 8, step: 1 },
+  MOTORWAY_MAX_LENGTH: { min: 4, max: 60, step: 1 },
+  MOTORWAY_COST_PER_TILE: { min: 0, max: 3, step: 0.5 },
+  MOTORWAY_SPEED: { min: 1, max: 5, step: 0.5 },
 };

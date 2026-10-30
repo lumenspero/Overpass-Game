@@ -7,6 +7,12 @@ import {
   Terrain,
   type TerrainKind,
 } from '@overpass-game/sim';
+import {
+  curveFrom,
+  type Motorway,
+  motorwayBetween,
+  pointAtDistance,
+} from '@overpass-game/sim';
 
 /**
  * Drawing geometry derived from sim state. Pure: no Phaser, so it is unit-tested
@@ -152,6 +158,7 @@ export function carShapes(
   buildings: readonly Building[],
   grid: Grid,
   colors: readonly number[],
+  motorways: readonly Motorway[] = [],
 ): CarShape[] {
   const out: CarShape[] = [];
   const half = TILE_SIZE / 2;
@@ -200,6 +207,93 @@ export function carShapes(
     }
     // A car enters its building on arrival, parks at its centre, and leaves from that
     // centre, so it never appears in the gap beside the road.
+    // Motorways (spec: Motorways). A car leaving by motorway eases from its road onto the
+    // curve over the first ramp; a car arriving by motorway runs from the curve's end onto
+    // the road it leaves by. Both keep the car on the ground road's line where they meet.
+    const rideOut =
+      next !== null ? motorwayBetween(motorways, tile, next) : null;
+    const inMotorway =
+      prev !== null ? motorwayBetween(motorways, prev, tile) : null;
+    const rideIn = inMotorway !== null;
+    const home =
+      buildings[car.state === 'returning' ? car.destination : car.house];
+    const fromHome =
+      home !== undefined && progress === 0 && tile === entranceOf(home);
+    const edgeIn = (d: { dx: number; dy: number }) => {
+      const n = rightOfTravel(d);
+      return { x: c.x - d.dx * half + n.x, y: c.y - d.dy * half + n.y };
+    };
+    const edgeOut = (d: { dx: number; dy: number }) => {
+      const n = rightOfTravel(d);
+      return { x: c.x + d.dx * half + n.x, y: c.y + d.dy * half + n.y };
+    };
+    /** Where a motorway ride into this tile ends, in world units. */
+    const rideInStart = (): { x: number; y: number } => {
+      const arc =
+        inMotorway && prev !== null ? curveFrom(grid, inMotorway, prev) : null;
+      const end = arc ? arc[arc.length - 1] : null;
+      return end
+        ? { x: end.x * TILE_SIZE, y: end.y * TILE_SIZE }
+        : { x: c.x, y: c.y };
+    };
+    if (rideOut) {
+      const enter =
+        fromHome && home
+          ? centre(home.tile)
+          : prev !== null && !rideIn && inRaw
+            ? edgeIn(inRaw)
+            : c;
+      const s = along * rideOut.length;
+      const curve = curveFrom(grid, rideOut, tile);
+      // The ramp is the first two tiles of the curve. Over it the car follows a smooth curve that
+      // starts along its road, through the road's entry edge, and joins the motorway's curve
+      // with the same direction, so it never cuts across the corner.
+      const ramp = Math.max(1e-6, Math.min(2, rideOut.length / 3));
+      const at = (d: number) =>
+        pointAtDistance(curve, Math.min(rideOut.length, Math.max(0, d)));
+      if (s >= ramp) {
+        const onCurve = at(s);
+        x = onCurve.x * TILE_SIZE;
+        y = onCurve.y * TILE_SIZE;
+      } else {
+        const t = s / ramp;
+        const joint = at(ramp);
+        const p1 = { x: joint.x * TILE_SIZE, y: joint.y * TILE_SIZE };
+        const before = at(ramp - 0.1);
+        const jointDir = {
+          x: (joint.x - before.x) * TILE_SIZE,
+          y: (joint.y - before.y) * TILE_SIZE,
+        };
+        const k = Math.hypot(p1.x - enter.x, p1.y - enter.y);
+        const unitOf = (v: { x: number; y: number }) => {
+          const d = Math.hypot(v.x, v.y);
+          return d > 0 ? { x: v.x / d, y: v.y / d } : { x: 0, y: 0 };
+        };
+        const roadDir = unitOf({ x: c.x - enter.x, y: c.y - enter.y });
+        const dir0 =
+          roadDir.x === 0 && roadDir.y === 0 ? unitOf(jointDir) : roadDir;
+        const dir1 = unitOf(jointDir);
+        const t2 = t * t;
+        const t3 = t2 * t;
+        const h00 = 2 * t3 - 3 * t2 + 1;
+        const h10 = t3 - 2 * t2 + t;
+        const h01 = -2 * t3 + 3 * t2;
+        const h11 = t3 - t2;
+        x = h00 * enter.x + h10 * k * dir0.x + h01 * p1.x + h11 * k * dir1.x;
+        y = h00 * enter.y + h10 * k * dir0.y + h01 * p1.y + h11 * k * dir1.y;
+      }
+    } else if (rideIn && next !== null && outRaw) {
+      // The car is already at the motorway's end, on the tile's entry edge, so it runs on to the exit edge.
+      const start = rideInStart();
+      const exit = edgeOut(outRaw);
+      x = start.x + (exit.x - start.x) * along;
+      y = start.y + (exit.y - start.y) * along;
+    } else if (rideIn) {
+      const start = rideInStart();
+      x = start.x;
+      y = start.y;
+    }
+
     const arrival =
       buildings[car.state === 'returning' ? car.house : car.destination];
     const departure =
@@ -217,7 +311,8 @@ export function carShapes(
       route.length > 1 &&
       departure &&
       progress === 0 &&
-      tile === entranceOf(departure)
+      tile === entranceOf(departure) &&
+      !rideOut
     ) {
       const b = centre(departure.tile);
       x = b.x + (x - b.x) * along;

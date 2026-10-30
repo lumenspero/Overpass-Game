@@ -55,6 +55,10 @@ export const DEFAULT_TUNING = {
   BRIDGE_MAX_SPAN: 3, // approximated
   /** Most mountain tiles a tunnel may run through (spec: Bridges and tunnels). */
   TUNNEL_MAX_SPAN: 4, // approximated
+  MOTORWAY_MAX_NODES: 4, // approximated
+  MOTORWAY_MAX_LENGTH: 30, // approximated
+  MOTORWAY_COST_PER_TILE: 1, // approximated
+  MOTORWAY_SPEED: 2.5, // approximated
 };
 
 export type Tuning = typeof DEFAULT_TUNING;
@@ -95,3 +99,7 @@ export const UPGRADE_WEIGHT_ROUNDABOUT =
 export const UPGRADE_WEIGHT_LIGHT = DEFAULT_TUNING.UPGRADE_WEIGHT_LIGHT;
 export const BRIDGE_MAX_SPAN = DEFAULT_TUNING.BRIDGE_MAX_SPAN;
 export const TUNNEL_MAX_SPAN = DEFAULT_TUNING.TUNNEL_MAX_SPAN;
+export const MOTORWAY_MAX_NODES = DEFAULT_TUNING.MOTORWAY_MAX_NODES;
+export const MOTORWAY_MAX_LENGTH = DEFAULT_TUNING.MOTORWAY_MAX_LENGTH;
+export const MOTORWAY_COST_PER_TILE = DEFAULT_TUNING.MOTORWAY_COST_PER_TILE;
+export const MOTORWAY_SPEED = DEFAULT_TUNING.MOTORWAY_SPEED;

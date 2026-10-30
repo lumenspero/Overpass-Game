@@ -1,4 +1,6 @@
 import type { CrossingRun } from './crossings.ts';
+import { dropMotorwaysAt } from './motorway-placement.ts';
+import type { Motorway } from './motorways.ts';
 import type { Building, Demand, Home } from './buildings.ts';
 import { type Car, onRoadsChanged } from './cars.ts';
 import { tuning } from './config.ts';
@@ -61,6 +63,9 @@ export interface SimState {
   /** Crossing runs still standing, by id. A run returns its stock when its last tile goes. */
   crossingRuns: Record<number, CrossingRun>;
   nextCrossingRunId: number;
+  /** Motorways placed on the map (spec: Motorways). */
+  motorways: Motorway[];
+  nextMotorwayId: number;
 }
 
 export interface GameOver {
@@ -115,6 +120,8 @@ export function createSim({
     crossingRunOf: new Array<number>(grid.cols * grid.rows).fill(0),
     crossingRuns: {},
     nextCrossingRunId: 1,
+    motorways: [],
+    nextMotorwayId: 1,
   };
 }
 
@@ -156,6 +163,7 @@ export function removeRoads(state: SimState, tiles: number[]): number {
     state.roads[i] = 0;
     dropLinksOf(state.links, i);
   }
+  dropMotorwaysAt(state, removed);
   state.budget += removed.length;
   if (removed.length > 0) {
     updateRoadGraph(state.graph, state.grid, state.roads, state.links, removed);
