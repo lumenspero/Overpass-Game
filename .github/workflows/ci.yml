@@ -14,26 +14,65 @@ permissions:
 
 jobs:
   lint:
-    name: Lint
+    name: Lint and typecheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
+      - uses: pnpm/setup@v1
+        with:
+          version: 12.16.1
+          install: false
+
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Typecheck
-        run: npm run typecheck
+        run: pnpm typecheck
 
       - name: ESLint
-        run: npm run lint
+        run: pnpm lint
 
       - name: Prettier check
-        run: npm run format:check
+        run: pnpm format:check
+
+  test:
+    name: Unit and boot tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/setup@v1
+        with:
+          version: 12.16.1
+          install: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Test
+        run: pnpm test
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            apps/*/playwright-report
+            apps/*/test-results
+          retention-days: 7
 
   build:
     name: Build
@@ -41,32 +80,24 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: pnpm/setup@v1
+        with:
+          version: 12.16.1
+          install: false
+
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: npm run build
+        run: pnpm build
 
-      - name: Upload build output
+      - name: Upload game build
         uses: actions/upload-artifact@v7
         with:
-          name: dist
-          path: dist
+          name: game-dist
+          path: apps/game/dist
           retention-days: 7
-
-  # Uncomment when the project has tests
-  # test:
-  #   name: Test
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v7
-  #     - uses: actions/setup-node@v7
-  #       with:
-  #         node-version-file: .nvmrc
-  #         cache: npm
-  #     - run: npm ci
-  #     - run: npm test

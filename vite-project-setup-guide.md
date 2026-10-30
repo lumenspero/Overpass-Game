@@ -3,13 +3,13 @@
 A reusable walkthrough for starting any new Vite project with:
 
 1. A visible app that runs locally
-2. Lint, typecheck (TypeScript projects) and build scripts
+2. Lint and build scripts
 3. A GitHub repo with **CI that runs lint and build on every push** (results visible in the repo's **Actions** tab)
 4. **Cloudflare deployment** through Wrangler
 
-Follow the sections in order. Each ends with a **Checkpoint** so problems get caught early. Steps marked **TS** apply only to TypeScript templates (`vanilla-ts`, `react-ts`); do them in addition to the plain steps, not instead of them.
+Follow the sections in order. Each ends with a **Checkpoint** so problems get caught early.
 
-> **Versions:** commands and config below were re-verified in October 2026 against create-vite 9.3, Vite 8.3, TypeScript 7.0 / 6.0, ESLint 10, typescript-eslint 8.72 and the `v7` GitHub Actions. Vite and Wrangler change often, so if something errors, check the linked official docs first (section 12).
+> **Versions:** commands and config below reflect the state of the tools as of September 2026. Vite and Wrangler change often, so if something errors, check the linked official docs first (section 12).
 
 ---
 
@@ -43,12 +43,6 @@ Template choices (`--template`):
 
 Use `.` as the project name to scaffold into the current (empty) directory.
 
-What the templates do **not** include (as of create-vite 9.3):
-
-- `vanilla` / `vanilla-ts`: no linter at all. You add ESLint in section 3.
-- `react-ts`: ships **oxlint**, not ESLint. Either keep oxlint or replace it with section 3; don't run both.
-- TS templates ship **TypeScript 7** (the native Go compiler). It has no JavaScript API yet, so `typescript-eslint` cannot load it. Section 3.1 (TS) pins TypeScript 6 to fix this.
-
 **Pin the Node version** so local and CI match. Create `.nvmrc`:
 
 ```
@@ -59,12 +53,6 @@ And add to `package.json`:
 
 ```json
 "engines": { "node": ">=20.19" }
-```
-
-**Pin line endings** (important on Windows). Prettier expects LF, and Git on Windows may check files out as CRLF, which makes `format:check` fail locally but pass on CI (or the reverse). Create `.gitattributes`:
-
-```
-* text=auto eol=lf
 ```
 
 ### Checkpoint
@@ -164,65 +152,11 @@ export default defineConfig({
 
 Delete the unused template files (`src/counter.js`, template SVGs, and the default `public/` icons if not needed).
 
-> **ESLint note:** `__BUILD_TIME__` is a global defined by Vite. It is declared in the ESLint config in section 3 so `no-undef` doesn't flag it.
-
-### 2.1 TS: TypeScript version of the page
-
-Don't paste the JavaScript above into `.ts` files. It builds (Vite doesn't typecheck), but `tsc` rejects it: `querySelector` can return `null`, and TypeScript doesn't know `__BUILD_TIME__`. Use these instead:
-
-**`index.html`**: same as above, but the script must point at the `.ts` file:
-
-```html
-<script type="module" src="/src/main.ts"></script>
-```
-
-**`src/main.ts`**
-
-```ts
-import './style.css';
-
-const app = document.querySelector<HTMLDivElement>('#app');
-if (!app) throw new Error('#app element not found');
-
-app.innerHTML = `
-  <main>
-    <h1>My App</h1>
-    <p>It works.</p>
-    <button id="counter" type="button">Clicked 0 times</button>
-    <small>mode: ${import.meta.env.MODE} · built: ${__BUILD_TIME__}</small>
-  </main>
-`;
-
-const button = app.querySelector<HTMLButtonElement>('#counter');
-if (!button) throw new Error('#counter button not found');
-
-let count = 0;
-button.addEventListener('click', () => {
-  count += 1;
-  button.textContent = `Clicked ${count} times`;
-});
-```
-
-**`src/vite-env.d.ts`** (declares globals that `define` injects; add one line per global)
-
-```ts
-// Globals injected by `define` in vite.config.ts
-declare const __BUILD_TIME__: string;
-```
-
-**`vite.config.ts`**: same content as `vite.config.js` above, with a `.ts` name.
-
-**`tsconfig.json`**: keep the template's file and make two changes: add `"strict": true` under `compilerOptions` (it's already the default, but say it explicitly), and typecheck the Vite config too:
-
-```json
-"include": ["src", "vite.config.ts"]
-```
-
-Delete `src/counter.ts` and `src/assets/` (template leftovers).
-
 ### Checkpoint
 
-`npm run dev` shows the page, the button counts, and the footer shows a build time. **TS:** `npx tsc --noEmit` prints nothing.
+`npm run dev` shows the page, the button counts, and the footer shows a build time.
+
+> **ESLint note:** `__BUILD_TIME__` is a global defined by Vite. It is declared in the ESLint config in section 3 so `no-undef` doesn't flag it.
 
 ---
 
@@ -234,16 +168,7 @@ Delete `src/counter.ts` and `src/assets/` (template leftovers).
 npm install -D eslint @eslint/js globals
 ```
 
-All three packages are required. `@eslint/js` is only the rule preset; it does **not** install the `eslint` command. Confirm the local install, not a global one:
-
-```bash
-npm ls eslint            # must list eslint@10.x directly under your project
-npx --no-install eslint --version
-```
-
-If `npm ls eslint` shows `(empty)` but `eslint .` still runs, a global ESLint is hiding the missing dependency, and CI fails with `sh: 1: eslint: not found` (exit code 127).
-
-**`eslint.config.js`** (flat config, JavaScript projects)
+**`eslint.config.js`** (flat config)
 
 ```js
 import js from '@eslint/js';
@@ -269,50 +194,6 @@ export default [
   },
 ];
 ```
-
-This config only matches `**/*.js`. In a TypeScript project it lints **zero** `.ts` files and still passes, so use 3.1 (TS) instead.
-
-### 3.1 (TS) ESLint for TypeScript
-
-typescript-eslint needs the TypeScript JavaScript API, which TypeScript 7 doesn't have yet (the peer range is `typescript >=4.8.4 <6.1.0`). Installing it next to the template's `typescript@~7.0.2` fails with `npm error ERESOLVE ... peer typescript@">=4.8.4 <6.1.0"`. Pin TypeScript 6 in the same command:
-
-```bash
-npm install -D typescript@~6.0.3 eslint @eslint/js typescript-eslint globals
-```
-
-TypeScript 6 typechecks the same code; you lose only TS 7's speed. Move back to 7 once typescript-eslint supports it ([typescript-eslint#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)). Don't use `--legacy-peer-deps` or `--force` to get around the error: the install succeeds, but ESLint then crashes on startup.
-
-**`eslint.config.js`**
-
-```js
-import js from '@eslint/js';
-import tseslint from 'typescript-eslint';
-import globals from 'globals';
-import { defineConfig, globalIgnores } from 'eslint/config';
-
-export default defineConfig([
-  globalIgnores(['dist', 'coverage', '.wrangler']),
-  {
-    files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],
-    extends: [js.configs.recommended, tseslint.configs.recommended],
-    languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
-      globals: globals.browser,
-    },
-  },
-  {
-    files: ['*.config.{js,ts}'],
-    languageOptions: { globals: globals.node },
-  },
-]);
-```
-
-Notes:
-
-- No `__BUILD_TIME__` entry is needed. typescript-eslint turns off `no-undef` for TS files because `tsc` already checks undefined names, and `src/vite-env.d.ts` declares the global (section 2.1).
-- `node_modules` is ignored by default in flat config, so it isn't listed.
-- Add any generated folders (for example a connection-map output folder) to `globalIgnores`.
 
 ### 3.2 Prettier (optional but recommended)
 
@@ -354,23 +235,14 @@ In `package.json`, set `scripts`:
 
 If you skip Prettier, drop the `format:check` step from the `ci` script and from the workflow in section 6.
 
-**TS:** add a `typecheck` script and run it first in `ci`. Vite's build strips types without checking them, so without this step type errors reach production unnoticed:
-
-```json
-"typecheck": "tsc --noEmit",
-"ci": "npm run typecheck && npm run lint && npm run format:check && npm run build"
-```
-
-The TS templates set `"build": "tsc && vite build"`. Change it to plain `"vite build"`: `typecheck` now covers it, and CI shows type errors as a separate step.
-
 ### Checkpoint
 
 ```bash
 npm run format        # normalize the scaffolded files once
-npm run ci            # (typecheck +) lint + format check + build should all pass
+npm run ci            # lint + format check + build should all pass
 ```
 
-Then prove the linter actually sees your source files. Add `const unused = 1;` to `src/main.js` (or `src/main.ts`), run `npm run lint`, and confirm it **fails** with `no-unused-vars` (or `@typescript-eslint/no-unused-vars`). Remove the line. A lint step that passes on everything is a silent failure, not a pass.
+> **TypeScript variants:** for `vanilla-ts` or `react-ts`, the template already ships ESLint with `typescript-eslint`, and `build` runs `tsc -b` first. Keep the template's lint config, keep the `lint` script name, and add the same `ci` script. Everything else in this guide is unchanged.
 
 ---
 
@@ -544,18 +416,14 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
 
       - run: npm ci
-
-      # TS projects only; delete this step for plain JavaScript
-      - name: Typecheck
-        run: npm run typecheck
 
       - name: ESLint
         run: npm run lint
@@ -567,9 +435,9 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -580,7 +448,7 @@ jobs:
         run: npm run build
 
       - name: Upload build output
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist
@@ -591,8 +459,8 @@ jobs:
   #   name: Test
   #   runs-on: ubuntu-latest
   #   steps:
-  #     - uses: actions/checkout@v7
-  #     - uses: actions/setup-node@v7
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
   #       with:
   #         node-version-file: .nvmrc
   #         cache: npm
@@ -603,11 +471,10 @@ jobs:
 Why it's shaped this way:
 
 - **`on: push` with no branch filter** runs on every push to every branch. Pull requests get a second run against the merge result.
-- **Separate `lint` and `build` jobs** run in parallel and appear as separate named checks, so a failure tells you which stage broke. Typecheck sits in the `Lint` job so the check names stay the same for branch protection (6.4).
-- **`npm ci`** installs exactly what's in the lockfile (fast and reproducible). It's also why every tool a script calls (`eslint`, `tsc`, `prettier`, `vite`) must be in `devDependencies`: the runner has no global installs.
+- **Separate `lint` and `build` jobs** run in parallel and appear as separate named checks, so a failure tells you which stage broke.
+- **`npm ci`** installs exactly what's in the lockfile (fast and reproducible).
 - **`node-version-file: .nvmrc`** keeps CI on the same Node version as local development.
-- **Action versions** (`@v7`) are major-version pins. Use versions that run on Node 24: GitHub removed Node 20 from runners in September 2026, so the old `@v4` actions show deprecation warnings or fail. Let Dependabot keep them current (section 9).
-- **`cache: npm`** is explicit on purpose. `setup-node` v6+ caches npm automatically only when `package.json` has a `packageManager` field; the explicit input works either way.
+- **Action versions** (`@v4`) are major-version pins. Bump them occasionally, or let Dependabot do it (section 9).
 
 ### 6.2 Push and view the results
 
@@ -695,9 +562,9 @@ deploy:
   runs-on: ubuntu-latest
   environment: production
   steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@v4
 
-    - uses: actions/setup-node@v7
+    - uses: actions/setup-node@v4
       with:
         node-version-file: .nvmrc
         cache: npm

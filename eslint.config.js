@@ -4,7 +4,14 @@ import globals from 'globals';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
 export default defineConfig([
-  globalIgnores(['dist', 'coverage', '.wrangler', 'connection-map']),
+  globalIgnores([
+    '**/dist',
+    '**/coverage',
+    '**/.wrangler',
+    '**/playwright-report',
+    '**/test-results',
+    'connection-map',
+  ]),
   {
     files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],
     extends: [js.configs.recommended, tseslint.configs.recommended],
@@ -15,7 +22,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['*.config.{js,ts}'],
+    files: ['**/*.config.{js,mjs,ts}', 'eslint.config.js'],
     languageOptions: { globals: globals.node },
   },
 ]);

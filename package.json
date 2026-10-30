@@ -3,27 +3,30 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=20.19"
+  },
   "scripts": {
-    "dev": "vite --open",
-    "build": "vite build",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "dev": "pnpm --filter @overpass-game/game dev",
+    "dev:studio": "pnpm --filter @overpass-game/studio dev",
+    "build": "pnpm --filter @overpass-game/game --filter @overpass-game/studio run build",
+    "typecheck": "pnpm -r run typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "ci": "npm run typecheck && npm run lint && npm run format:check && npm run build"
+    "test": "pnpm -r run test",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@lumenspero/balk2": "^3.0.1",
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^24.19.2",
     "eslint": "^10.13.0",
     "globals": "^17.13.0",
     "prettier": "^3.9.10",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.1",
-    "vite": "^8.3.5"
-  },
-  "engines": {
-    "node": ">=20.19"
+    "vitest": "^5.0.5"
   }
 }

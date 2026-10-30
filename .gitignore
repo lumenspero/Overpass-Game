@@ -32,3 +32,6 @@ dist-ssr
 
 # Balk2
 /connection-map
+# Playwright
+playwright-report
+test-results
