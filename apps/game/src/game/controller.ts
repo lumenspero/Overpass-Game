@@ -1,5 +1,6 @@
 import { placeRoads, removeRoads, type SimState } from '@overpass-game/sim';
 import type { Intent, StrokeMode, Vec2 } from '../input/intents.ts';
+import { STROKE_SETTLE_TILES } from '../input/config.ts';
 import { extendPath, type TileXY } from '../input/path.ts';
 
 /**
@@ -30,6 +31,7 @@ export interface Controller {
   stroke: Stroke | null;
 }
 
+/** Converts a screen point to tile units. The result is fractional: 3.5 is the centre of tile 3. */
 export type ToTile = (screen: Vec2) => TileXY;
 
 export function createController(sim: SimState): Controller {
@@ -64,15 +66,33 @@ function touchTile(ctl: Controller, stroke: Stroke, t: TileXY): boolean {
   return true;
 }
 
+/**
+ * The tile a stroke should take for this pointer position, or null if it should take none.
+ * A press takes the tile under the pointer. A move takes a tile only once the pointer has
+ * settled near its centre, so a fast corner doesn't leave stray tiles along the edges.
+ */
+function strokeTile(p: TileXY, press: boolean): TileXY | null {
+  const x = Math.floor(p.x);
+  const y = Math.floor(p.y);
+  if (press) return { x, y };
+  const fx = p.x - x - 0.5;
+  const fy = p.y - y - 0.5;
+  if (Math.hypot(fx, fy) > STROKE_SETTLE_TILES) return null;
+  return { x, y };
+}
+
 function extend(
   ctl: Controller,
   stroke: Stroke,
   at: Vec2,
   toTile: ToTile,
+  press: boolean,
 ): boolean {
   if (stroke.halted) return false;
+  const tile = strokeTile(toTile(at), press);
+  if (tile === null) return false;
   let changed = false;
-  for (const t of extendPath(stroke.path, toTile(at))) {
+  for (const t of extendPath(stroke.path, tile)) {
     if (stroke.halted) break;
     changed = touchTile(ctl, stroke, t) || changed;
   }
@@ -101,10 +121,12 @@ export function applyIntent(
     case 'stroke-begin': {
       // A new stroke commits any unfinished one first.
       ctl.stroke = { mode: intent.mode, path: [], halted: false, changes: [] };
-      return extend(ctl, ctl.stroke, intent.at, toTile);
+      return extend(ctl, ctl.stroke, intent.at, toTile, true);
     }
     case 'stroke-move':
-      return ctl.stroke ? extend(ctl, ctl.stroke, intent.at, toTile) : false;
+      return ctl.stroke
+        ? extend(ctl, ctl.stroke, intent.at, toTile, false)
+        : false;
     case 'stroke-end':
       ctl.stroke = null;
       return false;

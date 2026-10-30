@@ -1,4 +1,4 @@
-import { type Grid, neighbors } from './grid.ts';
+import { type Grid, linkNeighbors } from './grid.ts';
 
 /**
  * A road edge is a chain of road tiles between two nodes. Nodes are road tiles
@@ -30,7 +30,7 @@ export function createEmptyGraph(): RoadGraph {
 }
 
 function roadNeighbors(grid: Grid, roads: number[], index: number): number[] {
-  return neighbors(grid, index).filter((n) => roads[n] === 1);
+  return linkNeighbors(grid, index).filter((n) => roads[n] === 1);
 }
 
 /** Flood-fills the road tiles connected to `start`, marking them in `visited`. */
@@ -155,7 +155,7 @@ export function updateRoadGraph(
   const seeds = new Set<number>();
   for (const c of changed) {
     seeds.add(c);
-    for (const n of neighbors(grid, c)) seeds.add(n);
+    for (const n of linkNeighbors(grid, c)) seeds.add(n);
   }
 
   // 2. Every old node and edge in the components that touch the seeds.

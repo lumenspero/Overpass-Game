@@ -103,7 +103,7 @@ describe('trips', () => {
   });
 
   it('a car that loses its way home is dropped, and its house owns one fewer', () => {
-    // House (0,2) → (1,2)…(3,2) → down (3,3) → destination at (4,4) entered from (3,4).
+    // House (0,2) → (1,2), (2,2), (3,3), (3,4) → destination at (4,4) entered from (3,4).
     const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 100 });
     placeBuilding(sim, {
       kind: 'house',
@@ -125,8 +125,12 @@ describe('trips', () => {
       at(sim.grid, 3, 4),
     ]);
     addCar(sim, 0, 1);
-    sim.cars[0].progress = 3; // on (3,3)
-    removeRoads(sim, [at(sim.grid, 2, 2), at(sim.grid, 3, 3)]);
+    sim.cars[0].progress = 2; // on (3,3)
+    removeRoads(sim, [
+      at(sim.grid, 1, 2),
+      at(sim.grid, 2, 2),
+      at(sim.grid, 3, 3),
+    ]);
     expect(sim.cars).toHaveLength(0);
     expect(sim.homes[0].owned).toBe(1);
   });

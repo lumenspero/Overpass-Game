@@ -1,5 +1,5 @@
 import { entranceTile } from './buildings.ts';
-import { findRoute } from './pathfind.ts';
+import { findRoute, routeLength } from './pathfind.ts';
 import type { SimState } from './sim.ts';
 
 /**
@@ -157,7 +157,9 @@ export function onRoadsChanged(
           : findRoute(state.grid, state.roads, current, goal);
       if (fresh) {
         // Only the route ahead matters, so the new route starts at the car's tile.
-        const improves = fresh.length < car.route.length - here;
+        const improves =
+          routeLength(state.grid, fresh) <
+          routeLength(state.grid, car.route.slice(here));
         if (routeBroken || improves) {
           survivors.push({ ...car, route: fresh, progress: 0 });
           continue;

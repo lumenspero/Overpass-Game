@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { extendPath, type TileXY } from './path.ts';
 
-function isFourConnected(path: TileXY[]): boolean {
+/** Each tile touches the one before it by an edge or a corner. */
+function isEightConnected(path: { x: number; y: number }[]): boolean {
   for (let i = 1; i < path.length; i++) {
-    const d =
-      Math.abs(path[i].x - path[i - 1].x) + Math.abs(path[i].y - path[i - 1].y);
-    if (d !== 1) return false;
+    const dx = Math.abs(path[i].x - path[i - 1].x);
+    const dy = Math.abs(path[i].y - path[i - 1].y);
+    if (Math.max(dx, dy) !== 1) return false;
   }
   return true;
 }
@@ -33,14 +34,16 @@ describe('extendPath', () => {
     ]);
   });
 
-  it('splits a diagonal step into two orthogonal steps', () => {
+  it('keeps a diagonal step as one step', () => {
     const path = [{ x: 0, y: 0 }];
     extendPath(path, { x: 1, y: 1 });
-    expect(path).toHaveLength(3);
-    expect(isFourConnected(path)).toBe(true);
+    expect(path).toEqual([
+      { x: 0, y: 0 },
+      { x: 1, y: 1 },
+    ]);
   });
 
-  it('keeps any jump 4-connected and ending on the target', () => {
+  it('keeps any jump connected by edges or corners and ending on the target', () => {
     for (const target of [
       { x: 5, y: 2 },
       { x: -4, y: 7 },
@@ -49,9 +52,11 @@ describe('extendPath', () => {
     ]) {
       const path = [{ x: 0, y: 0 }];
       extendPath(path, target);
-      expect(isFourConnected(path)).toBe(true);
+      expect(isEightConnected(path)).toBe(true);
       expect(path[path.length - 1]).toEqual(target);
-      expect(path).toHaveLength(Math.abs(target.x) + Math.abs(target.y) + 1);
+      expect(path).toHaveLength(
+        Math.max(Math.abs(target.x), Math.abs(target.y)) + 1,
+      );
     }
   });
 });

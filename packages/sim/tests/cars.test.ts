@@ -114,7 +114,7 @@ describe('cars when roads change', () => {
   });
 
   it('removes a car that cannot reach home from where it stands', () => {
-    // House (0,2) → (1,2)…(3,2) → down (3,3) → destination at (4,4) entered from (3,4).
+    // House (0,2) → (1,2), (2,2), (3,3), (3,4) → destination at (4,4) entered from (3,4).
     const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 100 });
     placeBuilding(sim, {
       kind: 'house',
@@ -136,25 +136,35 @@ describe('cars when roads change', () => {
       t(sim, 3, 4),
     ]);
     addCar(sim, 0, 1);
-    sim.cars[0].progress = 3; // on (3,3)
-    // Cut the link home and the car's own tile: the car is left with no road to its house.
-    removeRoads(sim, [t(sim, 2, 2), t(sim, 3, 3)]);
+    // The corner step (2,2)→(3,3) is shorter than going round by (3,2).
+    expect(sim.cars[0].route).toEqual([
+      t(sim, 1, 2),
+      t(sim, 2, 2),
+      t(sim, 3, 3),
+      t(sim, 3, 4),
+    ]);
+    sim.cars[0].progress = 2; // on (3,3)
+    // Cut the car's own tile and the link home: it is left with no road to its house.
+    removeRoads(sim, [t(sim, 1, 2), t(sim, 2, 2), t(sim, 3, 3)]);
     expect(sim.cars).toHaveLength(0);
   });
 
   it('a driving car takes a shorter route when a road is added', () => {
     const sim = world();
+    // A detour that touches itself at corners, so the car takes the corner step (1,2)→(2,3).
     placeRoads(sim, [
       t(sim, 1, 2),
-      t(sim, 1, 1),
-      t(sim, 1, 0),
-      t(sim, 2, 0),
-      t(sim, 3, 0),
-      t(sim, 3, 1),
+      t(sim, 1, 3),
+      t(sim, 2, 3),
+      t(sim, 3, 3),
       t(sim, 3, 2),
     ]);
     addCar(sim, 0, 1);
-    expect(sim.cars[0].route).toHaveLength(7);
+    expect(sim.cars[0].route).toEqual([
+      t(sim, 1, 2),
+      t(sim, 2, 3),
+      t(sim, 3, 2),
+    ]);
     placeRoads(sim, [t(sim, 2, 2)]);
     expect(sim.cars[0].route).toEqual([
       t(sim, 1, 2),

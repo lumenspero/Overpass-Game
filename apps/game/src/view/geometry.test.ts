@@ -57,10 +57,26 @@ describe('roadShapes', () => {
     expect(shapes.filter((s) => s.kind === 'rect')).toHaveLength(2);
   });
 
-  it('does not bridge diagonal tiles', () => {
+  it('bridges diagonal tiles with one diagonal bar, and no edge bars', () => {
     const grid = createGrid(2, 2);
     const shapes = roadShapes(grid, roadsFrom(2, 2, [0, 3]));
     expect(shapes.filter((s) => s.kind === 'rect')).toHaveLength(0);
+    expect(shapes.filter((s) => s.kind === 'line')).toEqual([
+      {
+        kind: 'line',
+        x1: centre(0, 0).x,
+        y1: centre(0, 0).y,
+        x2: centre(1, 1).x,
+        y2: centre(1, 1).y,
+        w: 2 * R,
+      },
+    ]);
+  });
+
+  it('draws a diagonal bar on the down-left pair too', () => {
+    const grid = createGrid(2, 2);
+    const shapes = roadShapes(grid, roadsFrom(2, 2, [1, 2]));
+    expect(shapes.filter((s) => s.kind === 'line')).toHaveLength(1);
   });
 
   it('does not join the end of one row to the start of the next', () => {

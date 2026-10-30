@@ -101,7 +101,7 @@ describe('findRoute', () => {
     expect(a).toEqual(b);
   });
 
-  it('only steps between edge-sharing road tiles', () => {
+  it('only steps between road tiles that touch by an edge or a corner', () => {
     const sim = roadsOn([
       [1, 1],
       [2, 1],
@@ -111,13 +111,36 @@ describe('findRoute', () => {
     const route =
       findRoute(sim.grid, sim.roads, at(sim.grid, 1, 1), at(sim.grid, 3, 2)) ??
       [];
+    expect(route.length).toBeGreaterThan(1);
     for (let i = 1; i < route.length; i++) {
       const a = route[i - 1];
       const b = route[i];
-      const d =
-        Math.abs((a % 5) - (b % 5)) +
-        Math.abs(Math.floor(a / 5) - Math.floor(b / 5));
-      expect(d).toBe(1);
+      const dx = Math.abs((a % 5) - (b % 5));
+      const dy = Math.abs(Math.floor(a / 5) - Math.floor(b / 5));
+      expect(Math.max(dx, dy)).toBe(1);
     }
+  });
+
+  it('crosses a corner in one step when the diagonal is a shorter way', () => {
+    const sim = roadsOn([
+      [1, 1],
+      [2, 2],
+      [3, 3],
+    ]);
+    expect(
+      findRoute(sim.grid, sim.roads, at(sim.grid, 1, 1), at(sim.grid, 3, 3)),
+    ).toEqual([at(sim.grid, 1, 1), at(sim.grid, 2, 2), at(sim.grid, 3, 3)]);
+  });
+
+  it('takes a corner step between two touching tiles rather than going round', () => {
+    // (1,1) and (2,2) touch at a corner, and (1,2) is also a road, so the route is one step.
+    const sim = roadsOn([
+      [1, 1],
+      [2, 2],
+      [1, 2],
+    ]);
+    expect(
+      findRoute(sim.grid, sim.roads, at(sim.grid, 1, 1), at(sim.grid, 2, 2)),
+    ).toEqual([at(sim.grid, 1, 1), at(sim.grid, 2, 2)]);
   });
 });

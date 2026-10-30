@@ -41,7 +41,6 @@ import {
   screenToWorld,
   type Size,
   worldSize,
-  worldToTile,
   zoomCamera,
 } from '../view/camera.ts';
 import { debugShapes } from '../view/debug-geometry.ts';
@@ -252,8 +251,11 @@ export class GameScene extends Phaser.Scene {
     this.applyTransform();
   };
 
-  private toTile = (screen: Vec2): TileXY =>
-    worldToTile(screenToWorld(this.view, this.viewport(), screen));
+  /** Fractional tile position, so the stroke can tell where the pointer sits within a tile. */
+  private toTile = (screen: Vec2): TileXY => {
+    const w = screenToWorld(this.view, this.viewport(), screen);
+    return { x: w.x / TILE_SIZE, y: w.y / TILE_SIZE };
+  };
 
   private dispatch(intents: Intent[]): void {
     for (const intent of intents) {
@@ -335,7 +337,11 @@ export class GameScene extends Phaser.Scene {
     gfx.fillStyle(PALETTE.road, 1);
     for (const s of roadShapes(this.sim.grid, this.sim.roads)) {
       if (s.kind === 'circle') gfx.fillCircle(s.x, s.y, s.r);
-      else gfx.fillRect(s.x, s.y, s.w, s.h);
+      else if (s.kind === 'rect') gfx.fillRect(s.x, s.y, s.w, s.h);
+      else {
+        gfx.lineStyle(s.w, PALETTE.road, 1);
+        gfx.lineBetween(s.x1, s.y1, s.x2, s.y2);
+      }
     }
   }
 

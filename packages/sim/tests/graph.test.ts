@@ -36,7 +36,8 @@ describe('road graph shapes', () => {
     expect(edges[0].length).toBe(4);
   });
 
-  it('a T junction has a junction node and three edges', () => {
+  it('a T whose arms touch at the corners links them into a triangle', () => {
+    // The up arm's first tile (2,1) and the left arm's first tile (1,2) touch at a corner.
     const { graph, grid } = build(5, 5, [
       [2, 2],
       [2, 1],
@@ -46,24 +47,33 @@ describe('road graph shapes', () => {
       [3, 2],
       [4, 2], // right arm
     ]);
-    expect(graph.nodes[String(at(grid, 2, 2))]).toHaveLength(3);
-    const edges = Object.values(graph.edges);
-    expect(edges).toHaveLength(3);
-    expect(edges.map((e) => e.length).sort()).toEqual([2, 2, 2]);
+    const up = at(grid, 2, 1);
+    const left = at(grid, 1, 2);
+    expect(Object.keys(graph.nodes)).toContain(String(up));
+    expect(Object.keys(graph.nodes)).toContain(String(left));
+    const direct = Object.values(graph.edges).find(
+      (e) =>
+        e.tiles.length === 0 &&
+        [e.from, e.to].sort((a, b) => a - b).join() ===
+          [up, left].sort((a, b) => a - b).join(),
+    );
+    expect(direct).toBeDefined();
+    expect(direct?.length).toBe(1);
   });
 
-  it('a closed 2x2 loop becomes one node with a loop edge', () => {
+  it('a 2x2 block is four linked junctions, one edge for each pair', () => {
     const { graph } = build(3, 3, [
       [0, 0],
       [1, 0],
       [0, 1],
       [1, 1],
     ]);
-    expect(Object.keys(graph.nodes)).toHaveLength(1);
+    expect(Object.keys(graph.nodes)).toHaveLength(4);
     const edges = Object.values(graph.edges);
-    expect(edges).toHaveLength(1);
-    expect(edges[0].from).toBe(edges[0].to);
-    expect(edges[0].length).toBe(4);
+    expect(edges).toHaveLength(6);
+    expect(edges.every((e) => e.length === 1 && e.tiles.length === 0)).toBe(
+      true,
+    );
   });
 
   it('an isolated road tile is a node with no edges', () => {

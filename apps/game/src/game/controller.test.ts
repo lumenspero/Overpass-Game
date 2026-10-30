@@ -12,8 +12,11 @@ import {
   type Controller,
 } from './controller.ts';
 
-// In these tests a screen point is already a tile: x and y are tile coordinates.
-const identity = (p: { x: number; y: number }) => ({ x: p.x, y: p.y });
+// In these tests a point is a tile's coordinates: move(2, 2) is the centre of tile (2, 2).
+const identity = (p: { x: number; y: number }) => ({
+  x: p.x + 0.5,
+  y: p.y + 0.5,
+});
 
 function setup(
   opts: {
@@ -65,9 +68,9 @@ describe('drawing', () => {
   it('a diagonal drag produces a 4-connected road', () => {
     const ctl = setup();
     run(ctl, [begin('draw', 0, 0), move(2, 2), { type: 'stroke-end' }]);
-    // A 2×2 diagonal needs 5 tiles in a staircase.
-    expect(roadTiles(ctl)).toHaveLength(5);
-    // The staircase is one connected road: two end nodes, one edge.
+    // A diagonal drag is a diagonal road: three tiles, with no filler tiles.
+    expect(roadTiles(ctl)).toHaveLength(3);
+    // One connected road: two end nodes, one edge through the middle tile.
     expect(Object.keys(ctl.sim.graph.nodes)).toHaveLength(2);
     expect(Object.keys(ctl.sim.graph.edges)).toHaveLength(1);
   });
@@ -160,5 +163,32 @@ describe('cancel', () => {
   it('a cancel with no stroke does nothing', () => {
     const ctl = setup();
     expect(run(ctl, [{ type: 'stroke-cancel' }])).toEqual([false]);
+  });
+});
+
+describe('settling near tile centres', () => {
+  it('a wobbling diagonal drag leaves only the diagonal tiles', () => {
+    const ctl = setup();
+    // Pointer positions in tile units, given to move() as offsets from a centre.
+    // (1.0, 0.9) and (2.0, 1.6) brush the edges of neighbouring tiles, so they take nothing.
+    run(ctl, [
+      begin('draw', 0, 0),
+      move(0.5, 0.4), // (1.0, 0.9): near the edge of tile (1,0)
+      move(1, 1), // (1.5, 1.5): settles on tile (1,1)
+      move(1.5, 1.1), // (2.0, 1.6): near the edge of tile (2,1)
+      move(2, 2), // (2.5, 2.5): settles on tile (2,2)
+      { type: 'stroke-end' },
+    ]);
+    // On a 6-column grid: (0,0) = 0, (1,1) = 7, (2,2) = 14.
+    expect(roadTiles(ctl)).toEqual([0, 7, 14]);
+  });
+});
+
+describe('settle radius', () => {
+  it('a pointer in a tile corner, away from its centre, takes nothing', () => {
+    const ctl = setup();
+    // (1.69, 1.21) is inside tile (1,1) but 0.35 tiles from its centre: outside the radius.
+    run(ctl, [begin('draw', 0, 0), move(1.19, 0.71), { type: 'stroke-end' }]);
+    expect(roadTiles(ctl)).toEqual([0]);
   });
 });

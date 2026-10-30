@@ -24,7 +24,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 ### Roads and road graph
 
-- **Adjacency:** two road tiles connect when they share an edge (not a corner). Roads have no separate connection points. `approximated`
+- **Adjacency:** two road tiles connect when they share an edge or a corner. A corner link is a diagonal road. Roads have no separate connection points. `approximated`
 - **Graph nodes:** dead ends, junctions, isolated road tiles, and one representative tile for any closed loop with no node.
 - **Graph edges:** chains of pass-through road tiles between nodes. Each edge stores its interior tiles and its length in steps (interior tiles + 1).
 - **Updates:** after a change, only the connected road components next to the changed tiles are rebuilt. The result always matches a full rebuild. Tested with 500 random edits per seed.
@@ -39,7 +39,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 ### Cars and routing
 
-- **Routes:** a car's route is the list of road tiles from where it is to where it is going, both ends included. Routes use edge-sharing road tiles only. `approximated`
+- **Routes:** a car's route is the list of road tiles from where it is to where it is going, both ends included. Routes step between road tiles that share an edge or a corner. An edge step costs 1 tile and a corner step costs √2. Routes are shortest by that cost. `approximated`
 - **Planning:** A* over road tiles, every step costs 1, Manhattan distance as the estimate. Ties go to the lower tile index, so the same roads always give the same route. `approximated`
 - **Car states (M3):** driving to a destination, or returning to its house. `approximated`
 - **Route broken, car still on a road:** the car plans a new route to its goal. If none exists, it goes home. `approximated`
@@ -51,6 +51,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Following gap:** a car stops `CAR_GAP` tiles short of the car ahead of it in its lane. `approximated`
 - **Entering a tile:** a car may enter a tile only when no car in its lane on it is within `CAR_GAP` of the entrance. `approximated`
 - **Junctions:** a road tile with `JUNCTION_MIN_ROADS` or more road neighbours is a junction. It holds one car at a time, and a car already on it blocks all others. When two cars reach a junction together, the one further along its route goes first, then the lower car id. `approximated`
+- **Corner steps:** a car crossing a corner takes √2 times as long as an edge step, and its path curves through the tile centre. `approximated`
 - **Queuing:** a car held at a tile edge waits there until the way clears. Cars are moved front-first each tick, so a follower sees its leader's new position. `approximated`
 - **Car ownership:** each house owns `CARS_PER_HOUSE` cars when placed. A car that is lost (no way home) leaves its house owning one fewer. `approximated`
 - **Spawning:** a connected house with a car at home sends one out every `SPAWN_INTERVAL_TICKS`, to a connected destination of its colour picked at random with equal chance. If no route exists, the house waits for the next interval. Spawn weights by demand come in M4. `approximated`

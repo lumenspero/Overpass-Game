@@ -14,13 +14,15 @@ import {
 
 export type RoadShape =
   | { kind: 'circle'; x: number; y: number; r: number }
-  | { kind: 'rect'; x: number; y: number; w: number; h: number };
+  | { kind: 'rect'; x: number; y: number; w: number; h: number }
+  | { kind: 'line'; x1: number; y1: number; x2: number; y2: number; w: number };
 
 /**
  * Shapes that cover every road tile. Each tile gets a disc at its centre, which
- * rounds every end, junction and corner. Each pair of orthogonally adjacent road
- * tiles gets a bar between their centres, the same width as the disc diameter.
- * Filled opaquely, the union looks like one rounded road network.
+ * rounds every end, junction and corner. Each pair of adjacent road tiles gets a bar
+ * between their centres, the same width as the disc diameter: a rectangle for an edge
+ * pair, a diagonal line for a corner pair. Filled opaquely, the union looks like one
+ * rounded road network.
  */
 export function roadShapes(grid: Grid, roads: readonly number[]): RoadShape[] {
   const r = (ROAD_WIDTH_TILES * TILE_SIZE) / 2;
@@ -38,6 +40,31 @@ export function roadShapes(grid: Grid, roads: readonly number[]): RoadShape[] {
     }
     if (y + 1 < grid.rows && roads[i + grid.cols] === 1) {
       out.push({ kind: 'rect', x: cx - r, y: cy, w: 2 * r, h: TILE_SIZE });
+    }
+    // Corner pairs: down-right and down-left, each drawn once.
+    if (
+      x + 1 < grid.cols &&
+      y + 1 < grid.rows &&
+      roads[i + grid.cols + 1] === 1
+    ) {
+      out.push({
+        kind: 'line',
+        x1: cx,
+        y1: cy,
+        x2: cx + TILE_SIZE,
+        y2: cy + TILE_SIZE,
+        w: 2 * r,
+      });
+    }
+    if (x > 0 && y + 1 < grid.rows && roads[i + grid.cols - 1] === 1) {
+      out.push({
+        kind: 'line',
+        x1: cx,
+        y1: cy,
+        x2: cx - TILE_SIZE,
+        y2: cy + TILE_SIZE,
+        w: 2 * r,
+      });
     }
   }
   return out;
@@ -96,6 +123,15 @@ const CAR_RADIUS = ROAD_HALF_WIDTH * 0.4;
  * The curve is offset to the right of the direction of travel, so cars keep to the
  * right. Its colour is its house's colour.
  */
+/** The lane offset to the right of a direction of travel. Diagonal directions are normalised. */
+function rightOfTravel(d: { dx: number; dy: number }): {
+  x: number;
+  y: number;
+} {
+  const len = Math.hypot(d.dx, d.dy);
+  return { x: (-d.dy / len) * LANE_OFFSET, y: (d.dx / len) * LANE_OFFSET };
+}
+
 export function carShapes(
   cars: readonly Car[],
   buildings: readonly Building[],
@@ -129,8 +165,8 @@ export function carShapes(
     const outDir = outRaw ?? inRaw;
     if (inDir && outDir) {
       // Each edge point sits in the lane on the right of the direction through it.
-      const nIn = { x: -inDir.dy * LANE_OFFSET, y: inDir.dx * LANE_OFFSET };
-      const nOut = { x: -outDir.dy * LANE_OFFSET, y: outDir.dx * LANE_OFFSET };
+      const nIn = rightOfTravel(inDir);
+      const nOut = rightOfTravel(outDir);
       // Quadratic Bézier: start on the entry edge, control at the centre, end on the exit edge.
       const ax = c.x - inDir.dx * half + nIn.x;
       const ay = c.y - inDir.dy * half + nIn.y;

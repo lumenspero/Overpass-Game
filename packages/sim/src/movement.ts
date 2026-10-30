@@ -5,7 +5,7 @@ import {
   JUNCTION_MIN_ROADS,
   TICKS_PER_SECOND,
 } from './config.ts';
-import { type Grid, neighbors } from './grid.ts';
+import { DIAGONAL_STEP, type Grid, isDiagonal, linkNeighbors } from './grid.ts';
 import type { SimState } from './sim.ts';
 
 /**
@@ -29,7 +29,7 @@ const NO_LANE = 9;
 
 function isJunction(state: SimState, tile: number): boolean {
   let roads = 0;
-  for (const n of neighbors(state.grid, tile)) {
+  for (const n of linkNeighbors(state.grid, tile)) {
     if (state.roads[n] === 1) roads += 1;
   }
   return roads >= JUNCTION_MIN_ROADS;
@@ -54,6 +54,25 @@ export function laneOf(grid: Grid, car: Car): number {
   if (progress < route.length - 1)
     return stepCode(grid, route[progress], route[progress + 1]);
   return NO_LANE;
+}
+
+/**
+ * Length of the step the car is on, in tile units: the step out of its tile, or into it
+ * on the last tile. `along` runs over this length, so a corner step takes longer.
+ */
+function segmentLength(grid: Grid, car: Car): number {
+  const { route, progress } = car;
+  if (progress < route.length - 1) {
+    return isDiagonal(grid, route[progress], route[progress + 1])
+      ? DIAGONAL_STEP
+      : 1;
+  }
+  if (progress > 0) {
+    return isDiagonal(grid, route[progress - 1], route[progress])
+      ? DIAGONAL_STEP
+      : 1;
+  }
+  return 1;
 }
 
 /** How far along its current tile the car may move, given the cars ahead of it in its lane. */
@@ -99,9 +118,10 @@ function advance(state: SimState, car: Car): void {
   while (budget > EPSILON) {
     const room = roomAhead(state, car);
     if (car.along < room) {
-      const step = Math.min(budget, room - car.along);
+      const length = segmentLength(state.grid, car);
+      const step = Math.min(budget / length, room - car.along);
       car.along += step;
-      budget -= step;
+      budget -= step * length;
       continue;
     }
     // At the end of what it may do on this tile.

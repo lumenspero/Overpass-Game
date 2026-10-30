@@ -58,11 +58,10 @@ describe('debugShapes', () => {
   });
 
   it('draws one node per graph node and one segment per edge step', () => {
-    // A T-junction: 3 dead ends and 1 junction, so 4 nodes.
+    // A T whose arms touch at corners: every tile where the links change is a node.
     const s = sim(5, 5, [2, 7, 12, 11, 13]);
     const shapes = debugShapes(s.grid, s.graph);
     expect(shapes.nodes).toHaveLength(Object.keys(s.graph.nodes).length);
-    expect(shapes.nodes).toHaveLength(4);
     const steps = Object.values(s.graph.edges).reduce(
       (n, e) => n + e.length,
       0,
@@ -77,12 +76,12 @@ describe('debugShapes', () => {
     expect([...drawn].sort((a, b) => a - b)).toEqual(roads);
   });
 
-  it('shows a closed loop as one node with a looping edge', () => {
-    // A 2×2 block of roads: no tile has an end, so the sim promotes one node.
+  it('shows a 2×2 block as four linked junctions with six edges', () => {
+    // Every tile touches the other three, so each is a junction and each pair has an edge.
     const s = sim(4, 4, [5, 6, 10, 9]);
     const shapes = debugShapes(s.grid, s.graph);
-    expect(shapes.nodes).toHaveLength(1);
-    expect(shapes.edges).toHaveLength(4);
+    expect(shapes.nodes).toHaveLength(4);
+    expect(shapes.edges).toHaveLength(6);
     expect(tilesDrawn(s, s.graph).size).toBe(4);
   });
 
@@ -91,6 +90,14 @@ describe('debugShapes', () => {
     removeRoads(s, [1]);
     placeRoads(s, [3, 9]);
     const rebuilt = buildRoadGraph(s.grid, s.roads);
-    expect(debugShapes(s.grid, s.graph)).toEqual(debugShapes(s.grid, rebuilt));
+    // Edge order depends on build order, so compare the shapes as sets.
+    const sorted = (shapes: ReturnType<typeof debugShapes>) => ({
+      grid: shapes.grid.map((g) => JSON.stringify(g)).sort(),
+      edges: shapes.edges.map((e) => JSON.stringify(e)).sort(),
+      nodes: shapes.nodes.map((n) => JSON.stringify(n)).sort(),
+    });
+    expect(sorted(debugShapes(s.grid, s.graph))).toEqual(
+      sorted(debugShapes(s.grid, rebuilt)),
+    );
   });
 });

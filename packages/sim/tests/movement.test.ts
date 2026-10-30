@@ -129,3 +129,17 @@ describe('lanes', () => {
     expect(west.progress).toBe(route.length - 1);
   });
 });
+
+describe('corner steps', () => {
+  it('takes longer to cross a corner step than an edge step', () => {
+    const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 100 });
+    const route = [at(sim.grid, 1, 1), at(sim.grid, 2, 2)];
+    placeRoads(sim, route);
+    const car = carOn(sim, route);
+    // 15 ticks cover 1 tile of distance. The corner step is √2 tiles long, so the car
+    // is only part of the way across its tile.
+    for (let i = 0; i < 15; i++) moveCars(sim);
+    expect(car.progress).toBe(0);
+    expect(car.along).toBeCloseTo(1 / Math.SQRT2, 6);
+  });
+});

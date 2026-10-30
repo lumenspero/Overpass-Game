@@ -43,6 +43,19 @@ export function isBuildable(grid: Grid, index: number): boolean {
   return t === Terrain.Land || t === Terrain.Park;
 }
 
+/**
+ * Length of a step across a corner, in tile units. A step along an edge is 1.
+ * Roads link through both edges and corners, so a corner step is this long.
+ */
+export const DIAGONAL_STEP = Math.SQRT2;
+
+/** True when two tiles touch only at a corner. */
+export function isDiagonal(grid: Grid, a: number, b: number): boolean {
+  const dx = (a % grid.cols) - (b % grid.cols);
+  const dy = Math.floor(a / grid.cols) - Math.floor(b / grid.cols);
+  return Math.abs(dx) === 1 && Math.abs(dy) === 1;
+}
+
 /** The up-to-four orthogonal neighbours of a tile that lie inside the grid. */
 export function neighbors(grid: Grid, index: number): number[] {
   const x = index % grid.cols;
@@ -52,5 +65,25 @@ export function neighbors(grid: Grid, index: number): number[] {
   if (x < grid.cols - 1) result.push(index + 1);
   if (y > 0) result.push(index - grid.cols);
   if (y < grid.rows - 1) result.push(index + grid.cols);
+  return result;
+}
+
+/**
+ * Every tile that touches `index` by an edge or a corner, inside the grid. Roads
+ * connect to all of these, so a diagonal pair of road tiles is connected.
+ */
+export function linkNeighbors(grid: Grid, index: number): number[] {
+  const x = index % grid.cols;
+  const y = Math.floor(index / grid.cols);
+  const result: number[] = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= grid.cols || ny >= grid.rows) continue;
+      result.push(ny * grid.cols + nx);
+    }
+  }
   return result;
 }
