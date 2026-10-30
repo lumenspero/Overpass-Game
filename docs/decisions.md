@@ -18,3 +18,5 @@ Short log of choices and why. Newest at the bottom.
 | 2026-10-29 | Graph is derived data, rebuilt locally on change                            | Keeps the sim simple; incremental result is checked against a full rebuild                                    |
 | 2026-10-29 | Canonical edge direction: smaller endpoint to larger                        | Makes incremental and full builds comparable                                                                  |
 | 2026-10-29 | Parks are buildable                                                         | Parks are decorative; spawn-blocking behaviour comes with M3                                                  |
+| 2026-10-29 | Input feel constants live in `apps/game/src/input/config.ts`                | Slop, long-press and wheel rate shape gesture reading, not game rules, so they stay out of the sim config     |
+| 2026-10-29 | Touch: draw starts after slop; still hold erases; 2nd finger cancels stroke | Keeps draw vs pan conflict-free; a cancelled stroke never reaches the sim                                     |
