@@ -59,8 +59,15 @@ import {
   ENTRANCE_WIDTH,
 } from '../view/geometry.ts';
 import { createTuningPanel, type TuningPanel } from '../debug/tuning-panel.ts';
+import { createOfferPanel, type OfferPanel } from '../ui/offer-panel.ts';
+import { previewRoads } from '../view/crossing-preview.ts';
 import { lockedTileRects } from '../view/districts.ts';
 import { endLines, hudLine, OVERFLOW_RING_COLOR } from '../view/hud.ts';
+import {
+  CROSSING_MESSAGE_MS,
+  crossingHint,
+  crossingMessage,
+} from '../view/crossing-message.ts';
 import { overflowRings } from '../view/overflow.ts';
 import {
   createTickMeter,
@@ -101,16 +108,23 @@ export class GameScene extends Phaser.Scene {
   private mapSize!: Size;
   private layer!: Phaser.GameObjects.Container;
   private roadGfx!: Phaser.GameObjects.Graphics;
+  private previewGfx!: Phaser.GameObjects.Graphics;
   private buildingGfx!: Phaser.GameObjects.Graphics;
   private carGfx!: Phaser.GameObjects.Graphics;
   private ringGfx!: Phaser.GameObjects.Graphics;
   private hudText!: Phaser.GameObjects.Text;
+  private crossingText!: Phaser.GameObjects.Text;
+  /** Which crossing report is on screen, and when its message stops showing (ms). */
+  private crossingSeq = 0;
+  private crossingUntil = 0;
+  private crossingLine = '';
   private endGfx!: Phaser.GameObjects.Graphics;
   private endTexts: Phaser.GameObjects.Text[] = [];
   private ended = false;
   private roadsDirty = true;
   private overlayGfx!: Phaser.GameObjects.Graphics;
   private debugText!: Phaser.GameObjects.Text;
+  private offerPanel!: OfferPanel;
   private debugOn = false;
   private overlayDirty = true;
   private meter!: TickMeter;
@@ -134,6 +148,7 @@ export class GameScene extends Phaser.Scene {
     this.clock = createClock();
     this.mapper = createIntentMapper();
     this.controller = createController(this.sim);
+    this.offerPanel = createOfferPanel(() => this.sim);
     this.mapSize = worldSize(grid.cols, grid.rows);
     this.view = createFittedCamera(this.mapSize, this.viewport());
     this.openCount = -1;
@@ -146,6 +161,8 @@ export class GameScene extends Phaser.Scene {
     this.roadGfx = this.add.graphics();
     this.buildingGfx = this.add.graphics();
     this.carGfx = this.add.graphics();
+    this.previewGfx = this.add.graphics();
+    this.previewGfx.setAlpha(0.4);
     this.ringGfx = this.add.graphics();
     this.overlayGfx = this.add.graphics().setVisible(false);
     this.layer.add([
@@ -154,6 +171,7 @@ export class GameScene extends Phaser.Scene {
       this.roadGfx,
       this.buildingGfx,
       this.carGfx,
+      this.previewGfx,
       this.ringGfx,
       this.overlayGfx,
     ]);
@@ -183,6 +201,16 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setScrollFactor(0)
       .setDepth(10);
+    this.crossingText = this.add
+      .text(this.scale.width / 2, 30, '', {
+        fontFamily: 'monospace',
+        fontSize: '13px',
+        color: '#f2c46d',
+      })
+      .setOrigin(0.5, 0)
+      .setScrollFactor(0)
+      .setDepth(10)
+      .setVisible(false);
     this.endGfx = this.add
       .graphics()
       .setScrollFactor(0)
@@ -224,8 +252,11 @@ export class GameScene extends Phaser.Scene {
     }
     this.syncDistricts();
     this.drawCars(); // cars move every tick, so they are redrawn every frame
+    this.drawCrossingPreview();
     this.drawRings();
     this.hudText.setText(hudLine(this.sim));
+    this.showCrossingLine(time);
+    this.offerPanel.sync();
     if (this.sim.over && !this.ended) this.showEnd();
     if (this.debugOn) {
       if (this.overlayDirty) {
@@ -238,6 +269,33 @@ export class GameScene extends Phaser.Scene {
       );
     }
     this.applyTransform();
+  }
+
+  /**
+   * Shows the result of the last bridge or tunnel release for a few seconds, then the stock
+   * while a crossing tool is picked, so an empty stock is visible before the drag.
+   */
+  private showCrossingLine(now: number): void {
+    const report = this.controller.crossing;
+    if (report && report.seq !== this.crossingSeq) {
+      this.crossingSeq = report.seq;
+      this.crossingUntil = now + CROSSING_MESSAGE_MS;
+      this.setCrossingLine(crossingMessage(report.kind, report.result));
+    }
+    if (now >= this.crossingUntil) {
+      const tool = this.mapper.tool;
+      if (tool === 'bridge' || tool === 'tunnel') {
+        this.setCrossingLine(crossingHint(tool, this.sim.stock[tool]));
+      } else {
+        this.setCrossingLine('');
+      }
+    }
+  }
+
+  private setCrossingLine(line: string): void {
+    if (line === this.crossingLine) return;
+    this.crossingLine = line;
+    this.crossingText.setText(line).setVisible(line !== '');
   }
 
   private viewport(): Size {
@@ -316,6 +374,7 @@ export class GameScene extends Phaser.Scene {
   private onResize = (): void => {
     this.view = resizeCamera(this.view, this.mapSize, this.viewport());
     this.hudText.setX(this.scale.width / 2);
+    this.crossingText.setX(this.scale.width / 2);
     if (this.ended) this.showEnd();
     this.applyTransform();
   };
@@ -426,6 +485,29 @@ export class GameScene extends Phaser.Scene {
       else {
         gfx.lineStyle(s.w, PALETTE.road, 1);
         gfx.lineBetween(s.x1, s.y1, s.x2, s.y2);
+      }
+    }
+  }
+
+  /** A bridge or tunnel being dragged shows its path, translucent, before it is built. */
+  private drawCrossingPreview(): void {
+    const gfx = this.previewGfx;
+    gfx.clear();
+    const s = this.controller.stroke;
+    if (
+      !s ||
+      (s.mode !== 'bridge' && s.mode !== 'tunnel') ||
+      s.path.length === 0
+    )
+      return;
+    const preview = previewRoads(this.sim.grid, s.path);
+    gfx.fillStyle(PALETTE.road, 1);
+    for (const sh of roadShapes(this.sim.grid, preview.roads, preview.links)) {
+      if (sh.kind === 'circle') gfx.fillCircle(sh.x, sh.y, sh.r);
+      else if (sh.kind === 'rect') gfx.fillRect(sh.x, sh.y, sh.w, sh.h);
+      else {
+        gfx.lineStyle(sh.w, PALETTE.road, 1);
+        gfx.lineBetween(sh.x1, sh.y1, sh.x2, sh.y2);
       }
     }
   }
@@ -572,6 +654,7 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown-R', this.restartIfOver);
     this.input.keyboard?.off('keydown-B', this.onBridgeKey);
     this.input.keyboard?.off('keydown-T', this.onTunnelKey);
+    this.offerPanel.destroy();
     this.input.keyboard?.off('keydown', this.onKey);
     this.panel?.destroy();
     this.panel = null;

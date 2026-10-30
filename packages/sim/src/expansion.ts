@@ -15,6 +15,7 @@ export function openDistricts(tick: number): number {
   let open = 1;
   if (week >= tuning.EXPANSION_WEEK_1) open += 1;
   if (week >= tuning.EXPANSION_WEEK_2) open += 1;
+  if (week >= tuning.EXPANSION_WEEK_3) open += 1;
   return open;
 }
 

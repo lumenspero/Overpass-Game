@@ -219,7 +219,7 @@ describe('bridges from a stroke', () => {
     ).toBe(true);
     for (let x = 1; x <= 5; x++) expect(sim.roads[idx(x, 1)]).toBe(1);
     expect(sim.stock.bridge).toBe(0);
-    expect(ctl.note).toBe('bridge built');
+    expect(ctl.note).toBe('bridge built (1)');
   });
 
   it('is refused with a note when there is no bridge in stock', () => {
@@ -252,5 +252,43 @@ describe('bridges from a stroke', () => {
       ),
     ).toBe(true);
     expect(sim.stock.tunnel).toBe(0);
+  });
+});
+
+describe('freehand bridges', () => {
+  it('builds a bridge across the corner of a lake along the dragged path', () => {
+    const sim = world();
+    for (const [x, y] of [
+      [3, 3],
+      [4, 4],
+      [5, 5],
+    ])
+      sim.grid.terrain[idx(x, y)] = Terrain.Water;
+    sim.stock.bridge = 1;
+    const ctl = createController(sim);
+    applyIntent(
+      ctl,
+      { type: 'stroke-begin', mode: 'bridge', at: { x: 2.5, y: 2.5 } },
+      identity,
+    );
+    for (const p of [
+      { x: 3.5, y: 3.5 },
+      { x: 4.5, y: 4.5 },
+      { x: 5.5, y: 5.5 },
+    ]) {
+      applyIntent(ctl, { type: 'stroke-move', at: p }, identity);
+    }
+    expect(sim.roads.some((r) => r === 1)).toBe(false);
+    applyIntent(ctl, { type: 'stroke-end', at: { x: 6.5, y: 6.5 } }, identity);
+    for (const [x, y] of [
+      [2, 2],
+      [3, 3],
+      [4, 4],
+      [5, 5],
+      [6, 6],
+    ]) {
+      expect(sim.roads[idx(x, y)]).toBe(1);
+    }
+    expect(ctl.note).toBe('bridge built (1)');
   });
 });

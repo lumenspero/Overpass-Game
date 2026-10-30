@@ -38,8 +38,8 @@ export const TEST_BUILDINGS: TestBuilding[] = [
 /**
  * The districts that open over time (spec: Expansion). Land west of the river is split:
  * district 0 is columns 0 to 9, district 1 is the top half of columns 10 to 13, and
- * district 2 is the bottom half of them. Land east of the river is district 3, which the
- * schedule never opens: it waits for bridges (M5).
+ * district 2 is the bottom half of them. Land east of the river is district 3, which opens at
+ * EXPANSION_WEEK_3; a bridge can reach it after that.
  */
 export function buildTestDistricts(grid: Grid): number[] {
   const out = new Array<number>(grid.cols * grid.rows).fill(0);

@@ -78,10 +78,10 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 ### Expansion
 
-- **Districts:** the map is split into districts numbered from 0. District 0 is open at the start. `EXPANSION_WEEK_1` (3) opens district 1 and `EXPANSION_WEEK_2` (6) opens district 2. Both are live debug-panel values. `approximated`
+- **Districts:** the map is split into districts numbered from 0. District 0 is open at the start. `EXPANSION_WEEK_1` (3) opens district 1 and `EXPANSION_WEEK_2` (6) opens district 2, and `EXPANSION_WEEK_3` (9) opens district 3. All three are live debug-panel values. `approximated`
 - **Locked land:** tiles in a district that isn't open take no roads. Buildings on locked land are inactive (they send and collect nothing) and are hidden. The land is dimmed.
-- **Opening only:** districts never close. A district beyond the schedule stays locked for the whole game (for example, land across a river until bridges in M5).
-- **Test map:** three districts west of the river, plus one east of it that stays locked.
+- **Opening only:** districts never close. A district beyond the schedule stays locked for the whole game. Bridges and tunnels cannot land on locked land.
+- **Test map:** three districts west of the river, plus one east of it that opens at `EXPANSION_WEEK_3`.
 
 ### Upgrades
 
@@ -90,24 +90,29 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Implemented only:** only upgrades the sim can apply are offered. The list is `IMPLEMENTED_UPGRADES`: bridge and tunnel so far. It grows as each upgrade lands in M5. An offer needs at least two implemented kinds.
 - **Stock:** answering an offer adds its kind to stock. Placing a bridge or tunnel uses one. Stock is not refunded when a crossing is removed.
 - **Queue:** offers wait in `offers`, oldest first, until the player answers.
+- **Choice screen:** a panel at the bottom of the screen shows the oldest offer as buttons, with a count of waiting offers. Choosing one puts it in stock. The game keeps running while an offer waits. The panel hides once the game is over. `approximated`
 - **Pool:** bridge, tunnel, motorway, roundabout, light. Each is added to the offer list as it is built.
 
 ### Bridges and tunnels
 
-- **Bridge:** a road over a straight, orthogonal run of water. Both ends are land or park, and every tile between them is water. `approximated`
-- **Tunnel:** a road through a straight run of mountain, with the same end rules. `approximated`
-- **Span limits:** a bridge spans at most `BRIDGE_MAX_SPAN` (3) water tiles. A tunnel runs through at most `TUNNEL_MAX_SPAN` (4) mountain tiles. `approximated`
-- **Cost:** a crossing needs one bridge or tunnel from stock, and every road tile on it costs 1 from the budget, like any road. `approximated`
-- **Refusals:** a crossing is refused with no stock, when its ends are not aligned or not land, when its span is empty or too long, when a gap tile is the wrong terrain, when a tile is locked, or when the budget cannot pay. Nothing is placed on refusal.
-- **Existing bridge tiles:** a drag over a road that is already on water is accepted at no cost.
-- **Routing:** a bridge or tunnel is an ordinary road for cars, so routes cross it like any other.
+- **Bridge:** a road dragged across water. The drag's path is the bridge, so it can turn and cross a lake's corner diagonally. `approximated`
+- **Tunnel:** a road dragged through mountain, with the same rules. `approximated`
+- **Span limit:** a run of new water (bridge) or mountain (tunnel) tiles along the path may be at most `BRIDGE_MAX_SPAN` (3) or `TUNNEL_MAX_SPAN` (4) tiles long. A run of 3 is "less than 4 nodes" for bridges. `approximated`
+- **Runs:** each separate run of new crossing tiles on a path is one crossing, and uses one bridge or tunnel from stock. Two rivers in one drag need two bridges.
+- **Endpoints and other tiles:** the path must start and end on land, park, or road. Its other tiles may be land, park, road, or the crossing's own terrain. A bridge cannot cross mountain, and a tunnel cannot cross water. Buildings block the path.
+- **Cost:** every new road tile costs 1 from the budget, like any road. `approximated`
+- **Existing crossings:** a drag over a road already on water or mountain is free and uses no stock.
+- **Refusals:** nothing is placed when the path has a gap, is too long, lacks stock or budget, or touches a locked tile. A line under the HUD says the reason for three seconds.
+- **Erasing:** a bridge or tunnel is one crossing. Erasing its tiles returns its stock once, when its last tile goes. An erase that is undone takes the stock back.
+- **Preview:** while the drag is held, the path shows translucent. Nothing is built until release.
+- **Routing:** a bridge or tunnel is an ordinary road for cars.
 
 ### Debug panel
 
 - Not a player feature. It is a playtesting aid, toggled with D.
 - Each slider sets one value in `config.ts` live, so a change takes effect on the next tick. Starting values (road budget, cars per house, building colours) apply to a new run, so use Restart run after changing them. Reset values puts every slider back to its default.
 - Speed: buttons or keys 1 to 4 set the clock to 1×, 2×, 4× or 8×.
-- Crossings (playtest aid): B and T pick the bridge and tunnel tools. A drag in a straight line across water (bridge) or mountain (tunnel) builds the crossing on release. The debug line shows stock and the last result. `+1 bridge` and `+1 tunnel` add stock directly.
+- Crossings (playtest aid): B and T pick the bridge and tunnel tools. A drag across water (bridge) or mountain (tunnel) builds the crossing on release, along the path dragged. While the tool is picked, the line under the HUD shows stock; after a release it shows the result for three seconds. `+1 bridge` and `+1 tunnel` add stock directly.
 - Not included: click-to-spawn. It was a testing aid that doesn't match the intended game.
 
 ### Overflow

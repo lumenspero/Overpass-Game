@@ -1,7 +1,14 @@
+import type {
+  CrossingKind,
+  CrossingResult,
+  CrossingTileRecord,
+} from '@overpass-game/sim';
 import {
   linkPartners,
   linkTiles,
   placeCrossing,
+  releaseCrossingTile,
+  restoreCrossingTile,
   placeRoads,
   removeRoads,
   type SimState,
@@ -30,6 +37,8 @@ type Change =
       wasRoad: 0 | 1;
       /** Links the tile had before an erase took them. Restored on rollback. */
       partners: number[];
+      /** The crossing run the tile was in before an erase took it out. Restored on rollback. */
+      crossing?: CrossingTileRecord | null;
     }
   | { kind: 'link'; a: number; b: number };
 
@@ -41,18 +50,27 @@ interface Stroke {
   changes: Change[];
 }
 
+/** The outcome of one bridge or tunnel release. `seq` rises with every release. */
+export interface CrossingReport {
+  seq: number;
+  kind: CrossingKind;
+  result: CrossingResult;
+}
+
 export interface Controller {
   sim: SimState;
   stroke: Stroke | null;
   /** The outcome of the last bridge or tunnel, for the debug line. */
   note: string | null;
+  /** The same outcome as data, so the scene can say it on screen. */
+  crossing: CrossingReport | null;
 }
 
 /** Converts a screen point to tile units. The result is fractional: 3.5 is the centre of tile 3. */
 export type ToTile = (screen: Vec2) => TileXY;
 
 export function createController(sim: SimState): Controller {
-  return { sim, stroke: null, note: null };
+  return { sim, stroke: null, note: null, crossing: null };
 }
 
 function indexOf(sim: SimState, t: TileXY): number | null {
@@ -66,8 +84,15 @@ function touchTile(ctl: Controller, stroke: Stroke, t: TileXY): boolean {
   if (stroke.mode === 'erase') {
     if (i === null || ctl.sim.roads[i] !== 1) return false;
     const partners = [...linkPartners(ctl.sim.links, i)];
+    const crossing = releaseCrossingTile(ctl.sim, i);
     removeRoads(ctl.sim, [i]);
-    stroke.changes.push({ kind: 'tile', index: i, wasRoad: 1, partners });
+    stroke.changes.push({
+      kind: 'tile',
+      index: i,
+      wasRoad: 1,
+      partners,
+      crossing,
+    });
     return true;
   }
   if (i === null) {
@@ -147,9 +172,15 @@ function isCrossing(mode: StrokeMode): mode is 'bridge' | 'tunnel' {
   return mode === 'bridge' || mode === 'tunnel';
 }
 
+/** Records the path a crossing stroke has taken so far. Nothing is built until release. */
+function trace(stroke: Stroke, at: Vec2, toTile: ToTile): void {
+  const tile = strokeTile(toTile(at), false);
+  if (tile) extendPath(stroke.path, tile);
+}
+
 /**
- * Builds a bridge or tunnel from the tile where the stroke began to the tile where it was
- * released. The sim decides whether it fits; the note says why it did not.
+ * Builds a bridge or tunnel along the path the stroke took, ending where it was released.
+ * The sim decides whether it fits; the note says why it did not.
  */
 function crossTo(
   ctl: Controller,
@@ -159,16 +190,16 @@ function crossTo(
 ): boolean {
   const kind = stroke.mode;
   if (!isCrossing(kind)) return false;
-  const from = stroke.path[0];
-  const to = strokeTile(toTile(at), true);
-  const a = from ? indexOf(ctl.sim, from) : null;
-  const b = to ? indexOf(ctl.sim, to) : null;
-  if (a === null || b === null) {
-    ctl.note = `${kind} refused: off the map`;
-    return false;
-  }
-  const result = placeCrossing(ctl.sim, kind, a, b);
-  ctl.note = result.ok ? `${kind} built` : `${kind} refused: ${result.reason}`;
+  const end = strokeTile(toTile(at), true);
+  if (end) extendPath(stroke.path, end);
+  const tiles = stroke.path.map((t) => indexOf(ctl.sim, t));
+  const result: CrossingResult = tiles.some((i) => i === null)
+    ? { ok: false, reason: 'out-of-bounds' }
+    : placeCrossing(ctl.sim, kind, tiles as number[]);
+  ctl.note = result.ok
+    ? `${kind} built (${result.crossings})`
+    : `${kind} refused: ${result.reason}`;
+  ctl.crossing = { seq: (ctl.crossing?.seq ?? 0) + 1, kind, result };
   return result.ok;
 }
 
@@ -182,6 +213,7 @@ function rollback(ctl: Controller, stroke: Stroke): boolean {
     } else {
       placeRoads(ctl.sim, [c.index]);
       for (const p of c.partners) linkTiles(ctl.sim, c.index, p);
+      if (c.crossing) restoreCrossingTile(ctl.sim, c.index, c.crossing);
     }
   }
   return stroke.changes.length > 0;
@@ -208,10 +240,14 @@ export function applyIntent(
       }
       return extend(ctl, ctl.stroke, intent.at, toTile, true);
     }
-    case 'stroke-move':
-      return ctl.stroke && !isCrossing(ctl.stroke.mode)
-        ? extend(ctl, ctl.stroke, intent.at, toTile, false)
-        : false;
+    case 'stroke-move': {
+      const current = ctl.stroke;
+      if (current && isCrossing(current.mode)) {
+        trace(current, intent.at, toTile);
+        return false;
+      }
+      return current ? extend(ctl, current, intent.at, toTile, false) : false;
+    }
     case 'stroke-end': {
       const stroke = ctl.stroke;
       ctl.stroke = null;

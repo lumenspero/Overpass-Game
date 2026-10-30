@@ -62,7 +62,7 @@ describe('districts', () => {
   });
 
   it('never opens a district beyond the schedule', () => {
-    expect(openDistricts(100 * WEEK_TICKS)).toBe(3);
+    expect(openDistricts(100 * WEEK_TICKS)).toBe(4);
   });
 
   it('refuses roads on a locked tile, and allows them once it opens', () => {
@@ -100,5 +100,19 @@ describe('districts', () => {
     const grid = makeGrid(3, 1);
     const sim = createSim({ seed: 1, grid, roadBudget: 10 });
     expect(placeRoads(sim, [0, 1, 2])).toEqual({ ok: true, added: 3 });
+  });
+});
+
+describe('the third district', () => {
+  afterEach(() => resetTuning());
+
+  it('opens at EXPANSION_WEEK_3, after the first two', () => {
+    tuning.EXPANSION_WEEK_1 = 2;
+    tuning.EXPANSION_WEEK_2 = 4;
+    tuning.EXPANSION_WEEK_3 = 6;
+    // Week 5 starts at tick 4 * WEEK_TICKS; week 6 at 5 * WEEK_TICKS.
+    expect(openDistricts(4 * WEEK_TICKS)).toBe(3);
+    expect(openDistricts(5 * WEEK_TICKS - 1)).toBe(3);
+    expect(openDistricts(5 * WEEK_TICKS)).toBe(4);
   });
 });

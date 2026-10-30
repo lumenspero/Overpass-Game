@@ -1,0 +1,50 @@
+import {
+  type CrossingKind,
+  type CrossingResult,
+  tuning,
+} from '@overpass-game/sim';
+
+/** How long a crossing's result stays on screen, in milliseconds. */
+export const CROSSING_MESSAGE_MS = 3000;
+
+/** The line shown after a bridge or tunnel is released: what was built, or why not. */
+export function crossingMessage(
+  kind: CrossingKind,
+  result: CrossingResult,
+): string {
+  const name = kind === 'bridge' ? 'Bridge' : 'Tunnel';
+  if (result.ok) {
+    return result.crossings > 1
+      ? `${name} built (${result.crossings} crossings)`
+      : `${name} built`;
+  }
+  switch (result.reason) {
+    case 'no-stock':
+      return `No ${kind}s to lay. Pick one from the reward panel.`;
+    case 'bad-endpoint':
+      return 'Start and finish on land or road, not on water, mountain or a building.';
+    case 'locked':
+      return 'That land is not open yet.';
+    case 'too-long': {
+      const max =
+        kind === 'bridge' ? tuning.BRIDGE_MAX_SPAN : tuning.TUNNEL_MAX_SPAN;
+      const terrain = kind === 'bridge' ? 'water' : 'mountain';
+      return `A ${kind} can cross at most ${max} tiles of ${terrain}.`;
+    }
+    case 'no-budget':
+      return 'Not enough budget for that road.';
+    case 'blocked':
+      return 'Something is in the way.';
+    case 'no-span':
+    case 'not-a-path':
+      return 'Drag one line from one bank to the other.';
+    case 'out-of-bounds':
+      return 'Stay on the map.';
+  }
+}
+
+/** The line shown while a crossing tool is picked: how many are in stock. */
+export function crossingHint(kind: CrossingKind, stock: number): string {
+  const name = kind === 'bridge' ? 'Bridge' : 'Tunnel';
+  return `${name} tool · ${stock} in stock`;
+}

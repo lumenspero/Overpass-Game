@@ -12,7 +12,7 @@ import { LONG_PRESS_MS, TOUCH_SLOP_PX, WHEEL_ZOOM_RATE } from './config.ts';
  *   cancels any stroke and starts pan + pinch-zoom until every finger is up.
  * - The erase tool turns every draw stroke into an erase stroke.
  * - The bridge and tunnel tools turn a draw stroke into a crossing: built on release, from
- *   where the drag began to where it ended. Nothing is laid during the drag.
+ *   along the path the drag took. Nothing is laid during the drag; the path is shown translucent.
  */
 
 export type PointerKind = 'mouse' | 'touch' | 'pen';

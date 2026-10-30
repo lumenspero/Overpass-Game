@@ -1,3 +1,4 @@
+import type { CrossingRun } from './crossings.ts';
 import type { Building, Demand, Home } from './buildings.ts';
 import { type Car, onRoadsChanged } from './cars.ts';
 import { tuning } from './config.ts';
@@ -55,6 +56,11 @@ export interface SimState {
   offers: UpgradeKind[][];
   /** Upgrades the player holds, ready to place. */
   stock: Stock;
+  /** One entry per grid tile: the id of the crossing run it belongs to, or 0 for none. */
+  crossingRunOf: number[];
+  /** Crossing runs still standing, by id. A run returns its stock when its last tile goes. */
+  crossingRuns: Record<number, CrossingRun>;
+  nextCrossingRunId: number;
 }
 
 export interface GameOver {
@@ -106,6 +112,9 @@ export function createSim({
     tripsCompleted: 0,
     offers: [],
     stock: emptyStock(),
+    crossingRunOf: new Array<number>(grid.cols * grid.rows).fill(0),
+    crossingRuns: {},
+    nextCrossingRunId: 1,
   };
 }
 
