@@ -21,13 +21,38 @@ export interface TestBuilding {
   entrance: Side;
 }
 
-/** Two colour pairs. Each house's entrance faces open land, so a road can connect it. */
+/**
+ * Three colour pairs, all on the land west of the river. Each pair can connect by land
+ * (checked in the tests). Pair 0 opens across two districts; pair 1 is open from the start;
+ * pair 2 sits in district 1, which opens at week 3.
+ */
 export const TEST_BUILDINGS: TestBuilding[] = [
   { kind: 'house', color: 0, col: 8, row: 6, entrance: 'e' },
   { kind: 'destination', color: 0, col: 12, row: 11, entrance: 'n' },
-  { kind: 'house', color: 1, col: 20, row: 2, entrance: 's' },
+  { kind: 'house', color: 1, col: 7, row: 1, entrance: 's' },
   { kind: 'destination', color: 1, col: 4, row: 14, entrance: 'n' },
+  { kind: 'house', color: 2, col: 11, row: 2, entrance: 'e' },
+  { kind: 'destination', color: 2, col: 13, row: 6, entrance: 'w' },
 ];
+
+/**
+ * The districts that open over time (spec: Expansion). Land west of the river is split:
+ * district 0 is columns 0 to 9, district 1 is the top half of columns 10 to 13, and
+ * district 2 is the bottom half of them. Land east of the river is district 3, which the
+ * schedule never opens: it waits for bridges (M5).
+ */
+export function buildTestDistricts(grid: Grid): number[] {
+  const out = new Array<number>(grid.cols * grid.rows).fill(0);
+  for (let row = 0; row < grid.rows; row++) {
+    for (let col = 0; col < grid.cols; col++) {
+      let district = 0;
+      if (col >= 14) district = 3;
+      else if (col >= 10) district = row < 8 ? 1 : 2;
+      out[row * grid.cols + col] = district;
+    }
+  }
+  return out;
+}
 
 export function buildTestGrid(): Grid {
   const grid = createGrid(TEST_MAP_COLS, TEST_MAP_ROWS, Terrain.Land);

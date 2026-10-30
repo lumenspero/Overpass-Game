@@ -3,7 +3,6 @@ import {
   createSim,
   OVERFLOW_PIN_LIMIT,
   placeBuilding,
-  placeRoads,
   removeRoads,
   step,
   summaryOf,
@@ -12,7 +11,7 @@ import {
   weekOf,
   type SimState,
 } from '../src/index.ts';
-import { at, makeGrid } from './helpers.ts';
+import { at, drawRoads, makeGrid } from './helpers.ts';
 
 /** House at (0,2), destination at (4,2), road between them on row 2. */
 function world(): SimState {
@@ -29,7 +28,7 @@ function world(): SimState {
     tile: at(sim.grid, 4, 2),
     entrance: 'w',
   });
-  placeRoads(sim, [at(sim.grid, 1, 2), at(sim.grid, 2, 2), at(sim.grid, 3, 2)]);
+  drawRoads(sim, [at(sim.grid, 1, 2), at(sim.grid, 2, 2), at(sim.grid, 3, 2)]);
   return sim;
 }
 

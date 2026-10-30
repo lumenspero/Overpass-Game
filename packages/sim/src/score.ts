@@ -1,4 +1,4 @@
-import { WEEK_TICKS } from './config.ts';
+import { tuning } from './config.ts';
 import type { GameOver, SimState } from './sim.ts';
 
 /**
@@ -9,12 +9,12 @@ import type { GameOver, SimState } from './sim.ts';
 
 /** The week a tick falls in. Tick 0 is in week 1. */
 export function weekOf(tick: number): number {
-  return Math.floor(tick / WEEK_TICKS) + 1;
+  return Math.floor(tick / tuning.WEEK_TICKS) + 1;
 }
 
 /** Ticks left in the week the sim is in now. */
 export function ticksLeftInWeek(tick: number): number {
-  return WEEK_TICKS - (tick % WEEK_TICKS);
+  return tuning.WEEK_TICKS - (tick % tuning.WEEK_TICKS);
 }
 
 export interface GameSummary {

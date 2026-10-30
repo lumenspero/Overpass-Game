@@ -208,9 +208,9 @@ Done when: on a hand-made test map, cars visibly complete trips and queue at bus
 
 - [x] Destinations generate demand pins; pins consumed by arriving cars
 - [x] Overflow: too many waiting pins starts a visible countdown that resets when served; a full countdown ends the game
-- [ ] Score as trips completed; clock with weeks; map expansion schedule
-- [ ] End-of-game state with summary stats
-- [ ] Debug panel: live sliders for every `config.ts` value, fast-forward up to 8×, spawn-on-click
+- [x] Score as trips completed; clock with weeks; map expansion schedule
+- [x] End-of-game state with summary stats (week reached and trips completed)
+- [x] Debug panel: live sliders for every `config.ts` value, fast-forward up to 8×
 
 Done when: a full run on the test map can be lost.
 

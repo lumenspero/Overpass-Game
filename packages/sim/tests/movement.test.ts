@@ -4,17 +4,16 @@ import {
   CAR_SPEED,
   createSim,
   moveCars,
-  placeRoads,
   type Car,
   type SimState,
 } from '../src/index.ts';
-import { at, makeGrid } from './helpers.ts';
+import { at, drawRoads, makeGrid } from './helpers.ts';
 
 /** A straight row of road across a 9×5 world, on row 2. */
 function row(): { sim: SimState; route: number[] } {
   const sim = createSim({ seed: 1, grid: makeGrid(9, 5), roadBudget: 100 });
   const route = Array.from({ length: 9 }, (_, x) => at(sim.grid, x, 2));
-  placeRoads(sim, route);
+  drawRoads(sim, route);
   return { sim, route };
 }
 
@@ -92,7 +91,7 @@ describe('junctions', () => {
     const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 100 });
     const across = Array.from({ length: 5 }, (_, x) => at(sim.grid, x, 2));
     const down = Array.from({ length: 5 }, (_, y) => at(sim.grid, 2, y));
-    placeRoads(sim, [...across, ...down]);
+    drawRoads(sim, [...across, ...down]);
     const centre = at(sim.grid, 2, 2);
 
     // Both cars are one tile from the centre, so the lower id gets there first.
@@ -134,7 +133,7 @@ describe('corner steps', () => {
   it('takes longer to cross a corner step than an edge step', () => {
     const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 100 });
     const route = [at(sim.grid, 1, 1), at(sim.grid, 2, 2)];
-    placeRoads(sim, route);
+    drawRoads(sim, route);
     const car = carOn(sim, route);
     // 15 ticks cover 1 tile of distance. The corner step is √2 tiles long, so the car
     // is only part of the way across its tile.

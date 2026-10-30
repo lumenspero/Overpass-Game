@@ -1,7 +1,25 @@
-import { DIAGONAL_STEP, type Grid, isDiagonal, linkNeighbors } from './grid.ts';
+import {
+  type Links,
+  DIAGONAL_STEP,
+  type Grid,
+  isDiagonal,
+  roadLinks,
+} from './grid.ts';
+
+/** True when every step of a route is a link a drag made, and every tile on it is a road. */
+export function routeIsLinked(
+  roads: readonly number[],
+  links: Links,
+  route: readonly number[],
+): boolean {
+  for (let i = 1; i < route.length; i++) {
+    if (!roadLinks(roads, links, route[i - 1]).includes(route[i])) return false;
+  }
+  return route.every((t) => roads[t] === 1);
+}
 
 /**
- * A* over road tiles. Roads link through edges and corners: a step along an edge costs 1,
+ * A* over road tiles. Roads link through edges and links: a step along an edge costs 1,
  * and a step across a corner costs DIAGONAL_STEP. The octile distance never overestimates,
  * so the first route found is a shortest one. Ties break on the lower tile index, so the
  * same roads always give the same route.
@@ -20,6 +38,7 @@ export function routeLength(grid: Grid, route: readonly number[]): number {
 export function findRoute(
   grid: Grid,
   roads: readonly number[],
+  links: Links,
   from: number,
   to: number,
 ): number[] | null {
@@ -59,7 +78,7 @@ export function findRoute(
     }
     closed.add(current);
 
-    for (const n of linkNeighbors(grid, current)) {
+    for (const n of roadLinks(roads, links, current)) {
       if (roads[n] !== 1 || closed.has(n)) continue;
       const step = isDiagonal(grid, current, n) ? DIAGONAL_STEP : 1;
       const next = (cost.get(current) ?? 0) + step;

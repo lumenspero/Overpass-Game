@@ -1,8 +1,5 @@
-import {
-  DEMAND_INTERVAL_TICKS,
-  OVERFLOW_PIN_LIMIT,
-  OVERFLOW_TICKS,
-} from './config.ts';
+import { tuning } from './config.ts';
+import { isOpenTile } from './expansion.ts';
 import type { SimState } from './sim.ts';
 
 /**
@@ -19,13 +16,13 @@ import type { SimState } from './sim.ts';
 /** Adds one pin to each destination whose cooldown has run down. */
 export function generateDemand(state: SimState): void {
   for (const b of state.buildings) {
-    if (b.kind !== 'destination') continue;
+    if (b.kind !== 'destination' || !isOpenTile(state, b.tile)) continue;
     const demand = state.demand[b.id];
     if (!demand) continue;
     demand.cooldown = Math.max(0, demand.cooldown - 1);
     if (demand.cooldown > 0) continue;
     demand.pins += 1;
-    demand.cooldown = DEMAND_INTERVAL_TICKS;
+    demand.cooldown = tuning.DEMAND_INTERVAL_TICKS;
   }
 }
 
@@ -46,21 +43,32 @@ export function servePin(state: SimState, destination: number): void {
   const demand = state.demand[destination];
   if (!demand || demand.pins === 0) return;
   demand.pins -= 1;
-  if (demand.overflow > 0) demand.overflow = OVERFLOW_TICKS;
+  if (demand.overflow > 0) demand.overflow = tuning.OVERFLOW_TICKS;
+}
+
+/**
+ * Adds a pin at a destination straight away. For the debug panel: it lets a tester push a
+ * destination towards overflow without waiting. Returns false if there is no destination there.
+ */
+export function addDemandPin(state: SimState, destination: number): boolean {
+  const demand = state.demand[destination];
+  if (!demand) return false;
+  demand.pins += 1;
+  return true;
 }
 
 /** Starts, runs, or clears each destination's overflow countdown. Ends the game when one runs out. */
 export function updateOverflow(state: SimState): void {
   for (const b of state.buildings) {
-    if (b.kind !== 'destination') continue;
+    if (b.kind !== 'destination' || !isOpenTile(state, b.tile)) continue;
     const demand = state.demand[b.id];
     if (!demand) continue;
-    if (demand.pins <= OVERFLOW_PIN_LIMIT) {
+    if (demand.pins <= tuning.OVERFLOW_PIN_LIMIT) {
       demand.overflow = 0;
       continue;
     }
     if (demand.overflow === 0) {
-      demand.overflow = OVERFLOW_TICKS;
+      demand.overflow = tuning.OVERFLOW_TICKS;
       continue;
     }
     demand.overflow -= 1;

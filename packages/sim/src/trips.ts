@@ -1,7 +1,8 @@
 import { addCar, dropCar, roadEntrance, sendHome, type Car } from './cars.ts';
 import { isConnected } from './buildings.ts';
-import { PARK_TICKS, SPAWN_INTERVAL_TICKS } from './config.ts';
+import { tuning } from './config.ts';
 import { servePin, unclaimedPins } from './demand.ts';
+import { isOpenTile } from './expansion.ts';
 import { tileOpen } from './movement.ts';
 import { nextFloat } from './rng.ts';
 import type { SimState } from './sim.ts';
@@ -26,7 +27,7 @@ function removeCar(state: SimState, car: Car): void {
 /** Each house with cars at home may send one out when its cooldown has run down. */
 export function spawnCars(state: SimState): void {
   for (const b of state.buildings) {
-    if (b.kind !== 'house') continue;
+    if (b.kind !== 'house' || !isOpenTile(state, b.tile)) continue;
     const home = state.homes[b.id];
     if (!home || home.atHome === 0) continue;
     home.cooldown = Math.max(0, home.cooldown - 1);
@@ -39,13 +40,14 @@ export function spawnCars(state: SimState): void {
       (d) =>
         d.kind === 'destination' &&
         d.color === b.color &&
+        isOpenTile(state, d.tile) &&
         isConnected(state, d) &&
         unclaimedPins(state, d.id) > 0,
     );
     if (options.length === 0) continue;
     const pick = options[Math.floor(nextFloat(state.rng) * options.length)];
 
-    home.cooldown = SPAWN_INTERVAL_TICKS;
+    home.cooldown = tuning.SPAWN_INTERVAL_TICKS;
     if (addCar(state, b.id, pick.id).ok) home.atHome -= 1;
   }
 }
@@ -57,7 +59,7 @@ export function updateTrips(state: SimState): void {
       servePin(state, car.destination);
       state.tripsCompleted += 1;
       car.state = 'parked';
-      car.timer = PARK_TICKS;
+      car.timer = tuning.PARK_TICKS;
     } else if (car.state === 'parked') {
       car.timer -= 1;
       if (car.timer > 0) continue;

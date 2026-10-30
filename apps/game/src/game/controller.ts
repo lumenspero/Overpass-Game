@@ -1,4 +1,11 @@
-import { placeRoads, removeRoads, type SimState } from '@overpass-game/sim';
+import {
+  linkPartners,
+  linkTiles,
+  placeRoads,
+  removeRoads,
+  type SimState,
+  unlinkTiles,
+} from '@overpass-game/sim';
 import type { Intent, StrokeMode, Vec2 } from '../input/intents.ts';
 import { STROKE_SETTLE_TILES } from '../input/config.ts';
 import { extendPath, type TileXY } from '../input/path.ts';
@@ -9,14 +16,21 @@ import { extendPath, type TileXY } from '../input/path.ts';
  * whether a tile can take a road or pay for one.
  *
  * Roads are placed as the finger moves, so the player sees them immediately.
- * Each stroke keeps an undo log, so a cancelled stroke rolls back completely.
+ * A draw stroke links each step it takes, so the path the player drew is the road,
+ * and nearby roads never join by themselves. Each stroke keeps an undo log, so a cancelled stroke
+ * rolls back completely, links included.
  */
 
-interface Change {
-  index: number;
-  /** Road state before the stroke touched this tile: 0 or 1. */
-  wasRoad: 0 | 1;
-}
+type Change =
+  | {
+      kind: 'tile';
+      index: number;
+      /** Road state before the stroke touched this tile: 0 or 1. */
+      wasRoad: 0 | 1;
+      /** Links the tile had before an erase took them. Restored on rollback. */
+      partners: number[];
+    }
+  | { kind: 'link'; a: number; b: number };
 
 interface Stroke {
   mode: StrokeMode;
@@ -48,8 +62,9 @@ function touchTile(ctl: Controller, stroke: Stroke, t: TileXY): boolean {
   const i = indexOf(ctl.sim, t);
   if (stroke.mode === 'erase') {
     if (i === null || ctl.sim.roads[i] !== 1) return false;
+    const partners = [...linkPartners(ctl.sim.links, i)];
     removeRoads(ctl.sim, [i]);
-    stroke.changes.push({ index: i, wasRoad: 1 });
+    stroke.changes.push({ kind: 'tile', index: i, wasRoad: 1, partners });
     return true;
   }
   if (i === null) {
@@ -62,7 +77,25 @@ function touchTile(ctl: Controller, stroke: Stroke, t: TileXY): boolean {
     stroke.halted = true;
     return false;
   }
-  stroke.changes.push({ index: i, wasRoad: 0 });
+  stroke.changes.push({ kind: 'tile', index: i, wasRoad: 0, partners: [] });
+  return true;
+}
+
+/**
+ * Links the previous and the new tile of a draw stroke. Every step the drag takes is a
+ * link, across an edge or a corner, so the path the player drew is the road.
+ */
+function linkStep(
+  ctl: Controller,
+  stroke: Stroke,
+  from: TileXY,
+  to: TileXY,
+): boolean {
+  const a = indexOf(ctl.sim, from);
+  const b = indexOf(ctl.sim, to);
+  if (a === null || b === null) return false;
+  if (!linkTiles(ctl.sim, a, b)) return false;
+  stroke.changes.push({ kind: 'link', a, b });
   return true;
 }
 
@@ -91,19 +124,33 @@ function extend(
   if (stroke.halted) return false;
   const tile = strokeTile(toTile(at), press);
   if (tile === null) return false;
+  const start = stroke.path.length;
+  const added = extendPath(stroke.path, tile);
   let changed = false;
-  for (const t of extendPath(stroke.path, tile)) {
+  for (let k = start; k < start + added.length; k++) {
     if (stroke.halted) break;
+    const t = stroke.path[k];
     changed = touchTile(ctl, stroke, t) || changed;
+    if (stroke.halted) break;
+    if (stroke.mode === 'draw' && k > 0) {
+      // A new link changes what is drawn, so the view must redraw even with no new road.
+      changed = linkStep(ctl, stroke, stroke.path[k - 1], t) || changed;
+    }
   }
   return changed;
 }
 
 function rollback(ctl: Controller, stroke: Stroke): boolean {
-  // Undo newest first, so each restore sees the budget and tiles it expects.
+  // Undo newest first, so each restore sees the budget, tiles and links it expects.
   for (const c of [...stroke.changes].reverse()) {
-    if (c.wasRoad === 0) removeRoads(ctl.sim, [c.index]);
-    else placeRoads(ctl.sim, [c.index]);
+    if (c.kind === 'link') {
+      unlinkTiles(ctl.sim, c.a, c.b);
+    } else if (c.wasRoad === 0) {
+      removeRoads(ctl.sim, [c.index]);
+    } else {
+      placeRoads(ctl.sim, [c.index]);
+      for (const p of c.partners) linkTiles(ctl.sim, c.index, p);
+    }
   }
   return stroke.changes.length > 0;
 }
@@ -127,9 +174,16 @@ export function applyIntent(
       return ctl.stroke
         ? extend(ctl, ctl.stroke, intent.at, toTile, false)
         : false;
-    case 'stroke-end':
+    case 'stroke-end': {
+      const stroke = ctl.stroke;
       ctl.stroke = null;
+      // Releasing a draw stroke takes the tile under the pointer, so the last step of the
+      // drag is linked even if the pointer never settled on that tile's centre.
+      if (stroke && intent.at && stroke.mode === 'draw') {
+        return extend(ctl, stroke, intent.at, toTile, true);
+      }
       return false;
+    }
     case 'stroke-cancel': {
       const stroke = ctl.stroke;
       ctl.stroke = null;

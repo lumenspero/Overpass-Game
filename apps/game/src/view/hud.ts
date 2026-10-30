@@ -1,9 +1,9 @@
 import {
   summaryOf,
+  tuning,
   type GameSummary,
   type SimState,
   ticksLeftInWeek,
-  TICKS_PER_SECOND,
 } from '@overpass-game/sim';
 
 /**
@@ -17,7 +17,9 @@ export const OVERFLOW_RING_COLOR = 0xe5484d;
 /** The line across the top of the screen: week, time left in it, trips so far. */
 export function hudLine(state: SimState): string {
   const summary = summaryOf(state);
-  const secondsLeft = Math.ceil(ticksLeftInWeek(state.tick) / TICKS_PER_SECOND);
+  const secondsLeft = Math.ceil(
+    ticksLeftInWeek(state.tick) / tuning.TICKS_PER_SECOND,
+  );
   return `Week ${summary.week} · ${secondsLeft}s left · Trips ${summary.trips}`;
 }
 

@@ -35,7 +35,8 @@ export interface PointerSample {
 export type Intent =
   | { type: 'stroke-begin'; mode: StrokeMode; at: Vec2 }
   | { type: 'stroke-move'; at: Vec2 }
-  | { type: 'stroke-end' }
+  /** `at` is where the pointer was released, so a draw stroke can take the tile under it. */
+  | { type: 'stroke-end'; at?: Vec2 }
   | { type: 'stroke-cancel' }
   | { type: 'pan'; dx: number; dy: number }
   | { type: 'zoom'; factor: number; center: Vec2 };
@@ -205,7 +206,7 @@ export function pointerUp(mapper: IntentMapper, p: PointerSample): Intent[] {
       break;
     case 'stroke':
       if (mode.id === p.id) {
-        out = [{ type: 'stroke-end' }];
+        out = [{ type: 'stroke-end', at: { x: p.x, y: p.y } }];
         mapper.mode = { kind: 'idle' };
       }
       break;

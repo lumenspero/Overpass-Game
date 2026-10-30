@@ -5,13 +5,12 @@ import {
   createSim,
   moveCars,
   placeBuilding,
-  placeRoads,
   removeRoads,
   step,
   updateTrips,
   type SimState,
 } from '../src/index.ts';
-import { at, makeGrid } from './helpers.ts';
+import { at, drawRoads, makeGrid } from './helpers.ts';
 
 /** House at (0,2) facing east, destination at (4,2) facing west, road between them on row 2. */
 function world(withRoad = true): SimState {
@@ -31,7 +30,7 @@ function world(withRoad = true): SimState {
   // A few waiting pins, so these tests check travel rather than demand, and stay under the overflow limit.
   sim.demand[1].pins = 2;
   if (withRoad) {
-    placeRoads(sim, [
+    drawRoads(sim, [
       at(sim.grid, 1, 2),
       at(sim.grid, 2, 2),
       at(sim.grid, 3, 2),
@@ -119,7 +118,7 @@ describe('trips', () => {
       tile: at(sim.grid, 4, 4),
       entrance: 'w',
     });
-    placeRoads(sim, [
+    drawRoads(sim, [
       at(sim.grid, 1, 2),
       at(sim.grid, 2, 2),
       at(sim.grid, 3, 2),

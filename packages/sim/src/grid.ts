@@ -45,9 +45,16 @@ export function isBuildable(grid: Grid, index: number): boolean {
 
 /**
  * Length of a step across a corner, in tile units. A step along an edge is 1.
- * Roads link through both edges and corners, so a corner step is this long.
+ * A corner step is taken only across a link a drag made (spec: Roads).
  */
 export const DIAGONAL_STEP = Math.SQRT2;
+
+/** True when two different tiles touch, by an edge or a corner. */
+export function isAdjacent(grid: Grid, a: number, b: number): boolean {
+  const dx = Math.abs((a % grid.cols) - (b % grid.cols));
+  const dy = Math.abs(Math.floor(a / grid.cols) - Math.floor(b / grid.cols));
+  return a !== b && dx <= 1 && dy <= 1;
+}
 
 /** True when two tiles touch only at a corner. */
 export function isDiagonal(grid: Grid, a: number, b: number): boolean {
@@ -69,8 +76,63 @@ export function neighbors(grid: Grid, index: number): number[] {
 }
 
 /**
- * Every tile that touches `index` by an edge or a corner, inside the grid. Roads
- * connect to all of these, so a diagonal pair of road tiles is connected.
+ * Road links, stored as state. For each tile, the road tiles it is linked to. A link
+ * is made only by a step the player's drag actually takes, across an edge or a corner
+ * (see the controller). Nothing else links tiles: a road placed beside another does not
+ * join it unless a drag does. Keyed by tile index as a string.
+ */
+export type Links = Record<string, number[]>;
+
+/** The tiles a tile is linked to. */
+export function linkPartners(links: Links, index: number): number[] {
+  return links[String(index)] ?? [];
+}
+
+/** True when two tiles are linked. */
+export function hasLink(links: Links, a: number, b: number): boolean {
+  return linkPartners(links, a).includes(b);
+}
+
+/** Records a link between two adjacent tiles. Returns false if it was already there. */
+export function addLink(links: Links, a: number, b: number): boolean {
+  if (hasLink(links, a, b)) return false;
+  links[String(a)] = [...linkPartners(links, a), b];
+  links[String(b)] = [...linkPartners(links, b), a];
+  return true;
+}
+
+/** Removes a link between two tiles. Returns false if there was none. */
+export function removeLink(links: Links, a: number, b: number): boolean {
+  if (!hasLink(links, a, b)) return false;
+  dropPartner(links, a, b);
+  dropPartner(links, b, a);
+  return true;
+}
+
+/** Removes every link that touches a tile. */
+export function dropLinksOf(links: Links, index: number): void {
+  for (const p of linkPartners(links, index)) dropPartner(links, p, index);
+  delete links[String(index)];
+}
+
+function dropPartner(links: Links, from: number, to: number): void {
+  const rest = linkPartners(links, from).filter((t) => t !== to);
+  if (rest.length === 0) delete links[String(from)];
+  else links[String(from)] = rest;
+}
+
+/** The road tiles a road tile is linked to, in the order the links were made. */
+export function roadLinks(
+  roads: readonly number[],
+  links: Links,
+  index: number,
+): number[] {
+  return linkPartners(links, index).filter((n) => roads[n] === 1);
+}
+
+/**
+ * Every tile that touches `index` by an edge or a corner, inside the grid. Candidates
+ * for links; `roadLinks` says which of them are linked.
  */
 export function linkNeighbors(grid: Grid, index: number): number[] {
   const x = index % grid.cols;

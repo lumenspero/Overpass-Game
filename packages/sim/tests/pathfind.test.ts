@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { createSim, findRoute, placeRoads } from '../src/index.ts';
-import { at, makeGrid } from './helpers.ts';
+import { createSim, findRoute, linkTiles, placeRoads } from '../src/index.ts';
+import { at, drawRoads, makeGrid } from './helpers.ts';
 
-function roadsOn(tiles: Array<[number, number]>) {
+/** Roads on the given tiles, and links between pairs of them (as x,y pairs). */
+function roadsOn(
+  tiles: Array<[number, number]>,
+  links: Array<[[number, number], [number, number]]> = [],
+) {
   const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 100 });
-  placeRoads(
+  drawRoads(
     sim,
     tiles.map(([x, y]) => at(sim.grid, x, y)),
   );
+  for (const [[ax, ay], [bx, by]] of links)
+    linkTiles(sim, at(sim.grid, ax, ay), at(sim.grid, bx, by));
   return sim;
 }
 
@@ -19,7 +25,13 @@ describe('findRoute', () => {
       [3, 2],
     ]);
     expect(
-      findRoute(sim.grid, sim.roads, at(sim.grid, 1, 2), at(sim.grid, 3, 2)),
+      findRoute(
+        sim.grid,
+        sim.roads,
+        sim.links,
+        at(sim.grid, 1, 2),
+        at(sim.grid, 3, 2),
+      ),
     ).toEqual([at(sim.grid, 1, 2), at(sim.grid, 2, 2), at(sim.grid, 3, 2)]);
   });
 
@@ -38,6 +50,7 @@ describe('findRoute', () => {
     const route = findRoute(
       sim.grid,
       sim.roads,
+      sim.links,
       at(sim.grid, 1, 2),
       at(sim.grid, 3, 2),
     );
@@ -50,14 +63,26 @@ describe('findRoute', () => {
       [3, 2],
     ]);
     expect(
-      findRoute(sim.grid, sim.roads, at(sim.grid, 1, 2), at(sim.grid, 3, 2)),
+      findRoute(
+        sim.grid,
+        sim.roads,
+        sim.links,
+        at(sim.grid, 1, 2),
+        at(sim.grid, 3, 2),
+      ),
     ).toBeNull();
   });
 
   it('returns a single tile when start and goal are the same', () => {
     const sim = roadsOn([[2, 2]]);
     expect(
-      findRoute(sim.grid, sim.roads, at(sim.grid, 2, 2), at(sim.grid, 2, 2)),
+      findRoute(
+        sim.grid,
+        sim.roads,
+        sim.links,
+        at(sim.grid, 2, 2),
+        at(sim.grid, 2, 2),
+      ),
     ).toEqual([at(sim.grid, 2, 2)]);
   });
 
@@ -67,10 +92,22 @@ describe('findRoute', () => {
       [2, 2],
     ]);
     expect(
-      findRoute(sim.grid, sim.roads, at(sim.grid, 1, 2), at(sim.grid, 4, 4)),
+      findRoute(
+        sim.grid,
+        sim.roads,
+        sim.links,
+        at(sim.grid, 1, 2),
+        at(sim.grid, 4, 4),
+      ),
     ).toBeNull();
     expect(
-      findRoute(sim.grid, sim.roads, at(sim.grid, 0, 0), at(sim.grid, 2, 2)),
+      findRoute(
+        sim.grid,
+        sim.roads,
+        sim.links,
+        at(sim.grid, 0, 0),
+        at(sim.grid, 2, 2),
+      ),
     ).toBeNull();
   });
 
@@ -89,12 +126,14 @@ describe('findRoute', () => {
     const a = findRoute(
       sim.grid,
       sim.roads,
+      sim.links,
       at(sim.grid, 1, 1),
       at(sim.grid, 3, 2),
     );
     const b = findRoute(
       sim.grid,
       sim.roads,
+      sim.links,
       at(sim.grid, 1, 1),
       at(sim.grid, 3, 2),
     );
@@ -109,8 +148,13 @@ describe('findRoute', () => {
       [3, 2],
     ]);
     const route =
-      findRoute(sim.grid, sim.roads, at(sim.grid, 1, 1), at(sim.grid, 3, 2)) ??
-      [];
+      findRoute(
+        sim.grid,
+        sim.roads,
+        sim.links,
+        at(sim.grid, 1, 1),
+        at(sim.grid, 3, 2),
+      ) ?? [];
     expect(route.length).toBeGreaterThan(1);
     for (let i = 1; i < route.length; i++) {
       const a = route[i - 1];
@@ -122,25 +166,77 @@ describe('findRoute', () => {
   });
 
   it('crosses a corner in one step when the diagonal is a shorter way', () => {
-    const sim = roadsOn([
-      [1, 1],
-      [2, 2],
-      [3, 3],
-    ]);
+    const sim = roadsOn(
+      [
+        [1, 1],
+        [2, 2],
+        [3, 3],
+      ],
+      [
+        [
+          [1, 1],
+          [2, 2],
+        ],
+        [
+          [2, 2],
+          [3, 3],
+        ],
+      ],
+    );
     expect(
-      findRoute(sim.grid, sim.roads, at(sim.grid, 1, 1), at(sim.grid, 3, 3)),
+      findRoute(
+        sim.grid,
+        sim.roads,
+        sim.links,
+        at(sim.grid, 1, 1),
+        at(sim.grid, 3, 3),
+      ),
     ).toEqual([at(sim.grid, 1, 1), at(sim.grid, 2, 2), at(sim.grid, 3, 3)]);
   });
 
-  it('takes a corner step between two touching tiles rather than going round', () => {
-    // (1,1) and (2,2) touch at a corner, and (1,2) is also a road, so the route is one step.
-    const sim = roadsOn([
-      [1, 1],
-      [2, 2],
-      [1, 2],
-    ]);
+  it('takes a corner step across a link the player drew', () => {
+    const sim = roadsOn(
+      [
+        [1, 1],
+        [2, 2],
+      ],
+      [
+        [
+          [1, 1],
+          [2, 2],
+        ],
+      ],
+    );
     expect(
-      findRoute(sim.grid, sim.roads, at(sim.grid, 1, 1), at(sim.grid, 2, 2)),
+      findRoute(
+        sim.grid,
+        sim.roads,
+        sim.links,
+        at(sim.grid, 1, 1),
+        at(sim.grid, 2, 2),
+      ),
     ).toEqual([at(sim.grid, 1, 1), at(sim.grid, 2, 2)]);
+  });
+
+  it('does not cut a corner that was never drawn', () => {
+    // (1,1) and (2,2) touch at a corner. (1,2) is linked to both by an edge, and no drag
+    // links (1,1) to (2,2), so the route goes via (1,2).
+    const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 100 });
+    placeRoads(sim, [
+      at(sim.grid, 1, 1),
+      at(sim.grid, 2, 2),
+      at(sim.grid, 1, 2),
+    ]);
+    linkTiles(sim, at(sim.grid, 1, 1), at(sim.grid, 1, 2));
+    linkTiles(sim, at(sim.grid, 1, 2), at(sim.grid, 2, 2));
+    expect(
+      findRoute(
+        sim.grid,
+        sim.roads,
+        sim.links,
+        at(sim.grid, 1, 1),
+        at(sim.grid, 2, 2),
+      ),
+    ).toEqual([at(sim.grid, 1, 1), at(sim.grid, 1, 2), at(sim.grid, 2, 2)]);
   });
 });

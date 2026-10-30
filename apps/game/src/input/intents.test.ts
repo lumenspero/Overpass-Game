@@ -37,7 +37,7 @@ describe('mouse', () => {
       { type: 'stroke-move', at: { x: 20, y: 10 } },
     ]);
     expect(pointerUp(m, sample(1, 'mouse', 20, 10))).toEqual([
-      { type: 'stroke-end' },
+      { type: 'stroke-end', at: { x: 20, y: 10 } },
     ]);
     expect(m.mode.kind).toBe('idle');
   });

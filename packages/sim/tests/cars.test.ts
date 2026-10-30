@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   addCar,
   createSim,
+  linkTiles,
   placeBuilding,
-  placeRoads,
   removeRoads,
   type SimState,
 } from '../src/index.ts';
-import { at, makeGrid } from './helpers.ts';
+import { at, drawRoads, makeGrid } from './helpers.ts';
 
 /**
  * A 5×5 world with a house at (0,2) facing east and a destination at (4,2) facing west.
@@ -35,7 +35,7 @@ const t = (sim: SimState, x: number, y: number) => at(sim.grid, x, y);
 describe('addCar', () => {
   it('plans a route from the house entrance to the destination entrance', () => {
     const sim = world();
-    placeRoads(sim, [t(sim, 1, 2), t(sim, 2, 2), t(sim, 3, 2)]);
+    drawRoads(sim, [t(sim, 1, 2), t(sim, 2, 2), t(sim, 3, 2)]);
     expect(addCar(sim, 0, 1)).toEqual({ ok: true, id: 0 });
     expect(sim.cars[0]).toMatchObject({
       house: 0,
@@ -48,19 +48,19 @@ describe('addCar', () => {
 
   it('refuses when a building is not connected', () => {
     const sim = world();
-    placeRoads(sim, [t(sim, 2, 2), t(sim, 3, 2)]);
+    drawRoads(sim, [t(sim, 2, 2), t(sim, 3, 2)]);
     expect(addCar(sim, 0, 1)).toEqual({ ok: false, reason: 'not-connected' });
   });
 
   it('refuses when there is no route between the buildings', () => {
     const sim = world();
-    placeRoads(sim, [t(sim, 1, 2), t(sim, 3, 2)]);
+    drawRoads(sim, [t(sim, 1, 2), t(sim, 3, 2)]);
     expect(addCar(sim, 0, 1)).toEqual({ ok: false, reason: 'no-route' });
   });
 
   it('refuses a destination used as a house, or an unknown building', () => {
     const sim = world();
-    placeRoads(sim, [t(sim, 1, 2), t(sim, 2, 2), t(sim, 3, 2)]);
+    drawRoads(sim, [t(sim, 1, 2), t(sim, 2, 2), t(sim, 3, 2)]);
     expect(addCar(sim, 1, 0)).toEqual({ ok: false, reason: 'bad-building' });
     expect(addCar(sim, 0, 9)).toEqual({ ok: false, reason: 'bad-building' });
   });
@@ -69,14 +69,14 @@ describe('addCar', () => {
 describe('cars when roads change', () => {
   function driving(): SimState {
     const sim = world();
-    placeRoads(sim, [t(sim, 1, 2), t(sim, 2, 2), t(sim, 3, 2)]);
+    drawRoads(sim, [t(sim, 1, 2), t(sim, 2, 2), t(sim, 3, 2)]);
     addCar(sim, 0, 1);
     return sim;
   }
 
   it('leaves a car alone when a road off its route is removed', () => {
     const sim = driving();
-    placeRoads(sim, [t(sim, 2, 1)]);
+    drawRoads(sim, [t(sim, 2, 1)]);
     const before = sim.cars[0].route;
     removeRoads(sim, [t(sim, 2, 1)]);
     expect(sim.cars[0]).toMatchObject({ state: 'driving', route: before });
@@ -84,12 +84,15 @@ describe('cars when roads change', () => {
 
   it('reroutes a driving car around a deleted road when an alternative exists', () => {
     const sim = driving();
-    placeRoads(sim, [
+    // The detour starts and ends on the existing road, so the drag links it at both ends.
+    drawRoads(sim, [
+      t(sim, 1, 2),
       t(sim, 1, 1),
       t(sim, 1, 0),
       t(sim, 2, 0),
       t(sim, 3, 0),
       t(sim, 3, 1),
+      t(sim, 3, 2),
     ]);
     removeRoads(sim, [t(sim, 2, 2)]);
     expect(sim.cars).toHaveLength(1);
@@ -128,7 +131,7 @@ describe('cars when roads change', () => {
       tile: t(sim, 4, 4),
       entrance: 'w',
     });
-    placeRoads(sim, [
+    drawRoads(sim, [
       t(sim, 1, 2),
       t(sim, 2, 2),
       t(sim, 3, 2),
@@ -136,14 +139,15 @@ describe('cars when roads change', () => {
       t(sim, 3, 4),
     ]);
     addCar(sim, 0, 1);
-    // The corner step (2,2)→(3,3) is shorter than going round by (3,2).
+    // (2,2) and (3,3) touch at a corner but no drag linked them, so the car goes via (3,2).
     expect(sim.cars[0].route).toEqual([
       t(sim, 1, 2),
       t(sim, 2, 2),
+      t(sim, 3, 2),
       t(sim, 3, 3),
       t(sim, 3, 4),
     ]);
-    sim.cars[0].progress = 2; // on (3,3)
+    sim.cars[0].progress = 3; // on (3,3)
     // Cut the car's own tile and the link home: it is left with no road to its house.
     removeRoads(sim, [t(sim, 1, 2), t(sim, 2, 2), t(sim, 3, 3)]);
     expect(sim.cars).toHaveLength(0);
@@ -151,21 +155,17 @@ describe('cars when roads change', () => {
 
   it('a driving car takes a shorter route when a road is added', () => {
     const sim = world();
-    // A detour that touches itself at corners, so the car takes the corner step (1,2)→(2,3).
-    placeRoads(sim, [
-      t(sim, 1, 2),
-      t(sim, 1, 3),
-      t(sim, 2, 3),
-      t(sim, 3, 3),
-      t(sim, 3, 2),
-    ]);
+    // A detour drawn by corner steps: (1,2)→(2,3)→(3,2), linked across each corner.
+    drawRoads(sim, [t(sim, 1, 2), t(sim, 2, 3), t(sim, 3, 2)]);
+    linkTiles(sim, t(sim, 1, 2), t(sim, 2, 3));
+    linkTiles(sim, t(sim, 2, 3), t(sim, 3, 2));
     addCar(sim, 0, 1);
     expect(sim.cars[0].route).toEqual([
       t(sim, 1, 2),
       t(sim, 2, 3),
       t(sim, 3, 2),
     ]);
-    placeRoads(sim, [t(sim, 2, 2)]);
+    drawRoads(sim, [t(sim, 1, 2), t(sim, 2, 2), t(sim, 3, 2)]);
     expect(sim.cars[0].route).toEqual([
       t(sim, 1, 2),
       t(sim, 2, 2),
@@ -176,7 +176,7 @@ describe('cars when roads change', () => {
   it('a car keeps its route when a new road does not shorten it', () => {
     const sim = driving();
     const before = sim.cars[0].route;
-    placeRoads(sim, [t(sim, 2, 1)]);
+    drawRoads(sim, [t(sim, 2, 1)]);
     expect(sim.cars[0].route).toEqual(before);
   });
 });

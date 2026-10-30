@@ -1,8 +1,4 @@
-import {
-  BUILDING_COLOR_COUNT,
-  CARS_PER_HOUSE,
-  DEMAND_INTERVAL_TICKS,
-} from './config.ts';
+import { tuning } from './config.ts';
 import { type Grid, isBuildable, isInBounds } from './grid.ts';
 import type { SimState } from './sim.ts';
 
@@ -85,7 +81,7 @@ export function placeBuilding(
   if (
     !Number.isInteger(opts.color) ||
     opts.color < 0 ||
-    opts.color >= BUILDING_COLOR_COUNT
+    opts.color >= tuning.BUILDING_COLOR_COUNT
   ) {
     return { ok: false, reason: 'bad-color' };
   }
@@ -100,14 +96,14 @@ export function placeBuilding(
   state.buildingAt[opts.tile] = id;
   if (opts.kind === 'house') {
     state.homes[id] = {
-      owned: CARS_PER_HOUSE,
-      atHome: CARS_PER_HOUSE,
+      owned: tuning.CARS_PER_HOUSE,
+      atHome: tuning.CARS_PER_HOUSE,
       cooldown: 0,
     };
   } else {
     state.demand[id] = {
       pins: 0,
-      cooldown: DEMAND_INTERVAL_TICKS,
+      cooldown: tuning.DEMAND_INTERVAL_TICKS,
       overflow: 0,
     };
   }

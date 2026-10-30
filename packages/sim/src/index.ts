@@ -3,6 +3,7 @@ export * from './cars.ts';
 export * from './clock.ts';
 export * from './config.ts';
 export * from './demand.ts';
+export * from './expansion.ts';
 export * from './graph.ts';
 export * from './movement.ts';
 export * from './pathfind.ts';

@@ -1,11 +1,6 @@
 import type { Car } from './cars.ts';
-import {
-  CAR_GAP,
-  CAR_SPEED,
-  JUNCTION_MIN_ROADS,
-  TICKS_PER_SECOND,
-} from './config.ts';
-import { DIAGONAL_STEP, type Grid, isDiagonal, linkNeighbors } from './grid.ts';
+import { tuning } from './config.ts';
+import { DIAGONAL_STEP, type Grid, isDiagonal, roadLinks } from './grid.ts';
 import type { SimState } from './sim.ts';
 
 /**
@@ -22,17 +17,15 @@ import type { SimState } from './sim.ts';
  */
 
 const EPSILON = 1e-9;
-const DISTANCE_PER_TICK = CAR_SPEED / TICKS_PER_SECOND;
 
 /** Lane code for "no direction known". */
 const NO_LANE = 9;
 
 function isJunction(state: SimState, tile: number): boolean {
-  let roads = 0;
-  for (const n of linkNeighbors(state.grid, tile)) {
-    if (state.roads[n] === 1) roads += 1;
-  }
-  return roads >= JUNCTION_MIN_ROADS;
+  return (
+    roadLinks(state.roads, state.links, tile).length >=
+    tuning.JUNCTION_MIN_ROADS
+  );
 }
 
 /** A small code for the direction of a step between two adjacent tiles. */
@@ -85,7 +78,7 @@ function roomAhead(state: SimState, car: Car): number {
     if (laneOf(state.grid, d) !== lane) continue;
     const ahead =
       d.along > car.along || (d.along === car.along && d.id < car.id);
-    if (ahead) room = Math.min(room, d.along - CAR_GAP);
+    if (ahead) room = Math.min(room, d.along - tuning.CAR_GAP);
   }
   return Math.max(0, room);
 }
@@ -106,7 +99,7 @@ export function tileOpen(
     if (d === mover || d.route[d.progress] !== tile) continue;
     if (junction) return false;
     if (lane !== null && laneOf(state.grid, d) !== lane) continue;
-    if (d.along < CAR_GAP) return false;
+    if (d.along < tuning.CAR_GAP) return false;
   }
   return true;
 }
@@ -114,7 +107,7 @@ export function tileOpen(
 /** Moves one car as far as its budget and the cars around it allow this tick. Parked cars stay put. */
 function advance(state: SimState, car: Car): void {
   if (car.state === 'parked') return;
-  let budget = DISTANCE_PER_TICK;
+  let budget = tuning.CAR_SPEED / tuning.TICKS_PER_SECOND;
   while (budget > EPSILON) {
     const room = roomAhead(state, car);
     if (car.along < room) {

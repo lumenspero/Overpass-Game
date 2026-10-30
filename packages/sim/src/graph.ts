@@ -1,4 +1,4 @@
-import { type Grid, linkNeighbors } from './grid.ts';
+import { type Links, type Grid, linkNeighbors, roadLinks } from './grid.ts';
 
 /**
  * A road edge is a chain of road tiles between two nodes. Nodes are road tiles
@@ -29,14 +29,14 @@ export function createEmptyGraph(): RoadGraph {
   return { nodes: {}, edges: {}, tileEdge: {} };
 }
 
-function roadNeighbors(grid: Grid, roads: number[], index: number): number[] {
-  return linkNeighbors(grid, index).filter((n) => roads[n] === 1);
+function roadNeighbors(roads: number[], links: Links, index: number): number[] {
+  return roadLinks(roads, links, index);
 }
 
 /** Flood-fills the road tiles connected to `start`, marking them in `visited`. */
 function collectComponent(
-  grid: Grid,
   roads: number[],
+  links: Links,
   start: number,
   visited: Set<number>,
 ): number[] {
@@ -46,7 +46,7 @@ function collectComponent(
   while (stack.length > 0) {
     const current = stack.pop() as number;
     tiles.push(current);
-    for (const n of roadNeighbors(grid, roads, current)) {
+    for (const n of roadNeighbors(roads, links, current)) {
       if (!visited.has(n)) {
         visited.add(n);
         stack.push(n);
@@ -89,12 +89,12 @@ function addEdge(
 /** Builds nodes and edges for one connected set of road tiles. */
 function buildComponent(
   graph: RoadGraph,
-  grid: Grid,
   roads: number[],
+  links: Links,
   tiles: number[],
 ): void {
   let nodeTiles = tiles.filter(
-    (t) => roadNeighbors(grid, roads, t).length !== 2,
+    (t) => roadNeighbors(roads, links, t).length !== 2,
   );
   if (nodeTiles.length === 0) {
     // Pure loop: every tile is pass-through, so promote the smallest one.
@@ -104,13 +104,13 @@ function buildComponent(
   for (const n of nodeTiles) graph.nodes[String(n)] = [];
 
   for (const n of nodeTiles) {
-    for (const first of roadNeighbors(grid, roads, n)) {
+    for (const first of roadNeighbors(roads, links, n)) {
       const interior: number[] = [];
       let prev = n;
       let current = first;
       while (!nodeSet.has(current)) {
         interior.push(current);
-        const next = roadNeighbors(grid, roads, current).find(
+        const next = roadNeighbors(roads, links, current).find(
           (t) => t !== prev,
         );
         if (next === undefined)
@@ -124,16 +124,16 @@ function buildComponent(
 }
 
 /** Builds the road graph from scratch. */
-export function buildRoadGraph(grid: Grid, roads: number[]): RoadGraph {
+export function buildRoadGraph(roads: number[], links: Links): RoadGraph {
   const graph = createEmptyGraph();
   const visited = new Set<number>();
   for (let i = 0; i < roads.length; i++) {
     if (roads[i] === 1 && !visited.has(i)) {
       buildComponent(
         graph,
-        grid,
         roads,
-        collectComponent(grid, roads, i, visited),
+        links,
+        collectComponent(roads, links, i, visited),
       );
     }
   }
@@ -141,14 +141,16 @@ export function buildRoadGraph(grid: Grid, roads: number[]): RoadGraph {
 }
 
 /**
- * Updates the graph after `changed` tiles were added to or removed from the road set.
- * `roads` must already reflect the change. Only the connected components near the
- * changed tiles are rebuilt; the rest of the graph is left untouched.
+ * Updates the graph after `changed` tiles were added to or removed from the road set,
+ * or after a link was added or removed between them. `roads` and `links` must
+ * already reflect the change. Only the connected components near the changed tiles are
+ * rebuilt; the rest of the graph is left untouched.
  */
 export function updateRoadGraph(
   graph: RoadGraph,
   grid: Grid,
   roads: number[],
+  links: Links,
   changed: number[],
 ): void {
   // 1. Tiles whose neighbourhood changed.
@@ -200,9 +202,9 @@ export function updateRoadGraph(
     if (roads[s] === 1 && !visited.has(s)) {
       buildComponent(
         graph,
-        grid,
         roads,
-        collectComponent(grid, roads, s, visited),
+        links,
+        collectComponent(roads, links, s, visited),
       );
     }
   }

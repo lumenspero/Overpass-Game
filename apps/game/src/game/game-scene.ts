@@ -4,8 +4,13 @@ import {
   type Clock,
   createClock,
   createSim,
+  isOpenTile,
+  openDistricts,
   placeBuilding,
   type Grid,
+  SPEED_OPTIONS,
+  setSpeed,
+  type Speed,
   type SimState,
   step,
   summaryOf,
@@ -52,6 +57,8 @@ import {
   terrainTiles,
   ENTRANCE_WIDTH,
 } from '../view/geometry.ts';
+import { createTuningPanel, type TuningPanel } from '../debug/tuning-panel.ts';
+import { lockedTileRects } from '../view/districts.ts';
 import { endLines, hudLine, OVERFLOW_RING_COLOR } from '../view/hud.ts';
 import { overflowRings } from '../view/overflow.ts';
 import {
@@ -64,7 +71,11 @@ import {
   type Controller,
   createController,
 } from './controller.ts';
-import { buildTestGrid, TEST_BUILDINGS } from './test-map.ts';
+import {
+  buildTestDistricts,
+  buildTestGrid,
+  TEST_BUILDINGS,
+} from './test-map.ts';
 
 const TERRAIN_COLOR: Partial<Record<TerrainKind, number>> = {
   [Terrain.Water]: PALETTE.water,
@@ -103,9 +114,10 @@ export class GameScene extends Phaser.Scene {
   private overlayDirty = true;
   private meter!: TickMeter;
   private canvas!: HTMLCanvasElement;
-  /** Diagnostic: how many presses reached the canvas, and the last one. Shown with D. */
-  private pressCount = 0;
-  private lastPress = 'none yet';
+  private lockGfx!: Phaser.GameObjects.Graphics;
+  /** How many districts were open when the map was last drawn. -1 forces a first draw. */
+  private openCount = -1;
+  private panel: TuningPanel | null = null;
 
   constructor() {
     super('game');
@@ -113,15 +125,22 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     const grid: Grid = buildTestGrid();
-    this.sim = createSim({ seed: 1, grid });
+    this.sim = createSim({
+      seed: 1,
+      grid,
+      districts: buildTestDistricts(grid),
+    });
     this.clock = createClock();
     this.mapper = createIntentMapper();
     this.controller = createController(this.sim);
     this.mapSize = worldSize(grid.cols, grid.rows);
     this.view = createFittedCamera(this.mapSize, this.viewport());
+    this.openCount = -1;
+    this.debugOn = false;
 
     this.layer = this.add.container(0, 0);
     const terrainGfx = this.add.graphics();
+    this.lockGfx = this.add.graphics();
     this.buildingGfx = this.add.graphics();
     this.roadGfx = this.add.graphics();
     this.carGfx = this.add.graphics();
@@ -129,6 +148,7 @@ export class GameScene extends Phaser.Scene {
     this.overlayGfx = this.add.graphics().setVisible(false);
     this.layer.add([
       terrainGfx,
+      this.lockGfx,
       this.buildingGfx,
       this.roadGfx,
       this.carGfx,
@@ -181,6 +201,7 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-E', this.toggleTool);
     this.input.keyboard?.on('keydown-D', this.toggleDebug);
     this.input.keyboard?.on('keydown-R', this.restartIfOver);
+    this.input.keyboard?.on('keydown', this.onKey);
     this.scale.on('resize', this.onResize);
     this.events.once('shutdown', this.teardown);
     this.applyTransform();
@@ -197,6 +218,7 @@ export class GameScene extends Phaser.Scene {
       this.drawRoads();
       this.roadsDirty = false;
     }
+    this.syncDistricts();
     this.drawCars(); // cars move every tick, so they are redrawn every frame
     this.drawRings();
     this.hudText.setText(hudLine(this.sim));
@@ -208,8 +230,7 @@ export class GameScene extends Phaser.Scene {
       }
       const rate = sampleTickRate(this.meter, time, this.sim.tick);
       this.debugText.setText(
-        `ticks/s ${rate.toFixed(1)}  tick ${this.sim.tick}  budget ${this.sim.budget}\n` +
-          `presses ${this.pressCount}  last: ${this.lastPress}`,
+        `ticks/s ${rate.toFixed(1)}  tick ${this.sim.tick}  budget ${this.sim.budget}`,
       );
     }
     this.applyTransform();
@@ -246,8 +267,6 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     const sample = this.sample(e);
-    this.pressCount += 1;
-    this.lastPress = `${sample.kind} button ${sample.button} at ${Math.round(sample.x)},${Math.round(sample.y)}`;
     try {
       this.canvas.setPointerCapture(e.pointerId);
     } catch {
@@ -360,11 +379,11 @@ export class GameScene extends Phaser.Scene {
   private drawBuildings(): void {
     const gfx = this.buildingGfx;
     gfx.clear();
-    for (const s of buildingShapes(
-      this.sim.buildings,
-      this.sim.grid,
-      BUILDING_COLORS,
-    )) {
+    // Buildings in a locked district are hidden until it opens.
+    const visible = this.sim.buildings.filter((b) =>
+      isOpenTile(this.sim, b.tile),
+    );
+    for (const s of buildingShapes(visible, this.sim.grid, BUILDING_COLORS)) {
       if (s.kind === 'square') {
         gfx.fillStyle(s.color, 1);
         gfx.fillRect(s.x, s.y, s.size, s.size);
@@ -382,7 +401,7 @@ export class GameScene extends Phaser.Scene {
     const gfx = this.roadGfx;
     gfx.clear();
     gfx.fillStyle(PALETTE.road, 1);
-    for (const s of roadShapes(this.sim.grid, this.sim.roads)) {
+    for (const s of roadShapes(this.sim.grid, this.sim.roads, this.sim.links)) {
       if (s.kind === 'circle') gfx.fillCircle(s.x, s.y, s.r);
       else if (s.kind === 'rect') gfx.fillRect(s.x, s.y, s.w, s.h);
       else {
@@ -455,11 +474,55 @@ export class GameScene extends Phaser.Scene {
     );
   }
 
+  /** Keys 1 to 4 pick a speed, when the key matches one of the speed options. */
+  private onKey = (e: KeyboardEvent): void => {
+    const speed = SPEED_OPTIONS.find((s) => String(s) === e.key);
+    if (speed !== undefined) this.setGameSpeed(speed);
+  };
+
+  private setGameSpeed(speed: Speed): void {
+    setSpeed(this.clock, speed);
+    this.panel?.setSpeed(speed);
+  }
+
+  /** Redraws the dimmed land and the buildings when a district opens. */
+  private syncDistricts(): void {
+    const open = openDistricts(this.sim.tick);
+    if (open === this.openCount) return;
+    this.openCount = open;
+    this.drawLocks();
+    this.drawBuildings();
+  }
+
+  private drawLocks(): void {
+    const gfx = this.lockGfx;
+    gfx.clear();
+    gfx.fillStyle(0x000000, 0.45);
+    for (const r of lockedTileRects(
+      this.sim.grid,
+      this.sim.districtOf,
+      this.sim.tick,
+    )) {
+      gfx.fillRect(r.x, r.y, r.w, r.h);
+    }
+  }
+
+  /** The debug panel and the overlays it goes with. D toggles all of them. */
   private toggleDebug = (): void => {
     this.debugOn = !this.debugOn;
     this.overlayGfx.setVisible(this.debugOn);
     this.debugText.setVisible(this.debugOn);
     this.overlayDirty = true;
+    if (this.debugOn) {
+      this.panel = createTuningPanel({
+        onSpeed: (s) => this.setGameSpeed(s),
+        onRestart: () => this.scene.restart(),
+      });
+      this.panel.setSpeed(this.clock.speed);
+    } else {
+      this.panel?.destroy();
+      this.panel = null;
+    }
   };
 
   /** Grid, graph edges and nodes, all read from the sim's own road graph. */
@@ -485,6 +548,9 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown-E', this.toggleTool);
     this.input.keyboard?.off('keydown-D', this.toggleDebug);
     this.input.keyboard?.off('keydown-R', this.restartIfOver);
+    this.input.keyboard?.off('keydown', this.onKey);
+    this.panel?.destroy();
+    this.panel = null;
     this.scale.off('resize', this.onResize);
   };
 }

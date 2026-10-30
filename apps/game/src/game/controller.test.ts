@@ -1,194 +1,183 @@
 import {
   createGrid,
   createSim,
-  Terrain,
-  type TerrainKind,
+  findRoute,
+  hasLink,
+  linkPartners,
+  linkTiles,
+  placeRoads,
+  type SimState,
 } from '@overpass-game/sim';
 import { describe, expect, it } from 'vitest';
-import type { Intent, StrokeMode } from '../input/intents.ts';
-import {
-  applyIntent,
-  createController,
-  type Controller,
-} from './controller.ts';
+import { applyIntent, createController } from './controller.ts';
 
-// In these tests a point is a tile's coordinates: move(2, 2) is the centre of tile (2, 2).
-const identity = (p: { x: number; y: number }) => ({
-  x: p.x + 0.5,
-  y: p.y + 0.5,
-});
+const COLS = 8;
+const idx = (x: number, y: number) => y * COLS + x;
+const identity = (p: { x: number; y: number }) => ({ x: p.x, y: p.y });
 
-function setup(
-  opts: {
-    cols?: number;
-    rows?: number;
-    budget?: number;
-    blocked?: Array<[number, number, TerrainKind]>;
-  } = {},
-): Controller {
-  const grid = createGrid(opts.cols ?? 6, opts.rows ?? 4, Terrain.Land);
-  for (const [x, y, kind] of opts.blocked ?? []) {
-    grid.terrain[y * grid.cols + x] = kind;
+function world(): SimState {
+  return createSim({ seed: 1, grid: createGrid(COLS, COLS), roadBudget: 100 });
+}
+
+/** Presses at `from` and drags through each point in turn, as a mouse would. */
+function drag(
+  sim: SimState,
+  mode: 'draw' | 'erase',
+  from: { x: number; y: number },
+  points: Array<{ x: number; y: number }>,
+): void {
+  const ctl = createController(sim);
+  applyIntent(ctl, { type: 'stroke-begin', mode, at: from }, identity);
+  for (const p of points) {
+    applyIntent(ctl, { type: 'stroke-move', at: p }, identity);
   }
-  const sim = createSim({ seed: 1, grid, roadBudget: opts.budget ?? 20 });
-  return createController(sim);
+  applyIntent(ctl, { type: 'stroke-end' }, identity);
 }
 
-function run(ctl: Controller, intents: Intent[]): boolean[] {
-  return intents.map((i) => applyIntent(ctl, i, identity));
-}
-
-const begin = (mode: StrokeMode, x: number, y: number): Intent => ({
-  type: 'stroke-begin',
-  mode,
-  at: { x, y },
-});
-const move = (x: number, y: number): Intent => ({
-  type: 'stroke-move',
-  at: { x, y },
-});
-const roadTiles = (ctl: Controller): number[] =>
-  ctl.sim.roads.flatMap((r, i) => (r === 1 ? [i] : []));
-
-describe('drawing', () => {
-  it('a tap places one road tile', () => {
-    const ctl = setup();
-    run(ctl, [begin('draw', 2, 1), { type: 'stroke-end' }]);
-    expect(roadTiles(ctl)).toEqual([1 * 6 + 2]);
-    expect(ctl.sim.budget).toBe(19);
-  });
-
-  it('a drag places every tile along the path and charges each once', () => {
-    const ctl = setup();
-    run(ctl, [begin('draw', 0, 0), move(3, 0), { type: 'stroke-end' }]);
-    expect(roadTiles(ctl)).toEqual([0, 1, 2, 3]);
-    expect(ctl.sim.budget).toBe(16);
-  });
-
-  it('a diagonal drag produces a 4-connected road', () => {
-    const ctl = setup();
-    run(ctl, [begin('draw', 0, 0), move(2, 2), { type: 'stroke-end' }]);
-    // A diagonal drag is a diagonal road: three tiles, with no filler tiles.
-    expect(roadTiles(ctl)).toHaveLength(3);
-    // One connected road: two end nodes, one edge through the middle tile.
-    expect(Object.keys(ctl.sim.graph.nodes)).toHaveLength(2);
-    expect(Object.keys(ctl.sim.graph.edges)).toHaveLength(1);
-  });
-
-  it('does not charge for tiles that are already roads', () => {
-    const ctl = setup();
-    run(ctl, [begin('draw', 0, 0), move(1, 0), { type: 'stroke-end' }]);
-    run(ctl, [begin('draw', 0, 0), move(2, 0), { type: 'stroke-end' }]);
-    expect(roadTiles(ctl)).toEqual([0, 1, 2]);
-    expect(ctl.sim.budget).toBe(17);
-  });
-
-  it('stops at water and keeps the roads already placed', () => {
-    const ctl = setup({ blocked: [[3, 0, Terrain.Water]] });
-    run(ctl, [begin('draw', 0, 0), move(5, 0), move(5, 0)]);
-    expect(roadTiles(ctl)).toEqual([0, 1, 2]);
-    expect(ctl.sim.budget).toBe(17);
-  });
-
-  it('a stroke halted by water stays halted until a new stroke begins', () => {
-    const ctl = setup({ blocked: [[2, 0, Terrain.Mountain]] });
-    run(ctl, [begin('draw', 0, 0), move(3, 0)]);
-    expect(run(ctl, [move(3, 0)])).toEqual([false]);
-    run(ctl, [
-      { type: 'stroke-end' },
-      begin('draw', 3, 0),
-      { type: 'stroke-end' },
+describe('drawing a path', () => {
+  it('a branch dragged off a straight road joins only the tile it starts from', () => {
+    const sim = world();
+    drag(
+      sim,
+      'draw',
+      { x: 0.5, y: 4.5 },
+      [1.5, 2.5, 3.5, 4.5].map((x) => ({ x, y: 4.5 })),
+    );
+    drag(sim, 'draw', { x: 2.5, y: 4.5 }, [
+      { x: 2.5, y: 3.5 },
+      { x: 2.5, y: 2.5 },
     ]);
-    expect(roadTiles(ctl)).toEqual([0, 1, 3]);
+    expect(sim.roads[idx(2, 2)]).toBe(1);
+    // The new tiles link only along the branch: nothing reaches across to the straight road.
+    expect(linkPartners(sim.links, idx(2, 3)).sort((a, b) => a - b)).toEqual(
+      [idx(2, 2), idx(2, 4)].sort((a, b) => a - b),
+    );
+    expect(linkPartners(sim.links, idx(2, 2))).toEqual([idx(2, 3)]);
+    expect(
+      findRoute(sim.grid, sim.roads, sim.links, idx(2, 2), idx(1, 4)),
+    ).toEqual([idx(2, 2), idx(2, 3), idx(2, 4), idx(1, 4)]);
   });
 
-  it('stops when the budget runs out', () => {
-    const ctl = setup({ budget: 2 });
-    run(ctl, [begin('draw', 0, 0), move(4, 0), { type: 'stroke-end' }]);
-    expect(roadTiles(ctl)).toEqual([0, 1]);
-    expect(ctl.sim.budget).toBe(0);
-  });
-
-  it('never leaves the grid', () => {
-    const ctl = setup();
-    run(ctl, [begin('draw', -2, 0), move(2, 0)]);
-    expect(roadTiles(ctl)).toEqual([]);
-  });
-});
-
-describe('erasing', () => {
-  it('removes roads along the path and refunds each one', () => {
-    const ctl = setup();
-    run(ctl, [begin('draw', 0, 0), move(3, 0), { type: 'stroke-end' }]);
-    run(ctl, [begin('erase', 0, 0), move(3, 0), { type: 'stroke-end' }]);
-    expect(roadTiles(ctl)).toEqual([]);
-    expect(ctl.sim.budget).toBe(20);
-  });
-
-  it('erasing empty tiles changes nothing', () => {
-    const ctl = setup();
-    expect(run(ctl, [begin('erase', 4, 3), { type: 'stroke-end' }])).toEqual([
-      false,
-      false,
+  it('an extension dragged straight down keeps the diagonal beside a bend', () => {
+    const sim = world();
+    // Vertical road down x=4, drawn in one drag, then the diagonal drawn off its bend at (4,4).
+    drag(
+      sim,
+      'draw',
+      { x: 4.5, y: 0.5 },
+      [1.5, 2.5, 3.5, 4.5].map((y) => ({ x: 4.5, y })),
+    );
+    drag(sim, 'draw', { x: 4.5, y: 4.5 }, [
+      { x: 3.5, y: 5.5 },
+      { x: 2.5, y: 6.5 },
     ]);
-    expect(ctl.sim.budget).toBe(20);
-  });
-});
+    expect(hasLink(sim.links, idx(4, 4), idx(3, 5))).toBe(true);
 
-describe('cancel', () => {
-  it('rolls back a drawn stroke completely, budget included', () => {
-    const ctl = setup();
-    run(ctl, [begin('draw', 0, 0), move(3, 0), { type: 'stroke-cancel' }]);
-    expect(roadTiles(ctl)).toEqual([]);
-    expect(ctl.sim.budget).toBe(20);
-    expect(Object.keys(ctl.sim.graph.edges)).toHaveLength(0);
-    expect(ctl.stroke).toBeNull();
-  });
-
-  it('restores roads a cancelled erase stroke had removed', () => {
-    const ctl = setup();
-    run(ctl, [begin('draw', 0, 0), move(2, 0), { type: 'stroke-end' }]);
-    run(ctl, [begin('erase', 0, 0), move(2, 0), { type: 'stroke-cancel' }]);
-    expect(roadTiles(ctl)).toEqual([0, 1, 2]);
-    expect(ctl.sim.budget).toBe(17);
+    // Now drag straight down from the vertical part, past the bend.
+    drag(
+      sim,
+      'draw',
+      { x: 4.5, y: 2.5 },
+      [3.5, 4.5, 5.5, 6.5].map((y) => ({ x: 4.5, y })),
+    );
+    expect(sim.roads[idx(4, 5)]).toBe(1);
+    expect(sim.roads[idx(4, 6)]).toBe(1);
+    // The extension links only along its own drag: it does not snap to the diagonal's tile beside it.
+    expect(hasLink(sim.links, idx(4, 5), idx(3, 5))).toBe(false);
+    // The diagonal still starts at the bend, and still reaches its far end.
+    expect(hasLink(sim.links, idx(4, 4), idx(3, 5))).toBe(true);
+    expect(
+      findRoute(sim.grid, sim.roads, sim.links, idx(4, 4), idx(2, 6)),
+    ).not.toBeNull();
   });
 
-  it('a cancel after a completed stroke leaves that stroke alone', () => {
-    const ctl = setup();
-    run(ctl, [begin('draw', 0, 0), move(1, 0), { type: 'stroke-end' }]);
-    run(ctl, [{ type: 'stroke-cancel' }]);
-    expect(roadTiles(ctl)).toEqual([0, 1]);
-  });
-
-  it('a cancel with no stroke does nothing', () => {
-    const ctl = setup();
-    expect(run(ctl, [{ type: 'stroke-cancel' }])).toEqual([false]);
-  });
-});
-
-describe('settling near tile centres', () => {
-  it('a wobbling diagonal drag leaves only the diagonal tiles', () => {
-    const ctl = setup();
-    // Pointer positions in tile units, given to move() as offsets from a centre.
-    // (1.0, 0.9) and (2.0, 1.6) brush the edges of neighbouring tiles, so they take nothing.
-    run(ctl, [
-      begin('draw', 0, 0),
-      move(0.5, 0.4), // (1.0, 0.9): near the edge of tile (1,0)
-      move(1, 1), // (1.5, 1.5): settles on tile (1,1)
-      move(1.5, 1.1), // (2.0, 1.6): near the edge of tile (2,1)
-      move(2, 2), // (2.5, 2.5): settles on tile (2,2)
-      { type: 'stroke-end' },
+  it('a diagonal drag links each diagonal step it draws', () => {
+    const sim = world();
+    drag(sim, 'draw', { x: 0.5, y: 0.5 }, [
+      { x: 1.5, y: 1.5 },
+      { x: 2.5, y: 2.5 },
     ]);
-    // On a 6-column grid: (0,0) = 0, (1,1) = 7, (2,2) = 14.
-    expect(roadTiles(ctl)).toEqual([0, 7, 14]);
+    expect(hasLink(sim.links, idx(0, 0), idx(1, 1))).toBe(true);
+    expect(hasLink(sim.links, idx(1, 1), idx(2, 2))).toBe(true);
   });
 });
 
-describe('settle radius', () => {
-  it('a pointer in a tile corner, away from its centre, takes nothing', () => {
-    const ctl = setup();
-    // (1.69, 1.21) is inside tile (1,1) but 0.35 tiles from its centre: outside the radius.
-    run(ctl, [begin('draw', 0, 0), move(1.19, 0.71), { type: 'stroke-end' }]);
-    expect(roadTiles(ctl)).toEqual([0]);
+describe('cancelling and erasing', () => {
+  it('cancelling a stroke removes the roads and links it drew', () => {
+    const sim = world();
+    const ctl = createController(sim);
+    applyIntent(
+      ctl,
+      { type: 'stroke-begin', mode: 'draw', at: { x: 0.5, y: 0.5 } },
+      identity,
+    );
+    applyIntent(ctl, { type: 'stroke-move', at: { x: 1.5, y: 1.5 } }, identity);
+    applyIntent(ctl, { type: 'stroke-cancel' }, identity);
+    expect(sim.roads[idx(0, 0)]).toBe(0);
+    expect(sim.roads[idx(1, 1)]).toBe(0);
+    expect(Object.keys(sim.links)).toHaveLength(0);
+    expect(sim.budget).toBe(100);
+  });
+
+  it('cancelling an erase stroke restores the corner links it removed', () => {
+    const sim = world();
+    placeRoads(sim, [idx(0, 0), idx(1, 1)]);
+    linkTiles(sim, idx(0, 0), idx(1, 1));
+    const ctl = createController(sim);
+    applyIntent(
+      ctl,
+      { type: 'stroke-begin', mode: 'erase', at: { x: 0.5, y: 0.5 } },
+      identity,
+    );
+    applyIntent(ctl, { type: 'stroke-cancel' }, identity);
+    expect(sim.roads[idx(0, 0)]).toBe(1);
+    expect(hasLink(sim.links, idx(0, 0), idx(1, 1))).toBe(true);
+  });
+});
+
+describe('links that add no road', () => {
+  it('a move that only links two existing roads reports a change, so the view redraws', () => {
+    const sim = world();
+    placeRoads(sim, [idx(0, 0), idx(1, 0)]);
+    const ctl = createController(sim);
+    applyIntent(
+      ctl,
+      { type: 'stroke-begin', mode: 'draw', at: { x: 0.5, y: 0.5 } },
+      identity,
+    );
+    const changed = applyIntent(
+      ctl,
+      { type: 'stroke-move', at: { x: 1.5, y: 0.5 } },
+      identity,
+    );
+    expect(changed).toBe(true);
+    expect(hasLink(sim.links, idx(0, 0), idx(1, 0))).toBe(true);
+  });
+
+  it('releasing off a tile centre still links the last tile of a loop back onto the main road', () => {
+    const sim = world();
+    drag(
+      sim,
+      'draw',
+      { x: 4.5, y: 0.5 },
+      [1.5, 2.5, 3.5, 4.5, 5.5].map((y) => ({ x: 4.5, y })),
+    );
+    // Loop out to the right and back towards the main road at (4,4), releasing off its centre.
+    const ctl = createController(sim);
+    applyIntent(
+      ctl,
+      { type: 'stroke-begin', mode: 'draw', at: { x: 4.5, y: 2.5 } },
+      identity,
+    );
+    for (const p of [
+      { x: 5.5, y: 2.5 },
+      { x: 5.5, y: 3.5 },
+      { x: 5.5, y: 4.5 },
+      { x: 4.8, y: 4.5 },
+    ]) {
+      applyIntent(ctl, { type: 'stroke-move', at: p }, identity);
+    }
+    applyIntent(ctl, { type: 'stroke-end', at: { x: 4.8, y: 4.5 } }, identity);
+    expect(hasLink(sim.links, idx(5, 4), idx(4, 4))).toBe(true);
   });
 });

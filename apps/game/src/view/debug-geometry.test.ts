@@ -3,6 +3,7 @@ import {
   buildRoadGraph,
   createGrid,
   createSim,
+  linkTiles,
   placeRoads,
   removeRoads,
   type RoadGraph,
@@ -58,7 +59,7 @@ describe('debugShapes', () => {
   });
 
   it('draws one node per graph node and one segment per edge step', () => {
-    // A T whose arms touch at corners: every tile where the links change is a node.
+    // A T whose arms touch at links: every tile where the links change is a node.
     const s = sim(5, 5, [2, 7, 12, 11, 13]);
     const shapes = debugShapes(s.grid, s.graph);
     expect(shapes.nodes).toHaveLength(Object.keys(s.graph.nodes).length);
@@ -76,12 +77,17 @@ describe('debugShapes', () => {
     expect([...drawn].sort((a, b) => a - b)).toEqual(roads);
   });
 
-  it('shows a 2×2 block as four linked junctions with six edges', () => {
-    // Every tile touches the other three, so each is a junction and each pair has an edge.
+  it('shows a 2×2 block as a loop with no junctions', () => {
+    // Four tiles drawn round in a closed drag: each tile has two links, so no junctions.
     const s = sim(4, 4, [5, 6, 10, 9]);
+    linkTiles(s, 5, 6);
+    linkTiles(s, 6, 10);
+    linkTiles(s, 10, 9);
+    linkTiles(s, 9, 5);
     const shapes = debugShapes(s.grid, s.graph);
-    expect(shapes.nodes).toHaveLength(4);
-    expect(shapes.edges).toHaveLength(6);
+    expect(shapes.nodes).toHaveLength(1);
+    // One edge of four steps, so four segments.
+    expect(shapes.edges).toHaveLength(4);
     expect(tilesDrawn(s, s.graph).size).toBe(4);
   });
 
@@ -89,7 +95,7 @@ describe('debugShapes', () => {
     const s = sim(6, 4, [0, 1, 2, 8, 14, 15]);
     removeRoads(s, [1]);
     placeRoads(s, [3, 9]);
-    const rebuilt = buildRoadGraph(s.grid, s.roads);
+    const rebuilt = buildRoadGraph(s.roads, s.links);
     // Edge order depends on build order, so compare the shapes as sets.
     const sorted = (shapes: ReturnType<typeof debugShapes>) => ({
       grid: shapes.grid.map((g) => JSON.stringify(g)).sort(),

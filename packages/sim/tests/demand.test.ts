@@ -3,13 +3,12 @@ import {
   DEMAND_INTERVAL_TICKS,
   createSim,
   placeBuilding,
-  placeRoads,
   removeRoads,
   step,
   unclaimedPins,
   type SimState,
 } from '../src/index.ts';
-import { at, makeGrid } from './helpers.ts';
+import { at, drawRoads, makeGrid } from './helpers.ts';
 
 /** House at (0,2) facing east, destination at (4,2) facing west, road between them on row 2. */
 function world(withRoad = true): SimState {
@@ -27,7 +26,7 @@ function world(withRoad = true): SimState {
     entrance: 'w',
   });
   if (withRoad) {
-    placeRoads(sim, [
+    drawRoads(sim, [
       at(sim.grid, 1, 2),
       at(sim.grid, 2, 2),
       at(sim.grid, 3, 2),

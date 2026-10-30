@@ -1,7 +1,9 @@
 import { ROAD_WIDTH_TILES, TILE_SIZE } from '@overpass-game/render-style';
 import {
+  addLink,
   type Building,
   type Car,
+  type Links,
   createGrid,
   Terrain,
 } from '@overpass-game/sim';
@@ -20,6 +22,14 @@ const centre = (col: number, row: number) => ({
   y: (row + 0.5) * TILE_SIZE,
 });
 
+/** Links between the given pairs of tiles, as the sim stores them. */
+function linked(pairs: Array<[number, number]>): Links {
+  const links: Links = {};
+  for (const [a, b] of pairs) addLink(links, a, b);
+  return links;
+}
+const NONE: Links = {};
+
 function roadsFrom(cols: number, rows: number, tiles: number[]): number[] {
   const roads = new Array<number>(cols * rows).fill(0);
   for (const i of tiles) roads[i] = 1;
@@ -29,37 +39,52 @@ function roadsFrom(cols: number, rows: number, tiles: number[]): number[] {
 describe('roadShapes', () => {
   it('draws a single tile as one disc and no bars', () => {
     const grid = createGrid(3, 3);
-    const shapes = roadShapes(grid, roadsFrom(3, 3, [4]));
+    const shapes = roadShapes(grid, roadsFrom(3, 3, [4]), NONE);
     expect(shapes).toEqual([{ kind: 'circle', ...centre(1, 1), r: R }]);
   });
 
-  it('draws a disc on every road tile and one bar per adjacent pair', () => {
+  it('draws a disc on every road tile and one bar per link', () => {
     const grid = createGrid(4, 1);
-    const shapes = roadShapes(grid, roadsFrom(4, 1, [0, 1, 2]));
+    const shapes = roadShapes(
+      grid,
+      roadsFrom(4, 1, [0, 1, 2]),
+      linked([
+        [0, 1],
+        [1, 2],
+      ]),
+    );
     const discs = shapes.filter((s) => s.kind === 'circle');
-    const bars = shapes.filter((s) => s.kind === 'rect');
+    const bars = shapes.filter((s) => s.kind === 'line');
     expect(discs).toHaveLength(3);
     expect(bars).toHaveLength(2);
     expect(bars[0]).toEqual({
-      kind: 'rect',
-      x: centre(0, 0).x,
-      y: centre(0, 0).y - R,
-      w: TILE_SIZE,
-      h: 2 * R,
+      kind: 'line',
+      x1: centre(0, 0).x,
+      y1: centre(0, 0).y,
+      x2: centre(1, 0).x,
+      y2: centre(1, 0).y,
+      w: 2 * R,
     });
   });
 
   it('rounds an L-shaped corner with a disc at the corner tile', () => {
     const grid = createGrid(2, 2);
-    const shapes = roadShapes(grid, roadsFrom(2, 2, [0, 1, 3]));
+    const shapes = roadShapes(
+      grid,
+      roadsFrom(2, 2, [0, 1, 3]),
+      linked([
+        [0, 1],
+        [1, 3],
+      ]),
+    );
     const corner = centre(1, 0);
     expect(shapes).toContainEqual({ kind: 'circle', ...corner, r: R });
-    expect(shapes.filter((s) => s.kind === 'rect')).toHaveLength(2);
+    expect(shapes.filter((s) => s.kind === 'line')).toHaveLength(2);
   });
 
   it('bridges diagonal tiles with one diagonal bar, and no edge bars', () => {
     const grid = createGrid(2, 2);
-    const shapes = roadShapes(grid, roadsFrom(2, 2, [0, 3]));
+    const shapes = roadShapes(grid, roadsFrom(2, 2, [0, 3]), linked([[0, 3]]));
     expect(shapes.filter((s) => s.kind === 'rect')).toHaveLength(0);
     expect(shapes.filter((s) => s.kind === 'line')).toEqual([
       {
@@ -75,20 +100,20 @@ describe('roadShapes', () => {
 
   it('draws a diagonal bar on the down-left pair too', () => {
     const grid = createGrid(2, 2);
-    const shapes = roadShapes(grid, roadsFrom(2, 2, [1, 2]));
+    const shapes = roadShapes(grid, roadsFrom(2, 2, [1, 2]), linked([[1, 2]]));
     expect(shapes.filter((s) => s.kind === 'line')).toHaveLength(1);
   });
 
   it('does not join the end of one row to the start of the next', () => {
     // Tiles 2 and 3 are index-adjacent but sit at the row break.
     const grid = createGrid(3, 2);
-    const shapes = roadShapes(grid, roadsFrom(3, 2, [2, 3]));
+    const shapes = roadShapes(grid, roadsFrom(3, 2, [2, 3]), NONE);
     expect(shapes.filter((s) => s.kind === 'rect')).toHaveLength(0);
   });
 
   it('draws nothing for an empty map', () => {
     const grid = createGrid(3, 3);
-    expect(roadShapes(grid, roadsFrom(3, 3, []))).toEqual([]);
+    expect(roadShapes(grid, roadsFrom(3, 3, []), NONE)).toEqual([]);
   });
 });
 

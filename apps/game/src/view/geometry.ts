@@ -2,6 +2,7 @@ import { ROAD_WIDTH_TILES, TILE_SIZE } from '@overpass-game/render-style';
 import {
   type Building,
   type Car,
+  type Links,
   type Grid,
   Terrain,
   type TerrainKind,
@@ -19,50 +20,39 @@ export type RoadShape =
 
 /**
  * Shapes that cover every road tile. Each tile gets a disc at its centre, which
- * rounds every end, junction and corner. Each pair of adjacent road tiles gets a bar
- * between their centres, the same width as the disc diameter: a rectangle for an edge
- * pair, a diagonal line for a corner pair. Filled opaquely, the union looks like one
- * rounded road network.
+ * rounds every end and junction. Each stored link gets a bar between its two tile
+ * centres, the same width as the disc diameter, so an edge link is a rectangle and a
+ * corner link a diagonal line. Filled opaquely, the union looks like one rounded road network.
  */
-export function roadShapes(grid: Grid, roads: readonly number[]): RoadShape[] {
+export function roadShapes(
+  grid: Grid,
+  roads: readonly number[],
+  links: Links,
+): RoadShape[] {
   const r = (ROAD_WIDTH_TILES * TILE_SIZE) / 2;
   const out: RoadShape[] = [];
+  const centre = (i: number) => ({
+    x: ((i % grid.cols) + 0.5) * TILE_SIZE,
+    y: (Math.floor(i / grid.cols) + 0.5) * TILE_SIZE,
+  });
   for (let i = 0; i < roads.length; i++) {
     if (roads[i] !== 1) continue;
-    const x = i % grid.cols;
-    const y = Math.floor(i / grid.cols);
-    const cx = (x + 0.5) * TILE_SIZE;
-    const cy = (y + 0.5) * TILE_SIZE;
-    out.push({ kind: 'circle', x: cx, y: cy, r });
-    // Bars go right and down only, so each adjacent pair is drawn once.
-    if (x + 1 < grid.cols && roads[i + 1] === 1) {
-      out.push({ kind: 'rect', x: cx, y: cy - r, w: TILE_SIZE, h: 2 * r });
-    }
-    if (y + 1 < grid.rows && roads[i + grid.cols] === 1) {
-      out.push({ kind: 'rect', x: cx - r, y: cy, w: 2 * r, h: TILE_SIZE });
-    }
-    // Corner pairs: down-right and down-left, each drawn once.
-    if (
-      x + 1 < grid.cols &&
-      y + 1 < grid.rows &&
-      roads[i + grid.cols + 1] === 1
-    ) {
+    const c = centre(i);
+    out.push({ kind: 'circle', x: c.x, y: c.y, r });
+  }
+  // Each link once: from the tile to a partner further on in the index.
+  for (const key of Object.keys(links)) {
+    const a = Number(key);
+    for (const b of links[key]) {
+      if (b <= a) continue;
+      const from = centre(a);
+      const to = centre(b);
       out.push({
         kind: 'line',
-        x1: cx,
-        y1: cy,
-        x2: cx + TILE_SIZE,
-        y2: cy + TILE_SIZE,
-        w: 2 * r,
-      });
-    }
-    if (x > 0 && y + 1 < grid.rows && roads[i + grid.cols - 1] === 1) {
-      out.push({
-        kind: 'line',
-        x1: cx,
-        y1: cy,
-        x2: cx - TILE_SIZE,
-        y2: cy + TILE_SIZE,
+        x1: from.x,
+        y1: from.y,
+        x2: to.x,
+        y2: to.y,
         w: 2 * r,
       });
     }

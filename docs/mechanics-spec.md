@@ -24,7 +24,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 ### Roads and road graph
 
-- **Adjacency:** two road tiles connect when they share an edge or a corner. A corner link is a diagonal road. Roads have no separate connection points. `approximated`
+- **Adjacency:** two road tiles are linked only when a drag stepped between them, across an edge or a corner. Each step of a drag links its two tiles. Placing a road never links it to a neighbour, so two roads side by side do not join unless a drag joins them, and a branch dragged off a straight road joins only the tile it starts from. A corner link is a diagonal road. Roads have no separate connection points. `approximated`
 - **Graph nodes:** dead ends, junctions, isolated road tiles, and one representative tile for any closed loop with no node.
 - **Graph edges:** chains of pass-through road tiles between nodes. Each edge stores its interior tiles and its length in steps (interior tiles + 1).
 - **Updates:** after a change, only the connected road components next to the changed tiles are rebuilt. The result always matches a full rebuild. Tested with 500 random edits per seed.
@@ -39,7 +39,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 ### Cars and routing
 
-- **Routes:** a car's route is the list of road tiles from where it is to where it is going, both ends included. Routes step between road tiles that share an edge or a corner. An edge step costs 1 tile and a corner step costs √2. Routes are shortest by that cost. `approximated`
+- **Routes:** a car's route is the list of road tiles from where it is to where it is going, both ends included. Routes step only along links, so between road tiles that a drag joined. An edge step costs 1 tile and a corner step costs √2. Routes are shortest by that cost. `approximated`
 - **Planning:** A* over road tiles, every step costs 1, Manhattan distance as the estimate. Ties go to the lower tile index, so the same roads always give the same route. `approximated`
 - **Car states (M3):** driving to a destination, or returning to its house. `approximated`
 - **Route broken, car still on a road:** the car plans a new route to its goal. If none exists, it goes home. `approximated`
@@ -72,7 +72,22 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 - **Score:** trips completed. A trip counts when a car reaches its destination and uses up a pin. A car sent home without arriving doesn't count. `approximated`
 - **Weeks:** the clock counts weeks of `WEEK_TICKS` ticks from week 1. A finished game reports the week it ended in. `approximated`
-- **Not yet:** the map expansion schedule. Weekly rewards are in M5.
+- **End screen:** shows the week reached and trips completed. Pins served are the same number as trips, so they aren't shown separately. Roads placed is not shown, since the original doesn't report it.
+- **Weekly rewards** are in M5.
+
+### Expansion
+
+- **Districts:** the map is split into districts numbered from 0. District 0 is open at the start. `EXPANSION_WEEKS` opens the next district at each listed week, so `[3, 6]` opens district 1 at week 3 and district 2 at week 6. `approximated`
+- **Locked land:** tiles in a district that isn't open take no roads. Buildings on locked land are inactive (they send and collect nothing) and are hidden. The land is dimmed.
+- **Opening only:** districts never close. A district beyond the schedule stays locked for the whole game (for example, land across a river until bridges in M5).
+- **Test map:** three districts west of the river, plus one east of it that stays locked.
+
+### Debug panel
+
+- Not a player feature. It is a playtesting aid, toggled with D.
+- Each slider sets one value in `config.ts` live, so a change takes effect on the next tick. Starting values (road budget, cars per house, building colours) apply to a new run, so use Restart run after changing them. Reset values puts every slider back to its default.
+- Speed: buttons or keys 1 to 4 set the clock to 1×, 2×, 4× or 8×.
+- Not included: click-to-spawn. It was a testing aid that doesn't match the intended game.
 
 ### Overflow
 

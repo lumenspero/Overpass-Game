@@ -1,9 +1,20 @@
 import type { Building, Demand, Home } from './buildings.ts';
 import { type Car, onRoadsChanged } from './cars.ts';
-import { ROAD_BUDGET_START } from './config.ts';
+import { tuning } from './config.ts';
 import { generateDemand, updateOverflow } from './demand.ts';
+import { isOpenTile } from './expansion.ts';
 import { buildRoadGraph, type RoadGraph, updateRoadGraph } from './graph.ts';
-import { type Grid, isBuildable, isInBounds } from './grid.ts';
+import {
+  addLink,
+  type Links,
+  dropLinksOf,
+  type Grid,
+  hasLink,
+  isBuildable,
+  isAdjacent,
+  isInBounds,
+  removeLink,
+} from './grid.ts';
 import { moveCars } from './movement.ts';
 import { createRng, type RngState } from './rng.ts';
 import { spawnCars, updateTrips } from './trips.ts';
@@ -15,11 +26,15 @@ export interface SimState {
   grid: Grid;
   /** One entry per grid tile: 1 if a road is on it, 0 otherwise. */
   roads: number[];
+  /** Links between road tiles, each made by a step a drag took (spec: Roads). */
+  links: Links;
   budget: number;
   graph: RoadGraph;
   buildings: Building[];
   /** One entry per grid tile: the id of the building on it, or -1. */
   buildingAt: number[];
+  /** One entry per grid tile: the district it belongs to (spec: Expansion). */
+  districtOf: number[];
   /** Car bookkeeping for each house, keyed by building id. */
   homes: Record<number, Home>;
   /** Demand bookkeeping for each destination, keyed by building id. */
@@ -43,27 +58,36 @@ export interface CreateSimOptions {
   seed: number;
   grid: Grid;
   roadBudget?: number;
+  /** District of each tile. Defaults to district 0 everywhere, so the whole map is open. */
+  districts?: number[];
 }
 
 export type PlaceResult =
   | { ok: true; added: number }
-  | { ok: false; reason: 'out-of-bounds' | 'unbuildable' | 'no-budget' };
+  | {
+      ok: false;
+      reason: 'out-of-bounds' | 'unbuildable' | 'locked' | 'no-budget';
+    };
 
 export function createSim({
   seed,
   grid,
-  roadBudget = ROAD_BUDGET_START,
+  roadBudget = tuning.ROAD_BUDGET_START,
+  districts,
 }: CreateSimOptions): SimState {
   const roads = new Array<number>(grid.cols * grid.rows).fill(0);
+  const links: Links = {};
   return {
     tick: 0,
     rng: createRng(seed),
     grid,
     roads,
+    links,
     budget: roadBudget,
-    graph: buildRoadGraph(grid, roads),
+    graph: buildRoadGraph(roads, links),
     buildings: [],
     buildingAt: new Array<number>(grid.cols * grid.rows).fill(-1),
+    districtOf: districts ?? new Array<number>(grid.cols * grid.rows).fill(0),
     homes: {},
     demand: {},
     cars: [],
@@ -84,6 +108,7 @@ export function placeRoads(state: SimState, tiles: number[]): PlaceResult {
       return { ok: false, reason: 'out-of-bounds' };
     if (!isBuildable(state.grid, i) || state.buildingAt[i] !== -1)
       return { ok: false, reason: 'unbuildable' };
+    if (!isOpenTile(state, i)) return { ok: false, reason: 'locked' };
   }
   const added = unique.filter((i) => state.roads[i] === 0);
   if (added.length > state.budget) return { ok: false, reason: 'no-budget' };
@@ -91,7 +116,7 @@ export function placeRoads(state: SimState, tiles: number[]): PlaceResult {
   for (const i of added) state.roads[i] = 1;
   state.budget -= added.length;
   if (added.length > 0) {
-    updateRoadGraph(state.graph, state.grid, state.roads, added);
+    updateRoadGraph(state.graph, state.grid, state.roads, state.links, added);
     onRoadsChanged(state, added, []);
   }
   return { ok: true, added: added.length };
@@ -102,13 +127,40 @@ export function removeRoads(state: SimState, tiles: number[]): number {
   const removed = [...new Set(tiles)].filter(
     (i) => isInBounds(state.grid, i) && state.roads[i] === 1,
   );
-  for (const i of removed) state.roads[i] = 0;
+  for (const i of removed) {
+    state.roads[i] = 0;
+    dropLinksOf(state.links, i);
+  }
   state.budget += removed.length;
   if (removed.length > 0) {
-    updateRoadGraph(state.graph, state.grid, state.roads, removed);
+    updateRoadGraph(state.graph, state.grid, state.roads, state.links, removed);
     onRoadsChanged(state, [], removed);
   }
   return removed.length;
+}
+
+/**
+ * Links two adjacent road tiles, across an edge or a corner. A drag calls this for each
+ * step it takes, so the path the player drew is the link: nearby roads never join by
+ * themselves. Returns false if the tiles are not both roads, not adjacent, or already linked.
+ */
+export function linkTiles(state: SimState, a: number, b: number): boolean {
+  if (!isInBounds(state.grid, a) || !isInBounds(state.grid, b)) return false;
+  if (!isAdjacent(state.grid, a, b)) return false;
+  if (state.roads[a] !== 1 || state.roads[b] !== 1) return false;
+  if (!addLink(state.links, a, b)) return false;
+  updateRoadGraph(state.graph, state.grid, state.roads, state.links, [a, b]);
+  onRoadsChanged(state, [a, b], []);
+  return true;
+}
+
+/** Removes a link. Returns false if the two tiles were not linked. */
+export function unlinkTiles(state: SimState, a: number, b: number): boolean {
+  if (!hasLink(state.links, a, b)) return false;
+  removeLink(state.links, a, b);
+  updateRoadGraph(state.graph, state.grid, state.roads, state.links, [a, b]);
+  onRoadsChanged(state, [], [a, b]);
+  return true;
 }
 
 /** Advances the simulation by one fixed tick. Systems are added in later milestones. */

@@ -1,47 +1,74 @@
 // Every gameplay number lives in this file. Each one is documented in
 // docs/mechanics-spec.md with a tag (approximated | tuned | confirmed).
 
-/** Fixed simulation rate. Real time is converted into whole ticks at this rate. */
-export const TICKS_PER_SECOND = 30; // approximated
-
-/** Speed multipliers the player can choose. */
+/** Speed multipliers the player can choose. Not tunable from the debug panel. */
 export const SPEED_OPTIONS = [1, 2, 4, 8] as const; // approximated
 
-/** Upper bound on ticks run for one frame, so a long stall can't freeze the game. */
-export const MAX_CATCHUP_TICKS = 15; // approximated
+/**
+ * Weeks at which the next district opens. District 0 is open from the start, so with
+ * [3, 6] districts 0 and 1 open at week 3 and districts 0 to 2 open at week 6. Districts
+ * beyond the schedule stay locked (for example, land across a river until bridges). Not tunable.
+ */
+export const EXPANSION_WEEKS: readonly number[] = [3, 6]; // approximated
 
-/** Road tiles the player can place before the first weekly reward. */
-export const ROAD_BUDGET_START = 120; // approximated
+/**
+ * Every tunable number, with its starting value. The sim reads `tuning` (below) each
+ * time it needs a value, so the debug panel can change them while the game runs.
+ */
+export const DEFAULT_TUNING = {
+  /** Fixed simulation rate. Real time is converted into whole ticks at this rate. */
+  TICKS_PER_SECOND: 30, // approximated
+  /** Upper bound on ticks run for one frame, so a long stall can't freeze the game. */
+  MAX_CATCHUP_TICKS: 15, // approximated
+  /** Road tiles the player can place before the first weekly reward. */
+  ROAD_BUDGET_START: 120, // approximated
+  /** Number of building colours. A house pairs with destinations of its own colour. */
+  BUILDING_COLOR_COUNT: 4, // approximated
+  /** How far a car travels along its route per second, in tiles. */
+  CAR_SPEED: 2, // approximated
+  /** Least distance, in tiles, between a car and the car ahead of it on the same tile. */
+  CAR_GAP: 0.4, // approximated
+  /** A road tile with at least this many road neighbours is a junction. One car at a time may cross it. */
+  JUNCTION_MIN_ROADS: 3, // approximated
+  /** Cars each house owns when it is placed. */
+  CARS_PER_HOUSE: 2, // approximated
+  /** Ticks between one car leaving a house and the next. */
+  SPAWN_INTERVAL_TICKS: 60, // approximated
+  /** Ticks a car stays parked at its destination before driving home. */
+  PARK_TICKS: 60, // approximated
+  /** Ticks between one demand pin appearing at a destination and the next. */
+  DEMAND_INTERVAL_TICKS: 150, // approximated
+  /** Waiting pins a destination can hold. Above this it overflows and its countdown runs. */
+  OVERFLOW_PIN_LIMIT: 4, // approximated
+  /** Ticks an overflowing destination has before the game ends. Serving a pin resets it. */
+  OVERFLOW_TICKS: 900, // approximated
+  /** Ticks in one week. The clock counts weeks; the first week is week 1. */
+  WEEK_TICKS: 1800, // approximated
+};
 
-/** Number of building colours. A house pairs with destinations of its own colour. */
-export const BUILDING_COLOR_COUNT = 4; // approximated
+export type Tuning = typeof DEFAULT_TUNING;
+export type TuningKey = keyof Tuning;
 
-/** How far a car travels along its route per second, in tiles. */
-export const CAR_SPEED = 2; // approximated
+/** The live values the sim reads. Starts as a copy of the defaults. */
+export const tuning: Tuning = { ...DEFAULT_TUNING };
 
-/** Least distance, in tiles, between a car and the car ahead of it on the same tile. */
-export const CAR_GAP = 0.4; // approximated
+/** Puts every tunable value back to its default. */
+export function resetTuning(): void {
+  Object.assign(tuning, DEFAULT_TUNING);
+}
 
-/** A road tile with at least this many road neighbours is a junction. One car at a time may cross it. */
-export const JUNCTION_MIN_ROADS = 3; // approximated
-
-/** Cars each house owns when it is placed. */
-export const CARS_PER_HOUSE = 2; // approximated
-
-/** Ticks between one car leaving a house and the next. */
-export const SPAWN_INTERVAL_TICKS = 60; // approximated
-
-/** Ticks a car stays parked at its destination before driving home. */
-export const PARK_TICKS = 60; // approximated
-
-/** Ticks between one demand pin appearing at a destination and the next. */
-export const DEMAND_INTERVAL_TICKS = 150; // approximated
-
-/** Waiting pins a destination can hold. Above this it overflows and its countdown runs. */
-export const OVERFLOW_PIN_LIMIT = 4; // approximated
-
-/** Ticks an overflowing destination has before the game ends. Serving a pin resets it. */
-export const OVERFLOW_TICKS = 900; // approximated
-
-/** Ticks in one week. The clock counts weeks; the first week is week 1. */
-export const WEEK_TICKS = 1800; // approximated
+// Named defaults, for tests and docs. Code in src/ reads `tuning`, not these.
+export const TICKS_PER_SECOND = DEFAULT_TUNING.TICKS_PER_SECOND;
+export const MAX_CATCHUP_TICKS = DEFAULT_TUNING.MAX_CATCHUP_TICKS;
+export const ROAD_BUDGET_START = DEFAULT_TUNING.ROAD_BUDGET_START;
+export const BUILDING_COLOR_COUNT = DEFAULT_TUNING.BUILDING_COLOR_COUNT;
+export const CAR_SPEED = DEFAULT_TUNING.CAR_SPEED;
+export const CAR_GAP = DEFAULT_TUNING.CAR_GAP;
+export const JUNCTION_MIN_ROADS = DEFAULT_TUNING.JUNCTION_MIN_ROADS;
+export const CARS_PER_HOUSE = DEFAULT_TUNING.CARS_PER_HOUSE;
+export const SPAWN_INTERVAL_TICKS = DEFAULT_TUNING.SPAWN_INTERVAL_TICKS;
+export const PARK_TICKS = DEFAULT_TUNING.PARK_TICKS;
+export const DEMAND_INTERVAL_TICKS = DEFAULT_TUNING.DEMAND_INTERVAL_TICKS;
+export const OVERFLOW_PIN_LIMIT = DEFAULT_TUNING.OVERFLOW_PIN_LIMIT;
+export const OVERFLOW_TICKS = DEFAULT_TUNING.OVERFLOW_TICKS;
+export const WEEK_TICKS = DEFAULT_TUNING.WEEK_TICKS;
