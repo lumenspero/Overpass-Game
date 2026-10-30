@@ -37,6 +37,17 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Placement is all or nothing:** if the whole path doesn't fit in the budget, nothing is placed.
 - **Weekly reward:** not yet implemented (M5).
 
+### Cars and routing
+
+- **Routes:** a car's route is the list of road tiles from where it is to where it is going, both ends included. Routes use edge-sharing road tiles only. `approximated`
+- **Planning:** A* over road tiles, every step costs 1, Manhattan distance as the estimate. Ties go to the lower tile index, so the same roads always give the same route. `approximated`
+- **Car states (M3):** driving to a destination, or returning to its house. `approximated`
+- **Route broken, car still on a road:** the car plans a new route to its goal. If none exists, it goes home. `approximated`
+- **Current tile deleted:** the car walks back along its route to the last tile still a road, then goes home from there. `approximated`
+- **No route home:** the car vanishes. `approximated`
+- **Road added:** a driving car takes a new route only when it is shorter than what it has left. `approximated`
+- **Movement along routes:** not yet implemented (C3).
+
 ### Buildings
 
 - **Kinds:** houses (where cars start and end) and destinations (where cars go). Both occupy one tile.
@@ -46,4 +57,6 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Roads:** a road cannot be placed on a building tile.
 - **Removal:** buildings are never removed in M3.
 
-_Still to write: cars and trips, spawning, demand, scoring, clock and expansion, upgrades, bridges and tunnels, roundabouts and lights, congestion, unlocks, audio events. Each arrives with its milestone._
+_Demand, to define at M4: businesses request workers at one of two rates (the original's two business speeds). Each rate and how it shows on screen is not yet decided. Not implemented in M3._
+
+_Still to write: car movement and queuing, trips, spawning, demand, scoring, clock and expansion, upgrades, bridges and tunnels, roundabouts and lights, congestion, unlocks, audio events. Each arrives with its milestone._

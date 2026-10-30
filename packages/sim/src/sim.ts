@@ -1,4 +1,5 @@
 import type { Building } from './buildings.ts';
+import { type Car, onRoadsChanged } from './cars.ts';
 import { ROAD_BUDGET_START } from './config.ts';
 import { buildRoadGraph, type RoadGraph, updateRoadGraph } from './graph.ts';
 import { type Grid, isBuildable, isInBounds } from './grid.ts';
@@ -16,6 +17,8 @@ export interface SimState {
   buildings: Building[];
   /** One entry per grid tile: the id of the building on it, or -1. */
   buildingAt: number[];
+  cars: Car[];
+  nextCarId: number;
 }
 
 export interface CreateSimOptions {
@@ -43,6 +46,8 @@ export function createSim({
     graph: buildRoadGraph(grid, roads),
     buildings: [],
     buildingAt: new Array<number>(grid.cols * grid.rows).fill(-1),
+    cars: [],
+    nextCarId: 0,
   };
 }
 
@@ -63,8 +68,10 @@ export function placeRoads(state: SimState, tiles: number[]): PlaceResult {
 
   for (const i of added) state.roads[i] = 1;
   state.budget -= added.length;
-  if (added.length > 0)
+  if (added.length > 0) {
     updateRoadGraph(state.graph, state.grid, state.roads, added);
+    onRoadsChanged(state, added, []);
+  }
   return { ok: true, added: added.length };
 }
 
@@ -75,8 +82,10 @@ export function removeRoads(state: SimState, tiles: number[]): number {
   );
   for (const i of removed) state.roads[i] = 0;
   state.budget += removed.length;
-  if (removed.length > 0)
+  if (removed.length > 0) {
     updateRoadGraph(state.graph, state.grid, state.roads, removed);
+    onRoadsChanged(state, [], removed);
+  }
   return removed.length;
 }
 
