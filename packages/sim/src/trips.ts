@@ -1,6 +1,7 @@
 import { addCar, dropCar, roadEntrance, sendHome, type Car } from './cars.ts';
 import { isConnected } from './buildings.ts';
 import { PARK_TICKS, SPAWN_INTERVAL_TICKS } from './config.ts';
+import { servePin, unclaimedPins } from './demand.ts';
 import { tileOpen } from './movement.ts';
 import { nextFloat } from './rng.ts';
 import type { SimState } from './sim.ts';
@@ -38,7 +39,8 @@ export function spawnCars(state: SimState): void {
       (d) =>
         d.kind === 'destination' &&
         d.color === b.color &&
-        isConnected(state, d),
+        isConnected(state, d) &&
+        unclaimedPins(state, d.id) > 0,
     );
     if (options.length === 0) continue;
     const pick = options[Math.floor(nextFloat(state.rng) * options.length)];
@@ -52,6 +54,7 @@ export function spawnCars(state: SimState): void {
 export function updateTrips(state: SimState): void {
   for (const car of [...state.cars]) {
     if (car.state === 'driving' && atRouteEnd(car)) {
+      servePin(state, car.destination);
       car.state = 'parked';
       car.timer = PARK_TICKS;
     } else if (car.state === 'parked') {

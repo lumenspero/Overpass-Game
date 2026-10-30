@@ -1,6 +1,7 @@
-import type { Building, Home } from './buildings.ts';
+import type { Building, Demand, Home } from './buildings.ts';
 import { type Car, onRoadsChanged } from './cars.ts';
 import { ROAD_BUDGET_START } from './config.ts';
+import { generateDemand } from './demand.ts';
 import { buildRoadGraph, type RoadGraph, updateRoadGraph } from './graph.ts';
 import { type Grid, isBuildable, isInBounds } from './grid.ts';
 import { moveCars } from './movement.ts';
@@ -21,6 +22,8 @@ export interface SimState {
   buildingAt: number[];
   /** Car bookkeeping for each house, keyed by building id. */
   homes: Record<number, Home>;
+  /** Demand bookkeeping for each destination, keyed by building id. */
+  demand: Record<number, Demand>;
   cars: Car[];
   nextCarId: number;
 }
@@ -51,6 +54,7 @@ export function createSim({
     buildings: [],
     buildingAt: new Array<number>(grid.cols * grid.rows).fill(-1),
     homes: {},
+    demand: {},
     cars: [],
     nextCarId: 0,
   };
@@ -97,6 +101,7 @@ export function removeRoads(state: SimState, tiles: number[]): number {
 /** Advances the simulation by one fixed tick. Systems are added in later milestones. */
 export function step(state: SimState): void {
   state.tick += 1;
+  generateDemand(state);
   spawnCars(state);
   moveCars(state);
   updateTrips(state);

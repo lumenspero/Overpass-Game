@@ -196,17 +196,17 @@ Done when: you can draw and erase roads with a mouse and on a phone, and the deb
 
 **M3 · Buildings, cars and trips**
 
-- [ ] Houses and destinations by color, with an entrance side that must connect to a road
-- [ ] Cars belong to houses (count per house `approximated`), drive to a destination with demand, park, then return home
-- [ ] A\* on the road graph; repath when roads change; cars stranded by deleted roads go home or vanish (spec decision)
-- [ ] Car movement along edges with spacing, following, and queuing; intersection yielding rules
-- [ ] Spawning: houses and destinations placed by spawn weights over time
+- [x] Houses and destinations by color, with an entrance side that must connect to a road
+- [x] Cars belong to houses (count per house `approximated`), drive to a destination with demand, park, then return home
+- [x] A\* on the road graph; repath when roads change; cars stranded by deleted roads go home or vanish (spec decision)
+- [x] Car movement along edges with spacing, following, and queuing; intersection yielding rules
+- [x] Spawning: houses and destinations placed by spawn weights over time (spawns now need an unclaimed demand pin; see M4)
 
 Done when: on a hand-made test map, cars visibly complete trips and queue at busy junctions, covered by sim tests.
 
 **M4 · Demand, failure and scoring**
 
-- [ ] Destinations generate demand pins; pins consumed by arriving cars
+- [x] Destinations generate demand pins; pins consumed by arriving cars
 - [ ] Overflow: too many waiting pins starts a visible countdown that resets when served; a full countdown ends the game
 - [ ] Score as trips completed; clock with weeks; map expansion schedule
 - [ ] End-of-game state with summary stats

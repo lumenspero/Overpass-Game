@@ -54,7 +54,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Corner steps:** a car crossing a corner takes √2 times as long as an edge step, and its path curves through the tile centre. `approximated`
 - **Queuing:** a car held at a tile edge waits there until the way clears. Cars are moved front-first each tick, so a follower sees its leader's new position. `approximated`
 - **Car ownership:** each house owns `CARS_PER_HOUSE` cars when placed. A car that is lost (no way home) leaves its house owning one fewer. `approximated`
-- **Spawning:** a connected house with a car at home sends one out every `SPAWN_INTERVAL_TICKS`, to a connected destination of its colour picked at random with equal chance. If no route exists, the house waits for the next interval. Spawn weights by demand come in M4. `approximated`
+- **Spawning:** a connected house with a car at home sends one out every `SPAWN_INTERVAL_TICKS`, to a connected destination of its colour that has an unclaimed demand pin (see Demand), picked at random with equal chance. If no such destination or no route exists, the house waits for the next interval. `approximated`
 - **Parking:** a car that reaches its destination parks on the destination's entrance tile for `PARK_TICKS`. Parked cars don't move, and they block their tile for others, as a queue would. `approximated`
 - **Return:** after parking, the car drives home. A car that reaches home rejoins its house, which may send it out again. `approximated`
 - **Movement along routes:** not yet implemented (C3).
@@ -68,6 +68,12 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Roads:** a road cannot be placed on a building tile.
 - **Removal:** buildings are never removed in M3.
 
-_Demand, to define at M4: businesses request workers at one of two rates (the original's two business speeds). Each rate and how it shows on screen is not yet decided. Not implemented in M3._
+### Demand
+
+- **Pins:** each destination collects one demand pin every `DEMAND_INTERVAL_TICKS`, starting after its first interval. Pins are collected whether or not the destination is connected. `approximated`
+- **Unclaimed pins:** a destination's pins minus the cars currently driving to it. A house only sends a car to a destination with an unclaimed pin, so a pin is never sent to two cars.
+- **Arrival:** a pin is used up when a car arrives at its destination and starts to park.
+- **Lost demand:** a car that goes home without arriving leaves its pin in place for the next car.
+- **Not yet:** no cap on waiting pins, so no overflow (M4 next chunk). Business rates are still open: the original has two business speeds, meaning two rates at which businesses request workers. Each rate and how it shows on screen is not yet decided, so every destination uses the one interval for now.
 
 _Still to write: car movement and queuing, trips, spawning, demand, scoring, clock and expansion, upgrades, bridges and tunnels, roundabouts and lights, congestion, unlocks, audio events. Each arrives with its milestone._

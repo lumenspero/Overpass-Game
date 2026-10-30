@@ -1,4 +1,8 @@
-import { BUILDING_COLOR_COUNT, CARS_PER_HOUSE } from './config.ts';
+import {
+  BUILDING_COLOR_COUNT,
+  CARS_PER_HOUSE,
+  DEMAND_INTERVAL_TICKS,
+} from './config.ts';
 import { type Grid, isBuildable, isInBounds } from './grid.ts';
 import type { SimState } from './sim.ts';
 
@@ -18,6 +22,13 @@ export interface Building {
   color: number;
   tile: number;
   entrance: Side;
+}
+
+/** A destination's demand. `pins` are waiting requests; one is used up when a car arrives. */
+export interface Demand {
+  pins: number;
+  /** Ticks until the next pin appears. */
+  cooldown: number;
 }
 
 /** A house's cars. `owned` counts cars that belong to it; `atHome` of them are parked there. */
@@ -91,6 +102,8 @@ export function placeBuilding(
       atHome: CARS_PER_HOUSE,
       cooldown: 0,
     };
+  } else {
+    state.demand[id] = { pins: 0, cooldown: DEMAND_INTERVAL_TICKS };
   }
   return { ok: true, id };
 }

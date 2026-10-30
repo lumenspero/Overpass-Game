@@ -33,3 +33,6 @@ export const SPAWN_INTERVAL_TICKS = 60; // approximated
 
 /** Ticks a car stays parked at its destination before driving home. */
 export const PARK_TICKS = 60; // approximated
+
+/** Ticks between one demand pin appearing at a destination and the next. */
+export const DEMAND_INTERVAL_TICKS = 150; // approximated
