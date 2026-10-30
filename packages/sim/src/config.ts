@@ -24,3 +24,12 @@ export const CAR_GAP = 0.4; // approximated
 
 /** A road tile with at least this many road neighbours is a junction. One car at a time may cross it. */
 export const JUNCTION_MIN_ROADS = 3; // approximated
+
+/** Cars each house owns when it is placed. */
+export const CARS_PER_HOUSE = 2; // approximated
+
+/** Ticks between one car leaving a house and the next. */
+export const SPAWN_INTERVAL_TICKS = 60; // approximated
+
+/** Ticks a car stays parked at its destination before driving home. */
+export const PARK_TICKS = 60; // approximated

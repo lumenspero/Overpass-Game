@@ -5,7 +5,6 @@ import {
   createSim,
   moveCars,
   placeRoads,
-  step,
   type Car,
   type SimState,
 } from '../src/index.ts';
@@ -28,6 +27,7 @@ function carOn(sim: SimState, route: number[], progress = 0, along = 0): Car {
     route,
     progress,
     along,
+    timer: 0,
   };
   sim.nextCarId += 1;
   sim.cars.push(car);
@@ -41,14 +41,14 @@ describe('car movement', () => {
   it('moves a car at the car speed', () => {
     const { sim, route } = row();
     const car = carOn(sim, route);
-    for (let i = 0; i < 30; i++) step(sim);
+    for (let i = 0; i < 30; i++) moveCars(sim);
     expect(dist(car)).toBeCloseTo(CAR_SPEED, 6);
   });
 
   it('stops at the end of its route', () => {
     const { sim, route } = row();
     const car = carOn(sim, route);
-    for (let i = 0; i < 1000; i++) step(sim);
+    for (let i = 0; i < 1000; i++) moveCars(sim);
     expect(car.progress).toBe(route.length - 1);
     expect(car.along).toBeCloseTo(1, 6);
   });
@@ -58,7 +58,7 @@ describe('car movement', () => {
     const lead = carOn(sim, route, 3, 0.5);
     const follower = carOn(sim, route, 0, 0);
     for (let i = 0; i < 400; i++) {
-      step(sim);
+      moveCars(sim);
       expect(dist(lead) - dist(follower)).toBeGreaterThanOrEqual(
         CAR_GAP - 1e-9,
       );
@@ -69,7 +69,7 @@ describe('car movement', () => {
     const { sim, route } = row();
     const lead = carOn(sim, route, 7, 0);
     const follower = carOn(sim, route, 4, 0);
-    for (let i = 0; i < 600; i++) step(sim);
+    for (let i = 0; i < 600; i++) moveCars(sim);
     expect(lead.progress).toBe(route.length - 1);
     expect(dist(follower)).toBeCloseTo(dist(lead) - CAR_GAP, 6);
   });
@@ -101,7 +101,7 @@ describe('junctions', () => {
 
     let firstExit: number | null = null;
     for (let i = 0; i < 300; i++) {
-      step(sim);
+      moveCars(sim);
       const onCentre = sim.cars.filter(
         (c) => c.route[c.progress] === centre,
       ).length;
@@ -115,5 +115,17 @@ describe('junctions', () => {
     // Both get through in the end.
     expect(east.progress).toBe(across.length - 1);
     expect(south.progress).toBe(down.length - 1);
+  });
+});
+
+describe('lanes', () => {
+  it('lets cars going opposite ways pass each other on a straight road', () => {
+    const { sim, route } = row();
+    const east = carOn(sim, route, 3, 0.5);
+    // The same tiles, driven the other way: index 4 of the reversed route is tile x=4.
+    const west = carOn(sim, [...route].reverse(), 4, 0);
+    for (let i = 0; i < 120; i++) moveCars(sim);
+    expect(east.progress).toBe(route.length - 1);
+    expect(west.progress).toBe(route.length - 1);
   });
 });

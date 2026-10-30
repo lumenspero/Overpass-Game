@@ -47,6 +47,7 @@ import {
 import { debugShapes } from '../view/debug-geometry.ts';
 import {
   buildingShapes,
+  carShapes,
   roadShapes,
   terrainTiles,
   ENTRANCE_WIDTH,
@@ -87,6 +88,7 @@ export class GameScene extends Phaser.Scene {
   private layer!: Phaser.GameObjects.Container;
   private roadGfx!: Phaser.GameObjects.Graphics;
   private buildingGfx!: Phaser.GameObjects.Graphics;
+  private carGfx!: Phaser.GameObjects.Graphics;
   private roadsDirty = true;
   private overlayGfx!: Phaser.GameObjects.Graphics;
   private debugText!: Phaser.GameObjects.Text;
@@ -94,6 +96,9 @@ export class GameScene extends Phaser.Scene {
   private overlayDirty = true;
   private meter!: TickMeter;
   private canvas!: HTMLCanvasElement;
+  /** Diagnostic: how many presses reached the canvas, and the last one. Shown with D. */
+  private pressCount = 0;
+  private lastPress = 'none yet';
 
   constructor() {
     super('game');
@@ -112,11 +117,13 @@ export class GameScene extends Phaser.Scene {
     const terrainGfx = this.add.graphics();
     this.buildingGfx = this.add.graphics();
     this.roadGfx = this.add.graphics();
+    this.carGfx = this.add.graphics();
     this.overlayGfx = this.add.graphics().setVisible(false);
     this.layer.add([
       terrainGfx,
       this.buildingGfx,
       this.roadGfx,
+      this.carGfx,
       this.overlayGfx,
     ]);
     this.drawTerrain(terrainGfx, grid);
@@ -162,6 +169,7 @@ export class GameScene extends Phaser.Scene {
       this.drawRoads();
       this.roadsDirty = false;
     }
+    this.drawCars(); // cars move every tick, so they are redrawn every frame
     if (this.debugOn) {
       if (this.overlayDirty) {
         this.drawOverlay();
@@ -169,7 +177,8 @@ export class GameScene extends Phaser.Scene {
       }
       const rate = sampleTickRate(this.meter, time, this.sim.tick);
       this.debugText.setText(
-        `ticks/s ${rate.toFixed(1)}  tick ${this.sim.tick}  budget ${this.sim.budget}`,
+        `ticks/s ${rate.toFixed(1)}  tick ${this.sim.tick}  budget ${this.sim.budget}\n` +
+          `presses ${this.pressCount}  last: ${this.lastPress}`,
       );
     }
     this.applyTransform();
@@ -201,8 +210,15 @@ export class GameScene extends Phaser.Scene {
 
   private onPointerDown = (e: PointerEvent): void => {
     e.preventDefault(); // stops middle-click autoscroll
-    this.canvas.setPointerCapture(e.pointerId);
-    this.dispatch(pointerDown(this.mapper, this.sample(e)));
+    const sample = this.sample(e);
+    this.pressCount += 1;
+    this.lastPress = `${sample.kind} button ${sample.button} at ${Math.round(sample.x)},${Math.round(sample.y)}`;
+    try {
+      this.canvas.setPointerCapture(e.pointerId);
+    } catch {
+      // Some trackpad pointers can't be captured. Input still works without capture.
+    }
+    this.dispatch(pointerDown(this.mapper, sample));
   };
 
   private onPointerMove = (e: PointerEvent): void => {
@@ -320,6 +336,20 @@ export class GameScene extends Phaser.Scene {
     for (const s of roadShapes(this.sim.grid, this.sim.roads)) {
       if (s.kind === 'circle') gfx.fillCircle(s.x, s.y, s.r);
       else gfx.fillRect(s.x, s.y, s.w, s.h);
+    }
+  }
+
+  private drawCars(): void {
+    const gfx = this.carGfx;
+    gfx.clear();
+    for (const c of carShapes(
+      this.sim.cars,
+      this.sim.buildings,
+      this.sim.grid,
+      BUILDING_COLORS,
+    )) {
+      gfx.fillStyle(c.color, 1);
+      gfx.fillCircle(c.x, c.y, c.r);
     }
   }
 

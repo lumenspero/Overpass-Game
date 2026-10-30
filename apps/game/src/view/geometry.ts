@@ -1,6 +1,7 @@
 import { ROAD_WIDTH_TILES, TILE_SIZE } from '@overpass-game/render-style';
 import {
   type Building,
+  type Car,
   type Grid,
   Terrain,
   type TerrainKind,
@@ -78,6 +79,79 @@ const SIDE_STEP = {
   s: { dx: 0, dy: 1 },
   w: { dx: -1, dy: 0 },
 } as const;
+
+export type CarShape = { x: number; y: number; r: number; color: number };
+
+const ROAD_HALF_WIDTH = (ROAD_WIDTH_TILES * TILE_SIZE) / 2;
+/** Cars drive on the right, so each lane's centre sits a quarter road width from the road centre. */
+export const LANE_OFFSET = ROAD_HALF_WIDTH / 2;
+/** Car dot radius: well inside its lane, so a car never reaches the road's centre line or edge. */
+const CAR_RADIUS = ROAD_HALF_WIDTH * 0.4;
+
+/**
+ * One dot per car, at its position on its route. Within a tile the car follows a
+ * quadratic curve from the edge it came in by, through the tile centre, to the edge
+ * it leaves by. On a straight the curve is a line; on a bend it rounds the corner
+ * the same way the road's centre disc does, so cars don't cut across corners.
+ * The curve is offset to the right of the direction of travel, so cars keep to the
+ * right. Its colour is its house's colour.
+ */
+export function carShapes(
+  cars: readonly Car[],
+  buildings: readonly Building[],
+  grid: Grid,
+  colors: readonly number[],
+): CarShape[] {
+  const out: CarShape[] = [];
+  const half = TILE_SIZE / 2;
+  const centre = (tile: number) => ({
+    x: ((tile % grid.cols) + 0.5) * TILE_SIZE,
+    y: (Math.floor(tile / grid.cols) + 0.5) * TILE_SIZE,
+  });
+  /** Unit step from tile `a` to the adjacent tile `b`. */
+  const step = (a: number, b: number) => ({
+    dx: Math.sign((b % grid.cols) - (a % grid.cols)),
+    dy: Math.sign(Math.floor(b / grid.cols) - Math.floor(a / grid.cols)),
+  });
+  for (const car of cars) {
+    const { route, progress, along } = car;
+    const tile = route[progress];
+    const prev = progress > 0 ? route[progress - 1] : null;
+    const next = progress < route.length - 1 ? route[progress + 1] : null;
+    // Direction of travel in and out of this tile. A car on its last tile keeps going in the same direction.
+    const inRaw = prev !== null ? step(prev, tile) : null;
+    const outRaw = next !== null ? step(tile, next) : inRaw;
+    const c = centre(tile);
+    let x = c.x;
+    let y = c.y;
+    // A car on its first tile enters as it leaves; a car on its last tile leaves as it came in.
+    const inDir = inRaw ?? outRaw;
+    const outDir = outRaw ?? inRaw;
+    if (inDir && outDir) {
+      // Each edge point sits in the lane on the right of the direction through it.
+      const nIn = { x: -inDir.dy * LANE_OFFSET, y: inDir.dx * LANE_OFFSET };
+      const nOut = { x: -outDir.dy * LANE_OFFSET, y: outDir.dx * LANE_OFFSET };
+      // Quadratic Bézier: start on the entry edge, control at the centre, end on the exit edge.
+      const ax = c.x - inDir.dx * half + nIn.x;
+      const ay = c.y - inDir.dy * half + nIn.y;
+      const bx = c.x + outDir.dx * half + nOut.x;
+      const by = c.y + outDir.dy * half + nOut.y;
+      const cx = c.x + (nIn.x + nOut.x) / 2;
+      const cy = c.y + (nIn.y + nOut.y) / 2;
+      const u = 1 - along;
+      x = u * u * ax + 2 * u * along * cx + along * along * bx;
+      y = u * u * ay + 2 * u * along * cy + along * along * by;
+    }
+    const house = buildings[car.house];
+    out.push({
+      x,
+      y,
+      r: CAR_RADIUS,
+      color: (house && colors[house.color]) ?? colors[0],
+    });
+  }
+  return out;
+}
 
 /**
  * Houses are squares, destinations are discs, each with a tick from the body to

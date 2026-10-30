@@ -1,4 +1,4 @@
-import { BUILDING_COLOR_COUNT } from './config.ts';
+import { BUILDING_COLOR_COUNT, CARS_PER_HOUSE } from './config.ts';
 import { type Grid, isBuildable, isInBounds } from './grid.ts';
 import type { SimState } from './sim.ts';
 
@@ -18,6 +18,14 @@ export interface Building {
   color: number;
   tile: number;
   entrance: Side;
+}
+
+/** A house's cars. `owned` counts cars that belong to it; `atHome` of them are parked there. */
+export interface Home {
+  owned: number;
+  atHome: number;
+  /** Ticks until the house may send out its next car. */
+  cooldown: number;
 }
 
 export interface PlaceBuildingOptions {
@@ -77,5 +85,12 @@ export function placeBuilding(
   const id = state.buildings.length;
   state.buildings.push({ id, ...opts });
   state.buildingAt[opts.tile] = id;
+  if (opts.kind === 'house') {
+    state.homes[id] = {
+      owned: CARS_PER_HOUSE,
+      atHome: CARS_PER_HOUSE,
+      cooldown: 0,
+    };
+  }
   return { ok: true, id };
 }

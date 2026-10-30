@@ -1,7 +1,18 @@
 import { ROAD_WIDTH_TILES, TILE_SIZE } from '@overpass-game/render-style';
-import { createGrid, type Building, Terrain } from '@overpass-game/sim';
+import {
+  type Building,
+  type Car,
+  createGrid,
+  Terrain,
+} from '@overpass-game/sim';
 import { describe, expect, it } from 'vitest';
-import { buildingShapes, roadShapes, terrainTiles } from './geometry.ts';
+import {
+  buildingShapes,
+  carShapes,
+  LANE_OFFSET,
+  roadShapes,
+  terrainTiles,
+} from './geometry.ts';
 
 const R = (ROAD_WIDTH_TILES * TILE_SIZE) / 2;
 const centre = (col: number, row: number) => ({
@@ -131,5 +142,102 @@ describe('buildingShapes', () => {
   it('falls back to the first colour for an unknown colour index', () => {
     const [body] = buildingShapes([{ ...house, color: 9 }], grid, colors);
     expect(body).toMatchObject({ color: 0xff0000 });
+  });
+});
+
+describe('carShapes', () => {
+  const grid = createGrid(4, 1);
+  const colors = [0xff0000, 0x00ff00];
+  const house: Building = {
+    id: 0,
+    kind: 'house',
+    color: 1,
+    tile: 0,
+    entrance: 'e',
+  };
+  const car = (progress: number, along: number): Car => ({
+    id: 0,
+    house: 0,
+    destination: 1,
+    state: 'driving',
+    route: [0, 1, 2, 3],
+    progress,
+    along,
+    timer: 0,
+  });
+
+  it('enters a tile at its entry edge and leaves at its exit edge', () => {
+    const [start] = carShapes([car(1, 0)], [house], grid, colors);
+    expect(start.x).toBeCloseTo(TILE_SIZE); // left edge of tile 1
+    const [end] = carShapes([car(1, 1)], [house], grid, colors);
+    expect(end.x).toBeCloseTo(2 * TILE_SIZE); // right edge of tile 1
+    expect(end.y).toBeCloseTo(TILE_SIZE / 2 + LANE_OFFSET); // right-hand lane
+  });
+
+  it('enters its first tile from behind, in the right-hand lane', () => {
+    const [dot] = carShapes([car(0, 0)], [house], grid, colors);
+    expect(dot.x).toBeCloseTo(0);
+    expect(dot.y).toBeCloseTo(TILE_SIZE / 2 + LANE_OFFSET);
+  });
+
+  it('keeps going in the same direction on the last tile', () => {
+    const [dot] = carShapes([car(3, 1)], [house], grid, colors);
+    expect(dot.x).toBeCloseTo(4 * TILE_SIZE); // far edge of the last tile
+  });
+
+  it('takes the colour of its house', () => {
+    const [dot] = carShapes([car(1, 0)], [house], grid, colors);
+    expect(dot.color).toBe(0x00ff00);
+  });
+});
+
+describe('carShapes on a bend', () => {
+  it('follows the corner through the tile centre instead of cutting across it', () => {
+    // Tile 1 is the corner: the route comes in from the west and leaves to the south.
+    const grid = createGrid(2, 2);
+    const car: Car = {
+      id: 0,
+      house: 0,
+      destination: 1,
+      state: 'driving',
+      route: [0, 1, 3],
+      progress: 1,
+      along: 0.5,
+      timer: 0,
+    };
+    const house: Building = {
+      id: 0,
+      kind: 'house',
+      color: 0,
+      tile: 0,
+      entrance: 'e',
+    };
+    const [dot] = carShapes([car], [house], grid, [0xff0000]);
+    // Halfway through the bend, in the right-hand lane: inside the corner, not on the chord to the outer corner.
+    expect(dot.x).toBeCloseTo(42);
+    expect(dot.y).toBeCloseTo(22);
+  });
+
+  it('is no bigger than the road it drives on', () => {
+    const grid = createGrid(2, 1);
+    const car: Car = {
+      id: 0,
+      house: 0,
+      destination: 1,
+      state: 'driving',
+      route: [0, 1],
+      progress: 0,
+      along: 0,
+      timer: 0,
+    };
+    const house: Building = {
+      id: 0,
+      kind: 'house',
+      color: 0,
+      tile: 0,
+      entrance: 'e',
+    };
+    const [dot] = carShapes([car], [house], grid, [0xff0000]);
+    expect(dot.r).toBeLessThan((ROAD_WIDTH_TILES * TILE_SIZE) / 2);
   });
 });

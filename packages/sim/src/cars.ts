@@ -5,7 +5,8 @@ import type { SimState } from './sim.ts';
 /**
  * Cars carry a route of road tiles from where they are to where they are going.
  * In M3 a car is either driving to a destination or returning to its house.
- * Movement along the route is in movement.ts; here routes are only planned and repaired.
+ * Movement along the route is in movement.ts, and trips (spawning, parking, returning) in
+ * trips.ts; here routes are only planned and repaired.
  *
  * Rules when roads change (spec: Cars and routing):
  * - A car whose current tile is deleted goes home from its last road tile still on its route.
@@ -16,7 +17,7 @@ import type { SimState } from './sim.ts';
  * - A driving car replans when a road is added, and takes the new route only if it is shorter.
  */
 
-export type CarState = 'driving' | 'returning';
+export type CarState = 'driving' | 'parked' | 'returning';
 
 export interface Car {
   id: number;
@@ -29,6 +30,8 @@ export interface Car {
   progress: number;
   /** How far, from 0 to 1, the car has moved into the tile it is on. */
   along: number;
+  /** While parked, the ticks left before the car drives home. */
+  timer: number;
 }
 
 export type AddCarResult =
@@ -36,7 +39,10 @@ export type AddCarResult =
   | { ok: false; reason: 'bad-building' | 'not-connected' | 'no-route' };
 
 /** The road tile in front of a building's entrance, or null if there is none. */
-function roadEntrance(state: SimState, buildingId: number): number | null {
+export function roadEntrance(
+  state: SimState,
+  buildingId: number,
+): number | null {
   const b = state.buildings[buildingId];
   if (!b) return null;
   const e = entranceTile(state.grid, b.tile, b.entrance);
@@ -70,6 +76,7 @@ export function addCar(
     route,
     progress: 0,
     along: 0,
+    timer: 0,
   });
   return { ok: true, id };
 }
@@ -97,6 +104,17 @@ function routeHome(
   const route = findRoute(state.grid, state.roads, from, home);
   if (!route) return null;
   return { ...car, state: 'returning', route, progress: 0, along };
+}
+
+/** A car with no way home is lost, so its house owns one car fewer. */
+export function dropCar(state: SimState, car: Car): void {
+  const home = state.homes[car.house];
+  if (home) home.owned -= 1;
+}
+
+/** Plans a route home from the tile the car is on. Null when there is no way home. */
+export function sendHome(state: SimState, car: Car): Car | null {
+  return routeHome(state, car, car.route[car.progress], car.along);
 }
 
 /**
@@ -152,6 +170,10 @@ export function onRoadsChanged(
     }
 
     survivors.push(car);
+  }
+  const kept = new Set(survivors.map((c) => c.id));
+  for (const car of state.cars) {
+    if (!kept.has(car.id)) dropCar(state, car);
   }
   state.cars = survivors;
 }
