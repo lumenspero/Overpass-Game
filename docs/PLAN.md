@@ -172,13 +172,15 @@ Sixteen milestones in five phases take the project from an empty repo to release
 
 Done when: both apps boot to a blank screen and `pnpm check` passes in CI.
 
+> **Status (closed locally, CI pending):** M0 was closed before its CI run because GitHub Actions minutes were exhausted for this month. `pnpm check` passes locally. Confirm a green CI run before the first push that depends on it.
+
 **M1 · Simulation core: grid and roads (headless)**
 
-- [ ] Fixed-timestep sim loop (for example 30 ticks/second) independent of frame rate, with pause and speed multipliers
-- [ ] Seeded RNG; the whole sim state is plain serializable data
-- [ ] Grid with terrain flags; road placement and removal rules; road-tile budget with refunds
-- [ ] Road graph built from tiles: nodes at intersections and ends, edges with lengths; incremental updates on edit
-- [ ] Spec sections: grid, roads, road budget
+- [x] Fixed-timestep sim loop (for example 30 ticks/second) independent of frame rate, with pause and speed multipliers
+- [x] Seeded RNG; the whole sim state is plain serializable data
+- [x] Grid with terrain flags; road placement and removal rules; road-tile budget with refunds
+- [x] Road graph built from tiles: nodes at intersections and ends, edges with lengths; incremental updates on edit
+- [x] Spec sections: grid, roads, road budget
 
 Done when: tests cover placing, removing and connecting roads, the graph stays correct after random edit sequences, and two runs with the same seed produce identical state.
 
