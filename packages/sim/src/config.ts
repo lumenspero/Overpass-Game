@@ -5,13 +5,6 @@
 export const SPEED_OPTIONS = [1, 2, 4, 8] as const; // approximated
 
 /**
- * Weeks at which the next district opens. District 0 is open from the start, so with
- * [3, 6] districts 0 and 1 open at week 3 and districts 0 to 2 open at week 6. Districts
- * beyond the schedule stay locked (for example, land across a river until bridges). Not tunable.
- */
-export const EXPANSION_WEEKS: readonly number[] = [3, 6]; // approximated
-
-/**
  * Every tunable number, with its starting value. The sim reads `tuning` (below) each
  * time it needs a value, so the debug panel can change them while the game runs.
  */
@@ -44,6 +37,10 @@ export const DEFAULT_TUNING = {
   OVERFLOW_TICKS: 900, // approximated
   /** Ticks in one week. The clock counts weeks; the first week is week 1. */
   WEEK_TICKS: 1800, // approximated
+  /** Week at which district 1 opens. District 0 is open from the start. */
+  EXPANSION_WEEK_1: 3, // approximated
+  /** Week at which district 2 opens. Districts beyond it stay locked (for example, land across a river until bridges). */
+  EXPANSION_WEEK_2: 6, // approximated
 };
 
 export type Tuning = typeof DEFAULT_TUNING;
@@ -72,3 +69,5 @@ export const DEMAND_INTERVAL_TICKS = DEFAULT_TUNING.DEMAND_INTERVAL_TICKS;
 export const OVERFLOW_PIN_LIMIT = DEFAULT_TUNING.OVERFLOW_PIN_LIMIT;
 export const OVERFLOW_TICKS = DEFAULT_TUNING.OVERFLOW_TICKS;
 export const WEEK_TICKS = DEFAULT_TUNING.WEEK_TICKS;
+export const EXPANSION_WEEK_1 = DEFAULT_TUNING.EXPANSION_WEEK_1;
+export const EXPANSION_WEEK_2 = DEFAULT_TUNING.EXPANSION_WEEK_2;

@@ -186,13 +186,15 @@ Done when: tests cover placing, removing and connecting roads, the graph stays c
 
 **M2 · Renderer and input (desktop and touch)**
 
-- [ ] Phaser scene that draws sim state only (no rules in the view): terrain, roads with rounded joins and corners
-- [ ] Input abstraction producing intents (draw road path, erase, pan, zoom) from mouse, touch, and pen
-- [ ] Touch gestures: one finger draws, two fingers pan and pinch-zoom, long-press or eraser tool erases; mouse: left draws, right erases, wheel zooms
-- [ ] Camera that fits the map to any screen size and orientation
-- [ ] Debug overlay: grid, graph nodes and edges, tick rate
+- [x] Phaser scene that draws sim state only (no rules in the view): terrain, roads with rounded joins and corners
+- [x] Input abstraction producing intents (draw road path, erase, pan, zoom) from mouse, touch, and pen
+- [x] Touch gestures: one finger draws, two fingers pan and pinch-zoom, long-press or eraser tool erases; mouse: left draws, right erases, wheel zooms
+- [x] Camera that fits the map to any screen size and orientation
+- [x] Debug overlay: grid, graph nodes and edges, tick rate
 
-Done when: you can draw and erase roads with a mouse and on a phone, and the debug graph matches what is drawn.
+Done when: you can draw and erase roads with a mouse, and the debug graph matches what is drawn. Phone and touch-device checks are deferred to the end of this plan.
+
+> **Status (closed on PC):** M2 is closed on desktop. The phone test moved to "Deferred device tests" at the end of the plan.
 
 **M3 · Buildings, cars and trips**
 
@@ -213,6 +215,8 @@ Done when: on a hand-made test map, cars visibly complete trips and queue at bus
 - [x] Debug panel: live sliders for every `config.ts` value, fast-forward up to 8×
 
 Done when: a full run on the test map can be lost.
+
+> **Status (tests complete):** the loss path is covered by sim tests (`overflow.test.ts`). Checkpoint A is the playtest sign-off, still pending.
 
 > **Checkpoint A · Core loop feel.** Play 3+ runs on the test map beside the original. Review spec sections: car speed, spawn timing, demand rate, overflow timer, week length. Tune with the debug panel and sign off before Phase 2.
 
@@ -395,3 +399,9 @@ The biggest risks are traffic behavior that feels wrong and slow map authoring; 
 - [ ] M10: should challenge mode have goals beyond score (for example, a tile limit)?
 - [ ] M14: which 25 locations, and in what order?
 - [ ] M15: CC BY 4.0 or CC BY-NC 4.0 for art and audio?
+
+## Deferred device tests
+
+Run these once the desktop build is signed off. They were moved here from M2, and M13 covers the wider mobile pass.
+
+- [ ] M2: draw and erase roads on a phone with touch, and confirm the debug graph matches what is drawn

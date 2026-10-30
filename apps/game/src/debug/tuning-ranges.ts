@@ -26,4 +26,6 @@ export const TUNING_RANGES: Record<TuningKey, TuningRange> = {
   OVERFLOW_PIN_LIMIT: { min: 0, max: 12, step: 1 },
   OVERFLOW_TICKS: { min: 30, max: 3000, step: 30 },
   WEEK_TICKS: { min: 300, max: 7200, step: 60 },
+  EXPANSION_WEEK_1: { min: 1, max: 52, step: 1 },
+  EXPANSION_WEEK_2: { min: 1, max: 52, step: 1 },
 };

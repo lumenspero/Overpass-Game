@@ -77,7 +77,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 ### Expansion
 
-- **Districts:** the map is split into districts numbered from 0. District 0 is open at the start. `EXPANSION_WEEKS` opens the next district at each listed week, so `[3, 6]` opens district 1 at week 3 and district 2 at week 6. `approximated`
+- **Districts:** the map is split into districts numbered from 0. District 0 is open at the start. `EXPANSION_WEEK_1` (3) opens district 1 and `EXPANSION_WEEK_2` (6) opens district 2. Both are live debug-panel values. `approximated`
 - **Locked land:** tiles in a district that isn't open take no roads. Buildings on locked land are inactive (they send and collect nothing) and are hidden. The land is dimmed.
 - **Opening only:** districts never close. A district beyond the schedule stays locked for the whole game (for example, land across a river until bridges in M5).
 - **Test map:** three districts west of the river, plus one east of it that stays locked.

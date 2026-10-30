@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   createSim,
   openDistricts,
   placeBuilding,
   placeRoads,
+  resetTuning,
   step,
   tuning,
   WEEK_TICKS,
@@ -39,6 +40,18 @@ function atWeek(sim: SimState, week: number): void {
 }
 
 describe('districts', () => {
+  afterEach(() => resetTuning());
+
+  it('reads the opening weeks from tuning, so the debug panel can move them', () => {
+    tuning.EXPANSION_WEEK_1 = 2;
+    tuning.EXPANSION_WEEK_2 = 4;
+    // Week 1 starts at tick 0, so week 2 starts at WEEK_TICKS, and so on.
+    expect(openDistricts(0)).toBe(1);
+    expect(openDistricts(1 * WEEK_TICKS)).toBe(2);
+    expect(openDistricts(2 * WEEK_TICKS)).toBe(2);
+    expect(openDistricts(3 * WEEK_TICKS)).toBe(3);
+  });
+
   it('opens one more district at each scheduled week', () => {
     // Week 3 starts at tick 2 * WEEK_TICKS, and week 6 at 5 * WEEK_TICKS.
     expect(openDistricts(0)).toBe(1);
