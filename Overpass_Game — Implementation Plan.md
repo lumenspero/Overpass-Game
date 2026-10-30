@@ -8,49 +8,49 @@ Overpass\_Game is a free browser game that recreates Mini Motorways' mechanics a
 
 **Decisions made so far**
 
-| Area | Decision |
-| --- | --- |
-| Name | Overpass\_Game in code, packages and docs, so "overpass" alone always means the OSM API |
-| Engine | Phaser 4, TypeScript (strict), Vite |
-| Mechanics | Match the original as closely as possible; every constant approximated, documented and tuned at your playtest checkpoints |
-| Art | Close to the original's flat, minimal style; maps converted into that style; all assets original |
-| Audio | In scope: sound effects plus calm looping music, structured so it can react to game activity |
-| Platforms | Desktop mouse, touch, and mobile from the start |
-| Online | None. No daily challenges, leaderboards or cloud saves |
-| Persistence | Local (IndexedDB) with save export/import |
-| Modes | Sequential map unlock campaign, plus a parallel challenge mode with pre-built starter roads |
-| Motorway guide | Faint outline of real major motorways, toggleable in both modes |
-| Map Studio | Private authoring tool: place search, OSM import, bold draggable vector outlines, in-editor painting of water, mountains and other features, export to game JSON |
-| Launch content | 25 curated maps |
-| Hosting | itch.io (zip upload) and Cloudflare Pages |
-| Licensing | Code MIT; art and audio CC BY 4.0; map data ODbL 1.0 (see Licensing) |
-| Repo | Public at release, Studio included as source but excluded from the game build |
+| Area           | Decision                                                                                                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name           | Overpass\_Game in code, packages and docs, so "overpass" alone always means the OSM API                                                                          |
+| Engine         | Phaser 4, TypeScript (strict), Vite                                                                                                                              |
+| Mechanics      | Match the original as closely as possible; every constant approximated, documented and tuned at your playtest checkpoints                                        |
+| Art            | Close to the original's flat, minimal style; maps converted into that style; all assets original                                                                 |
+| Audio          | In scope: sound effects plus calm looping music, structured so it can react to game activity                                                                     |
+| Platforms      | Desktop mouse, touch, and mobile from the start                                                                                                                  |
+| Online         | None. No daily challenges, leaderboards or cloud saves                                                                                                           |
+| Persistence    | Local (IndexedDB) with save export/import                                                                                                                        |
+| Modes          | Sequential map unlock campaign, plus a parallel challenge mode with pre-built starter roads                                                                      |
+| Motorway guide | Faint outline of real major motorways, toggleable in both modes                                                                                                  |
+| Map Studio     | Private authoring tool: place search, OSM import, bold draggable vector outlines, in-editor painting of water, mountains and other features, export to game JSON |
+| Launch content | 25 curated maps                                                                                                                                                  |
+| Hosting        | itch.io (zip upload) and Cloudflare Pages                                                                                                                        |
+| Licensing      | Code MIT; art and audio CC BY 4.0; map data ODbL 1.0 (see Licensing)                                                                                             |
+| Repo           | Public at release, Studio included as source but excluded from the game build                                                                                    |
 
 ## Tech stack
 
 Phaser 4 renders and handles input; all game rules live in a framework-free TypeScript simulation core that Phaser only draws. Phaser 4 is the current stable line (v4.0.0 shipped April 2026 with a rebuilt WebGL renderer and a near-identical API to Phaser 3). Pin exact versions in `package.json` when M0 starts.
 
-| Need | Library | Used in | Why |
-| --- | --- | --- | --- |
-| Build, dev server | Vite + TypeScript (strict) | All | Fast, simple multi-app setup |
-| Workspace | pnpm workspaces | All | Shared packages without publishing |
-| Rendering, input, audio playback | Phaser 4 | Game, Studio canvas | Familiar to you; scenes, cameras, tweens, pointer and multitouch input |
-| Menus, HUD, Studio panels | DOM + Preact (small) | Game UI, Studio | Crisp text and accessible UI at any screen size, easier than in-canvas UI |
-| Real-world map panel | MapLibre GL JS | Studio | Free vector map, no API key |
-| Base map tiles | OpenFreeMap (or a self-hosted Protomaps PMTiles file) | Studio | Keyless; Protomaps if you want zero third-party dependency |
-| Place search | Nominatim (Photon as an alternative for type-ahead) | Studio | OSM-based geocoding; respect 1 request/second |
-| OSM features | Overpass API + `osmtogeojson` | Studio | Water, coastline, motorways, land use in a bounding box |
-| Elevation | AWS Terrain Tiles (Terrarium PNG) | Studio | Free elevation to seed mountains |
-| Geometry | Turf.js, `simplify-js`, `polygon-clipping` | Studio, map compiler | Clip, simplify and smooth shapes |
-| Curve smoothing | Own Catmull-Rom / Chaikin helpers | Studio, game renderer | Rounded rivers and coastlines like the original |
-| Seeded randomness | Own mulberry32/sfc32 (about 20 lines) | Sim | Deterministic runs, reproducible bugs |
-| Pathfinding | Own A\* on the road graph | Sim | Needs custom congestion costs |
-| Persistence | `idb-keyval` | Game, Studio drafts | Small IndexedDB wrapper |
-| Save compression | `fflate` | Game | Small export codes and files |
-| Validation | `zod` | Map schema, saves | Catch bad map or save files with clear errors |
-| Tests | Vitest; Playwright for smoke tests | All | Sim unit tests; one browser boot test per app |
-| Offline install | `vite-plugin-pwa` | Game (Cloudflare build) | Plays offline once loaded |
-| Lint, format | ESLint + Prettier | All | Keeps AI-written code consistent |
+| Need                             | Library                                               | Used in                 | Why                                                                       |
+| -------------------------------- | ----------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------- |
+| Build, dev server                | Vite + TypeScript (strict)                            | All                     | Fast, simple multi-app setup                                              |
+| Workspace                        | pnpm workspaces                                       | All                     | Shared packages without publishing                                        |
+| Rendering, input, audio playback | Phaser 4                                              | Game, Studio canvas     | Familiar to you; scenes, cameras, tweens, pointer and multitouch input    |
+| Menus, HUD, Studio panels        | DOM + Preact (small)                                  | Game UI, Studio         | Crisp text and accessible UI at any screen size, easier than in-canvas UI |
+| Real-world map panel             | MapLibre GL JS                                        | Studio                  | Free vector map, no API key                                               |
+| Base map tiles                   | OpenFreeMap (or a self-hosted Protomaps PMTiles file) | Studio                  | Keyless; Protomaps if you want zero third-party dependency                |
+| Place search                     | Nominatim (Photon as an alternative for type-ahead)   | Studio                  | OSM-based geocoding; respect 1 request/second                             |
+| OSM features                     | Overpass API + `osmtogeojson`                         | Studio                  | Water, coastline, motorways, land use in a bounding box                   |
+| Elevation                        | AWS Terrain Tiles (Terrarium PNG)                     | Studio                  | Free elevation to seed mountains                                          |
+| Geometry                         | Turf.js, `simplify-js`, `polygon-clipping`            | Studio, map compiler    | Clip, simplify and smooth shapes                                          |
+| Curve smoothing                  | Own Catmull-Rom / Chaikin helpers                     | Studio, game renderer   | Rounded rivers and coastlines like the original                           |
+| Seeded randomness                | Own mulberry32/sfc32 (about 20 lines)                 | Sim                     | Deterministic runs, reproducible bugs                                     |
+| Pathfinding                      | Own A\* on the road graph                             | Sim                     | Needs custom congestion costs                                             |
+| Persistence                      | `idb-keyval`                                          | Game, Studio drafts     | Small IndexedDB wrapper                                                   |
+| Save compression                 | `fflate`                                              | Game                    | Small export codes and files                                              |
+| Validation                       | `zod`                                                 | Map schema, saves       | Catch bad map or save files with clear errors                             |
+| Tests                            | Vitest; Playwright for smoke tests                    | All                     | Sim unit tests; one browser boot test per app                             |
+| Offline install                  | `vite-plugin-pwa`                                     | Game (Cloudflare build) | Plays offline once loaded                                                 |
+| Lint, format                     | ESLint + Prettier                                     | All                     | Keeps AI-written code consistent                                          |
 
 **Not chosen, and why.** PixiJS would also work but adds no benefit over Phaser 4 for this game. A physics engine is unnecessary: cars move along road graph edges, not by physics. Leaflet is simpler than MapLibre but its raster tiles look worse beside the stylized preview.
 
@@ -88,21 +88,27 @@ A map exists in two forms: an editable **source map** of smooth vector shapes th
 ```ts
 interface SourceMap {
   schemaVersion: number;
-  id: string;                     // "tulsa"
-  name: string;                   // "Tulsa"
+  id: string; // "tulsa"
+  name: string; // "Tulsa"
   region: { bbox: [w, s, e, n]; rotationDeg: number };
-  grid: { cols: number; rows: number; startCols: number; startRows: number; growthSchedule: GrowthStep[] };
-  layers: {
-    water: Shape[];       // rivers, lakes, coast (closed or stroked splines)
-    mountains: Shape[];   // impassable without tunnels
-    parks: Shape[];       // decorative / spawn-blocking
-    spawnZones: Shape[];  // weights for house and destination placement
-    motorwayGuide: Polyline[];   // faint real-motorway overlay
-    starterRoads: Polyline[];    // challenge mode only
+  grid: {
+    cols: number;
+    rows: number;
+    startCols: number;
+    startRows: number;
+    growthSchedule: GrowthStep[];
   };
-  rules: MapRules;        // colors unlocked over time, special rules, upgrade pool
+  layers: {
+    water: Shape[]; // rivers, lakes, coast (closed or stroked splines)
+    mountains: Shape[]; // impassable without tunnels
+    parks: Shape[]; // decorative / spawn-blocking
+    spawnZones: Shape[]; // weights for house and destination placement
+    motorwayGuide: Polyline[]; // faint real-motorway overlay
+    starterRoads: Polyline[]; // challenge mode only
+  };
+  rules: MapRules; // colors unlocked over time, special rules, upgrade pool
   palette: PaletteId;
-  attribution: string;    // "© OpenStreetMap contributors" + sources used
+  attribution: string; // "© OpenStreetMap contributors" + sources used
   osmImport?: { fetchedAt: string; queryHash: string };
 }
 
@@ -110,7 +116,7 @@ interface Shape {
   id: string;
   kind: 'closedSpline' | 'strokeSpline';
   points: { x: number; y: number; handleIn?: Vec2; handleOut?: Vec2 }[];
-  width?: number;        // rivers
+  width?: number; // rivers
   locked?: boolean;
   origin: 'osm' | 'painted';
 }
@@ -132,13 +138,13 @@ interface Shape {
 
 Each milestone task below is sized for one AI session: it names its inputs, what to build, and how to verify it. Keep these files in the repo so every session starts with the same context:
 
-| File | Purpose |
-| --- | --- |
+| File                         | Purpose                                                                                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `CLAUDE.md` (or `AGENTS.md`) | Conventions, commands, folder map, "never do" rules (no OSM calls from the game, no secrets, Overpass\_Game naming) |
-| `docs/PLAN.md` | This plan, with milestone status ticked off |
-| `docs/mechanics-spec.md` | Every rule and constant, each tagged `approximated`, `tuned` or `confirmed` |
-| `docs/decisions.md` | Short log of choices and why |
-| `packages/sim/src/config.ts` | The only place gameplay numbers live |
+| `docs/PLAN.md`               | This plan, with milestone status ticked off                                                                         |
+| `docs/mechanics-spec.md`     | Every rule and constant, each tagged `approximated`, `tuned` or `confirmed`                                         |
+| `docs/decisions.md`          | Short log of choices and why                                                                                        |
+| `packages/sim/src/config.ts` | The only place gameplay numbers live                                                                                |
 
 **Rules for every session**
 
@@ -330,16 +336,16 @@ Audio is built so it can react to the game whether or not the original's does: t
 
 **Sourcing options**
 
-| Source | What it offers | License fit for a public repo |
-| --- | --- | --- |
-| [Kenney](https://kenney.nl/assets) audio packs | Clean UI and interface sounds | CC0: safe to commit |
-| [Freesound](https://freesound.org) | Huge library of individual effects and ambiences | Filter to CC0; CC BY works with credits; avoid NC |
-| [OpenGameArt](https://opengameart.org) | Effects and some loops | Mixed licenses; check each file |
-| jsfxr / ChipTone | Generate your own blips and chimes in the browser | You own the output: safe |
-| Tone.js or a DAW (Ableton, Reaper, LMMS) | Make your own pads and chimes; Tone.js can even generate them at runtime | You own the output: safe |
-| Sonniss GDC Game Audio Bundles | Large professional free bundles | Royalty-free in games, but raw files likely cannot be redistributed: keep out of the public repo |
-| Pixabay music and effects | Calm ambient tracks | Own license limits standalone redistribution: keep out of the public repo |
-| Commissioned composer | Original adaptive soundtrack with stems | You set the license; budget needed |
+| Source                                         | What it offers                                                           | License fit for a public repo                                                                    |
+| ---------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| [Kenney](https://kenney.nl/assets) audio packs | Clean UI and interface sounds                                            | CC0: safe to commit                                                                              |
+| [Freesound](https://freesound.org)             | Huge library of individual effects and ambiences                         | Filter to CC0; CC BY works with credits; avoid NC                                                |
+| [OpenGameArt](https://opengameart.org)         | Effects and some loops                                                   | Mixed licenses; check each file                                                                  |
+| jsfxr / ChipTone                               | Generate your own blips and chimes in the browser                        | You own the output: safe                                                                         |
+| Tone.js or a DAW (Ableton, Reaper, LMMS)       | Make your own pads and chimes; Tone.js can even generate them at runtime | You own the output: safe                                                                         |
+| Sonniss GDC Game Audio Bundles                 | Large professional free bundles                                          | Royalty-free in games, but raw files likely cannot be redistributed: keep out of the public repo |
+| Pixabay music and effects                      | Calm ambient tracks                                                      | Own license limits standalone redistribution: keep out of the public repo                        |
+| Commissioned composer                          | Original adaptive soundtrack with stems                                  | You set the license; budget needed                                                               |
 
 **The public-repo catch.** A public repo redistributes every file in it. Use CC0, CC BY, or self-made audio in the repo. Anything with a "use in your game but don't redistribute" license goes in a private asset store pulled in at build time, and the README explains that.
 
@@ -349,12 +355,12 @@ Audio is built so it can react to the game whether or not the original's does: t
 
 Code is MIT; I recommend CC BY 4.0 for your original art and audio, and ODbL 1.0 for the map files, because they are derived from OpenStreetMap. I'm not a lawyer, so a quick check before release is worthwhile.
 
-| Content | License | Notes |
-| --- | --- | --- |
-| Source code (game, Studio, packages) | MIT | `LICENSE` at repo root |
-| Original art, palettes, original audio | CC BY 4.0 | Others may reuse with credit. Choose CC BY-NC 4.0 instead if you want to block commercial reskins |
-| Source and compiled maps | ODbL 1.0 | Derived from OSM data; must stay ODbL and carry attribution |
-| Third-party audio | Its own license | Listed in `CREDITS.md`; restricted files kept out of the repo |
+| Content                                | License         | Notes                                                                                             |
+| -------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------- |
+| Source code (game, Studio, packages)   | MIT             | `LICENSE` at repo root                                                                            |
+| Original art, palettes, original audio | CC BY 4.0       | Others may reuse with credit. Choose CC BY-NC 4.0 instead if you want to block commercial reskins |
+| Source and compiled maps               | ODbL 1.0        | Derived from OSM data; must stay ODbL and carry attribution                                       |
+| Third-party audio                      | Its own license | Listed in `CREDITS.md`; restricted files kept out of the repo                                     |
 
 **Attribution.** "© OpenStreetMap contributors" with a link to the copyright page, shown on each map's loading or info screen and in the credits. The Studio's MapLibre panel shows tile attribution too.
 
@@ -370,15 +376,15 @@ Code is MIT; I recommend CC BY 4.0 for your original art and audio, and ODbL 1.0
 
 The biggest risks are traffic behavior that feels wrong and slow map authoring; both have dedicated checkpoints.
 
-| Risk | Mitigation |
-| --- | --- |
+| Risk                                                             | Mitigation                                                                                        |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | Traffic and intersection behavior doesn't feel like the original | Isolated in the sim with tests; demo scenarios; Checkpoints A and B before anything depends on it |
-| Authoring 25 maps takes too long | Studio quality gated at Checkpoint C; fix pain points before M14 |
-| OSM imports are messy (tiny streams, fragmented coastlines) | Size thresholds, simplification, and hand editing as the expected final step |
-| Mobile performance with hundreds of cars | Budget set in M13; pooling and batched drawing; profile early on a real phone |
-| Touch input conflicts (draw vs pan) | Gesture rules settled in M2, retested in M13 |
-| Overpass or Nominatim rate limits during authoring | Response caching, 1 request/second throttle, small bounding boxes |
-| Save format changes after release | `schemaVersion`, migrations with tests, map content hashes |
+| Authoring 25 maps takes too long                                 | Studio quality gated at Checkpoint C; fix pain points before M14                                  |
+| OSM imports are messy (tiny streams, fragmented coastlines)      | Size thresholds, simplification, and hand editing as the expected final step                      |
+| Mobile performance with hundreds of cars                         | Budget set in M13; pooling and batched drawing; profile early on a real phone                     |
+| Touch input conflicts (draw vs pan)                              | Gesture rules settled in M2, retested in M13                                                      |
+| Overpass or Nominatim rate limits during authoring               | Response caching, 1 request/second throttle, small bounding boxes                                 |
+| Save format changes after release                                | `schemaVersion`, migrations with tests, map content hashes                                        |
 
 **Open questions (answer when the milestone arrives)**
 

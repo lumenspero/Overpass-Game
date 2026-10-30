@@ -1,0 +1,28 @@
+{
+  "name": "overpass-game",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --open",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "ci": "npm run lint && npm run format:check && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.5"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "dependencies": {
+    "@lumenspero/balk2": "^3.0.1"
+  }
+}

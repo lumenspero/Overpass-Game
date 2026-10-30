@@ -1,0 +1,23 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color-scheme: light dark;
+}
+body {
+  margin: 0;
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+}
+main {
+  text-align: center;
+}
+button {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+}
+small {
+  display: block;
+  margin-top: 1rem;
+  opacity: 0.6;
+}
