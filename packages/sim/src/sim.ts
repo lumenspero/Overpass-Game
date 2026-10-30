@@ -3,6 +3,7 @@ import { type Car, onRoadsChanged } from './cars.ts';
 import { ROAD_BUDGET_START } from './config.ts';
 import { buildRoadGraph, type RoadGraph, updateRoadGraph } from './graph.ts';
 import { type Grid, isBuildable, isInBounds } from './grid.ts';
+import { moveCars } from './movement.ts';
 import { createRng, type RngState } from './rng.ts';
 
 /** Everything the simulation remembers. Plain data only, so it serializes to JSON. */
@@ -92,4 +93,5 @@ export function removeRoads(state: SimState, tiles: number[]): number {
 /** Advances the simulation by one fixed tick. Systems are added in later milestones. */
 export function step(state: SimState): void {
   state.tick += 1;
+  moveCars(state);
 }

@@ -5,7 +5,7 @@ import type { SimState } from './sim.ts';
 /**
  * Cars carry a route of road tiles from where they are to where they are going.
  * In M3 a car is either driving to a destination or returning to its house.
- * Movement along the route arrives in C3; here routes are only planned and repaired.
+ * Movement along the route is in movement.ts; here routes are only planned and repaired.
  *
  * Rules when roads change (spec: Cars and routing):
  * - A car whose current tile is deleted goes home from its last road tile still on its route.
@@ -27,6 +27,8 @@ export interface Car {
   route: number[];
   /** Index into `route` of the tile the car is on. */
   progress: number;
+  /** How far, from 0 to 1, the car has moved into the tile it is on. */
+  along: number;
 }
 
 export type AddCarResult =
@@ -67,6 +69,7 @@ export function addCar(
     state: 'driving',
     route,
     progress: 0,
+    along: 0,
   });
   return { ok: true, id };
 }
@@ -79,13 +82,21 @@ function goalOf(state: SimState, car: Car): number | null {
   );
 }
 
-/** Routes a car from `from` to its house, or returns null when it can't get there. */
-function routeHome(state: SimState, car: Car, from: number): Car | null {
+/**
+ * Routes a car from `from` to its house, or returns null when it can't get there.
+ * `along` is the car's position within `from`, which is kept when the car stays on its tile.
+ */
+function routeHome(
+  state: SimState,
+  car: Car,
+  from: number,
+  along: number,
+): Car | null {
   const home = roadEntrance(state, car.house);
   if (home === null) return null;
   const route = findRoute(state.grid, state.roads, from, home);
   if (!route) return null;
-  return { ...car, state: 'returning', route, progress: 0 };
+  return { ...car, state: 'returning', route, progress: 0, along };
 }
 
 /**
@@ -113,7 +124,8 @@ export function onRoadsChanged(
           break;
         }
       }
-      const next = base === null ? null : routeHome(state, car, base);
+      // The car starts the walk home at the start of the tile it moves onto.
+      const next = base === null ? null : routeHome(state, car, base, 0);
       if (next) survivors.push(next);
       continue;
     }
@@ -133,7 +145,7 @@ export function onRoadsChanged(
           continue;
         }
       } else if (routeBroken) {
-        const next = routeHome(state, car, current);
+        const next = routeHome(state, car, current, car.along);
         if (next) survivors.push(next);
         continue;
       }

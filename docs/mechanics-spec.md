@@ -46,6 +46,12 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Current tile deleted:** the car walks back along its route to the last tile still a road, then goes home from there. `approximated`
 - **No route home:** the car vanishes. `approximated`
 - **Road added:** a driving car takes a new route only when it is shorter than what it has left. `approximated`
+- **Car speed:** a car covers `CAR_SPEED` tiles per second along its route. `approximated`
+- **Following gap:** a car stops `CAR_GAP` tiles short of the car ahead of it on the same tile. `approximated`
+- **Entering a tile:** a car may enter a tile only when no car on it is within `CAR_GAP` of the entrance. `approximated`
+- **Junctions:** a road tile with `JUNCTION_MIN_ROADS` or more road neighbours is a junction. It holds one car at a time, and a car already on it blocks all others. When two cars reach a junction together, the one further along its route goes first, then the lower car id. `approximated`
+- **Queuing:** a car held at a tile edge waits there until the way clears. Cars are moved front-first each tick, so a follower sees its leader's new position. `approximated`
+- **Arrival (provisional):** a car stays on its last tile until trip completion arrives in C4. `approximated`
 - **Movement along routes:** not yet implemented (C3).
 
 ### Buildings

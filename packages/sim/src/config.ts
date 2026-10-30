@@ -15,3 +15,12 @@ export const ROAD_BUDGET_START = 120; // approximated
 
 /** Number of building colours. A house pairs with destinations of its own colour. */
 export const BUILDING_COLOR_COUNT = 4; // approximated
+
+/** How far a car travels along its route per second, in tiles. */
+export const CAR_SPEED = 2; // approximated
+
+/** Least distance, in tiles, between a car and the car ahead of it on the same tile. */
+export const CAR_GAP = 0.4; // approximated
+
+/** A road tile with at least this many road neighbours is a junction. One car at a time may cross it. */
+export const JUNCTION_MIN_ROADS = 3; // approximated
