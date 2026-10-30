@@ -68,12 +68,21 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Roads:** a road cannot be placed on a building tile.
 - **Removal:** buildings are never removed in M3.
 
+### Overflow
+
+- **Limit:** a destination holding more than `OVERFLOW_PIN_LIMIT` waiting pins overflows. `approximated`
+- **Countdown:** an overflowing destination starts a countdown of `OVERFLOW_TICKS`, one tick at a time. `approximated`
+- **Reset:** serving a pin resets that destination's countdown to full, so a busy destination that keeps being served never runs out.
+- **Clear:** dropping back to the limit clears the countdown. It starts again from full the next time the destination overflows.
+- **Game over:** when any countdown runs out, the game ends. The sim stops advancing and records the tick and destination.
+- **Not yet:** the countdown is not drawn, and there is no end screen (later M4 chunks).
+
 ### Demand
 
 - **Pins:** each destination collects one demand pin every `DEMAND_INTERVAL_TICKS`, starting after its first interval. Pins are collected whether or not the destination is connected. `approximated`
 - **Unclaimed pins:** a destination's pins minus the cars currently driving to it. A house only sends a car to a destination with an unclaimed pin, so a pin is never sent to two cars.
 - **Arrival:** a pin is used up when a car arrives at its destination and starts to park.
 - **Lost demand:** a car that goes home without arriving leaves its pin in place for the next car.
-- **Not yet:** no cap on waiting pins, so no overflow (M4 next chunk). Business rates are still open: the original has two business speeds, meaning two rates at which businesses request workers. Each rate and how it shows on screen is not yet decided, so every destination uses the one interval for now.
+- **Business rates are still open:** the original has two business speeds, meaning two rates at which businesses request workers. Each rate and how it shows on screen is not yet decided, so every destination uses the one interval for now.
 
 _Still to write: car movement and queuing, trips, spawning, demand, scoring, clock and expansion, upgrades, bridges and tunnels, roundabouts and lights, congestion, unlocks, audio events. Each arrives with its milestone._

@@ -36,3 +36,9 @@ export const PARK_TICKS = 60; // approximated
 
 /** Ticks between one demand pin appearing at a destination and the next. */
 export const DEMAND_INTERVAL_TICKS = 150; // approximated
+
+/** Waiting pins a destination can hold. Above this it overflows and its countdown runs. */
+export const OVERFLOW_PIN_LIMIT = 4; // approximated
+
+/** Ticks an overflowing destination has before the game ends. Serving a pin resets it. */
+export const OVERFLOW_TICKS = 900; // approximated

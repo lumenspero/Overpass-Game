@@ -1,7 +1,7 @@
 import type { Building, Demand, Home } from './buildings.ts';
 import { type Car, onRoadsChanged } from './cars.ts';
 import { ROAD_BUDGET_START } from './config.ts';
-import { generateDemand } from './demand.ts';
+import { generateDemand, updateOverflow } from './demand.ts';
 import { buildRoadGraph, type RoadGraph, updateRoadGraph } from './graph.ts';
 import { type Grid, isBuildable, isInBounds } from './grid.ts';
 import { moveCars } from './movement.ts';
@@ -26,6 +26,15 @@ export interface SimState {
   demand: Record<number, Demand>;
   cars: Car[];
   nextCarId: number;
+  /** Set when a destination's overflow countdown runs out. The game is over and step does nothing. */
+  over: GameOver | null;
+}
+
+export interface GameOver {
+  /** The tick the game ended on. */
+  tick: number;
+  /** The destination whose countdown ran out. */
+  destination: number;
 }
 
 export interface CreateSimOptions {
@@ -57,6 +66,7 @@ export function createSim({
     demand: {},
     cars: [],
     nextCarId: 0,
+    over: null,
   };
 }
 
@@ -100,8 +110,11 @@ export function removeRoads(state: SimState, tiles: number[]): number {
 
 /** Advances the simulation by one fixed tick. Systems are added in later milestones. */
 export function step(state: SimState): void {
+  if (state.over) return;
   state.tick += 1;
   generateDemand(state);
+  updateOverflow(state);
+  if (state.over) return;
   spawnCars(state);
   moveCars(state);
   updateTrips(state);

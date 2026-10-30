@@ -28,8 +28,8 @@ function world(withRoad = true): SimState {
     tile: at(sim.grid, 4, 2),
     entrance: 'w',
   });
-  // Plenty of waiting demand, so these tests check travel rather than demand.
-  sim.demand[1].pins = 100;
+  // A few waiting pins, so these tests check travel rather than demand, and stay under the overflow limit.
+  sim.demand[1].pins = 2;
   if (withRoad) {
     placeRoads(sim, [
       at(sim.grid, 1, 2),

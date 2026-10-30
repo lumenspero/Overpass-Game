@@ -29,6 +29,8 @@ export interface Demand {
   pins: number;
   /** Ticks until the next pin appears. */
   cooldown: number;
+  /** Ticks left before this destination ends the game. 0 when it is not overflowing. */
+  overflow: number;
 }
 
 /** A house's cars. `owned` counts cars that belong to it; `atHome` of them are parked there. */
@@ -103,7 +105,11 @@ export function placeBuilding(
       cooldown: 0,
     };
   } else {
-    state.demand[id] = { pins: 0, cooldown: DEMAND_INTERVAL_TICKS };
+    state.demand[id] = {
+      pins: 0,
+      cooldown: DEMAND_INTERVAL_TICKS,
+      overflow: 0,
+    };
   }
   return { ok: true, id };
 }
