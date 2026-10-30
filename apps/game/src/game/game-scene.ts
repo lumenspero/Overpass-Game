@@ -53,6 +53,7 @@ import { debugShapes } from '../view/debug-geometry.ts';
 import {
   buildingShapes,
   carShapes,
+  entranceStubShapes,
   roadShapes,
   terrainTiles,
   ENTRANCE_WIDTH,
@@ -141,16 +142,17 @@ export class GameScene extends Phaser.Scene {
     this.layer = this.add.container(0, 0);
     const terrainGfx = this.add.graphics();
     this.lockGfx = this.add.graphics();
-    this.buildingGfx = this.add.graphics();
+    // Roads sit under buildings, so a road that meets a building tucks in beneath its body.
     this.roadGfx = this.add.graphics();
+    this.buildingGfx = this.add.graphics();
     this.carGfx = this.add.graphics();
     this.ringGfx = this.add.graphics();
     this.overlayGfx = this.add.graphics().setVisible(false);
     this.layer.add([
       terrainGfx,
       this.lockGfx,
-      this.buildingGfx,
       this.roadGfx,
+      this.buildingGfx,
       this.carGfx,
       this.ringGfx,
       this.overlayGfx,
@@ -401,7 +403,14 @@ export class GameScene extends Phaser.Scene {
     const gfx = this.roadGfx;
     gfx.clear();
     gfx.fillStyle(PALETTE.road, 1);
-    for (const s of roadShapes(this.sim.grid, this.sim.roads, this.sim.links)) {
+    const visible = this.sim.buildings.filter((b) =>
+      isOpenTile(this.sim, b.tile),
+    );
+    const shapes = [
+      ...roadShapes(this.sim.grid, this.sim.roads, this.sim.links),
+      ...entranceStubShapes(visible, this.sim.grid, this.sim.roads),
+    ];
+    for (const s of shapes) {
       if (s.kind === 'circle') gfx.fillCircle(s.x, s.y, s.r);
       else if (s.kind === 'rect') gfx.fillRect(s.x, s.y, s.w, s.h);
       else {

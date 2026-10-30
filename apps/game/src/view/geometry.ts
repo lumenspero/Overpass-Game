@@ -60,6 +60,31 @@ export function roadShapes(
   return out;
 }
 
+/**
+ * A road-width bar from each building's entrance tile to the building's own centre, when
+ * the entrance tile is a road. The road itself only reaches its tile's centre, so without
+ * this bar the entrance tick floats in a gap; the building covers the bar's far end.
+ */
+export function entranceStubShapes(
+  buildings: readonly Building[],
+  grid: Grid,
+  roads: readonly number[],
+): RoadShape[] {
+  const r = (ROAD_WIDTH_TILES * TILE_SIZE) / 2;
+  const out: RoadShape[] = [];
+  for (const b of buildings) {
+    const { dx, dy } = SIDE_STEP[b.entrance];
+    const entrance = b.tile + dy * grid.cols + dx;
+    if (roads[entrance] !== 1) continue;
+    const bx = ((b.tile % grid.cols) + 0.5) * TILE_SIZE;
+    const by = (Math.floor(b.tile / grid.cols) + 0.5) * TILE_SIZE;
+    const ex = ((entrance % grid.cols) + 0.5) * TILE_SIZE;
+    const ey = (Math.floor(entrance / grid.cols) + 0.5) * TILE_SIZE;
+    out.push({ kind: 'line', x1: ex, y1: ey, x2: bx, y2: by, w: 2 * r });
+  }
+  return out;
+}
+
 export interface TerrainTile {
   x: number;
   y: number;

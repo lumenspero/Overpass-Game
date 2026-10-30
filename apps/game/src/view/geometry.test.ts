@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildingShapes,
   carShapes,
+  entranceStubShapes,
   LANE_OFFSET,
   roadShapes,
   terrainTiles,
@@ -114,6 +115,38 @@ describe('roadShapes', () => {
   it('draws nothing for an empty map', () => {
     const grid = createGrid(3, 3);
     expect(roadShapes(grid, roadsFrom(3, 3, []), NONE)).toEqual([]);
+  });
+});
+
+describe('entranceStubShapes', () => {
+  const house = (tile: number, entrance: 'e' | 'w' | 'n' | 's') =>
+    ({ kind: 'house', color: 0, tile, entrance }) as unknown as Building;
+
+  it('joins the entrance tile centre to the building centre when the entrance is a road', () => {
+    const grid = createGrid(3, 1);
+    // House on tile 0 faces east onto road tile 1.
+    const shapes = entranceStubShapes(
+      [house(0, 'e')],
+      grid,
+      roadsFrom(3, 1, [1]),
+    );
+    expect(shapes).toEqual([
+      {
+        kind: 'line',
+        x1: centre(1, 0).x,
+        y1: centre(1, 0).y,
+        x2: centre(0, 0).x,
+        y2: centre(0, 0).y,
+        w: 2 * R,
+      },
+    ]);
+  });
+
+  it('draws nothing when the entrance tile is not a road', () => {
+    const grid = createGrid(3, 1);
+    expect(
+      entranceStubShapes([house(0, 'e')], grid, roadsFrom(3, 1, [])),
+    ).toEqual([]);
   });
 });
 
