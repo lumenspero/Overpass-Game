@@ -1,22 +1,21 @@
 import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
 import globals from 'globals';
+import { defineConfig, globalIgnores } from 'eslint/config';
 
-export default [
-  { ignores: ['dist', 'node_modules', '.wrangler', 'coverage'] },
-  js.configs.recommended,
+export default defineConfig([
+  globalIgnores(['dist', 'coverage', '.wrangler', 'connection-map']),
   {
-    files: ['**/*.js'],
+    files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],
+    extends: [js.configs.recommended, tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
-      globals: {
-        ...globals.browser,
-        __BUILD_TIME__: 'readonly',
-      },
+      globals: globals.browser,
     },
   },
   {
-    files: ['*.config.js'],
+    files: ['*.config.{js,ts}'],
     languageOptions: { globals: globals.node },
   },
-];
+]);
