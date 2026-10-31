@@ -20,3 +20,23 @@ export const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 
 /** Nominatim allows one request per second. A little margin keeps us under it. */
 export const NOMINATIM_MIN_INTERVAL_MS = 1100;
+
+/**
+ * OSM import tuning, in tiles. These decide how much detail survives the import. They are
+ * authoring choices, not gameplay numbers, so they stay here.
+ */
+export const IMPORT = {
+  /** Douglas-Peucker tolerance: shapes keep points that deviate more than this. */
+  simplifyTolerance: 0.05,
+  /** Closed shapes smaller than this area are dropped as noise. */
+  minClosedArea: 1,
+  /** Strokes shorter than this length are dropped as noise. */
+  minStrokeLength: 0.5,
+  /** River and canal widths are clamped to this range. */
+  riverWidthMin: 0.25,
+  riverWidthMax: 1,
+  /** Used when a waterway has no usable width tag. */
+  riverWidthDefault: 0.3,
+  /** Coastlines are drawn as strokes this wide. */
+  coastWidth: 0.25,
+} as const;

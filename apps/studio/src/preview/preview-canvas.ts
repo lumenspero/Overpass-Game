@@ -1,4 +1,10 @@
-import { DEBUG_PALETTE, PALETTE } from '@overpass-game/render-style';
+import {
+  DEBUG_PALETTE,
+  GUIDE_STYLE,
+  PALETTE,
+} from '@overpass-game/render-style';
+import { sampleSpline } from '@overpass-game/map-compiler';
+import type { Polyline, Shape, SourceMap } from '@overpass-game/map-schema';
 import type { Frame } from '../geo/frame.ts';
 import { previewLayout } from './layout.ts';
 
@@ -10,8 +16,8 @@ function hex(colour: number): string {
 
 /**
  * Game-style preview of the map frame: the tile grid in the game's land
- * colour, turned to match the real map. It draws only; the frame state
- * comes from the app.
+ * colour, turned to match the real map, with any imported features drawn on
+ * top. It draws only; the frame and source state come from the app.
  */
 export class PreviewCanvas {
   private readonly canvas: HTMLCanvasElement;
@@ -19,6 +25,7 @@ export class PreviewCanvas {
   private readonly observer: ResizeObserver;
   private frame: Frame | null = null;
   private inside = true;
+  private source: SourceMap | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
@@ -33,6 +40,12 @@ export class PreviewCanvas {
   setFrame(frame: Frame | null, inside: boolean): void {
     this.frame = frame;
     this.inside = inside;
+    this.draw();
+  }
+
+  /** Imported features for the current frame, or null to show only the grid. */
+  setSource(source: SourceMap | null): void {
+    this.source = source;
     this.draw();
   }
 
@@ -78,6 +91,16 @@ export class PreviewCanvas {
     ctx.fillStyle = hex(PALETTE.land);
     ctx.fillRect(x0, y0, frame.cols, frame.rows);
 
+    if (this.source) {
+      // Imported shapes can run past the frame; keep them inside the grid.
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x0, y0, frame.cols, frame.rows);
+      ctx.clip();
+      this.drawSource(this.source, frame, scale);
+      ctx.restore();
+    }
+
     ctx.strokeStyle = hex(DEBUG_PALETTE.grid);
     ctx.lineWidth = 1 / scale;
     ctx.beginPath();
@@ -95,5 +118,57 @@ export class PreviewCanvas {
     ctx.lineWidth = 2 / scale;
     ctx.strokeRect(x0, y0, frame.cols, frame.rows);
     ctx.restore();
+  }
+
+  /** Draws imported layers in tile-local coordinates (origin at the centre, north up). */
+  private drawSource(source: SourceMap, frame: Frame, scale: number): void {
+    const { ctx } = this;
+    const toLocal = (p: { x: number; y: number }): [number, number] => [
+      p.x - frame.cols / 2,
+      frame.rows / 2 - p.y,
+    ];
+
+    const trace = (
+      points: { x: number; y: number }[],
+      closed: boolean,
+    ): void => {
+      ctx.beginPath();
+      points.forEach((p, i) => {
+        const [u, v] = toLocal(p);
+        if (i === 0) ctx.moveTo(u, v);
+        else ctx.lineTo(u, v);
+      });
+      if (closed) ctx.closePath();
+    };
+
+    const drawShape = (shape: Shape, fill: string, stroke: string): void => {
+      const closed = shape.kind === 'closedSpline';
+      trace(sampleSpline(shape.points, closed), closed);
+      if (closed) {
+        ctx.fillStyle = fill;
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = shape.width ?? 0.25;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+      }
+    };
+
+    for (const shape of source.layers.parks)
+      drawShape(shape, hex(PALETTE.park), hex(PALETTE.park));
+    for (const shape of source.layers.water)
+      drawShape(shape, hex(PALETTE.water), hex(PALETTE.water));
+
+    const drawGuide = (line: Polyline): void => {
+      trace(line.points, false);
+      ctx.strokeStyle = hex(PALETTE.motorway);
+      ctx.globalAlpha = GUIDE_STYLE.alpha;
+      ctx.lineWidth = Math.max(GUIDE_STYLE.widthTiles, 1 / scale);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    };
+    for (const line of source.layers.motorwayGuide) drawGuide(line);
   }
 }

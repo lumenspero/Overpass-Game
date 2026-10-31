@@ -1,5 +1,6 @@
 import { h, type Attributes, type ComponentChildren, type VNode } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
+import type { SourceMap } from '@overpass-game/map-schema';
 import { DEFAULT_FRAME_TILES } from './config.ts';
 import {
   frameAt,
@@ -11,7 +12,10 @@ import {
   type Frame,
 } from './geo/frame.ts';
 import type { Metres } from './geo/mercator.ts';
+import { convertFeatures } from './import/convert.ts';
+import { buildSourceMap } from './import/source-map.ts';
 import { MapPanel } from './map/map-panel.ts';
+import { loadRegion } from './osm/region.ts';
 import { PreviewCanvas } from './preview/preview-canvas.ts';
 import { searchPlaces, type PlaceCandidate } from './search/nominatim.ts';
 
@@ -37,14 +41,30 @@ function describeFrame(frame: Frame | null): string {
   }`;
 }
 
-/** The Studio's first screen: place search, the real map, the frame and the game-style preview. */
+function sameFrame(a: Frame, b: Frame): boolean {
+  return (
+    a.centre[0] === b.centre[0] &&
+    a.centre[1] === b.centre[1] &&
+    a.cols === b.cols &&
+    a.rows === b.rows &&
+    a.rotationDeg === b.rotationDeg
+  );
+}
+
+/** The Studio's screen: place search, the real map, the frame, the OSM import and the game-style preview. */
 export function App(): VNode {
   const [frame, setFrame] = useState<Frame | null>(null);
   const [drawMode, setDrawMode] = useState(false);
   const [query, setQuery] = useState('');
   const [places, setPlaces] = useState<PlaceCandidate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [placeName, setPlaceName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [imported, setImported] = useState<{
+    map: SourceMap;
+    frame: Frame;
+  } | null>(null);
   const [message, setMessage] = useState(
     'Search for a place, or turn on Draw frame and drag across the map.',
   );
@@ -70,6 +90,7 @@ export function App(): VNode {
       prev?.rotationDeg ?? 0,
     );
     setSelectedId(id);
+    setPlaceName(place.name);
     setFrame(next);
     setMessage(
       `Framed ${place.name}. Turn or redraw the frame if it needs adjusting.`,
@@ -119,6 +140,13 @@ export function App(): VNode {
     );
   }, [frame]);
 
+  // Imported features show only while the frame is the one they were imported for.
+  const sourceForPreview =
+    imported && frame && sameFrame(imported.frame, frame) ? imported.map : null;
+  useEffect(() => {
+    preview.current?.setSource(sourceForPreview);
+  }, [sourceForPreview]);
+
   useEffect(() => {
     mapPanel.current?.setCandidates(places, selectedId);
   }, [places, selectedId]);
@@ -151,11 +179,46 @@ export function App(): VNode {
     }
   }
 
+  async function onImport(): Promise<void> {
+    const current = latestFrame.current;
+    if (!current || !isInsideContinentalUS(current)) return;
+    setImporting(true);
+    setMessage('Fetching OpenStreetMap data…');
+    try {
+      const loaded = await loadRegion(current);
+      setMessage(
+        loaded.cached
+          ? 'Using cached OpenStreetMap data. Converting…'
+          : 'Converting features…',
+      );
+      const layers = convertFeatures(loaded.collection, current);
+      const map = buildSourceMap({
+        name: placeName ?? 'Imported map',
+        frame: current,
+        layers,
+        queryHash: loaded.hash,
+        fetchedAt: new Date().toISOString(),
+      });
+      setImported({ map, frame: current });
+      setMessage(
+        `Imported ${layers.water.length} water shapes, ${layers.parks.length} parks and ${layers.motorwayGuide.length} motorway lines.`,
+      );
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Import failed.');
+    } finally {
+      setImporting(false);
+    }
+  }
+
   function onRotate(deg: number): void {
     setFrame((prev) => (prev ? withRotation(prev, deg) : prev));
   }
 
   const turn = frame?.rotationDeg ?? 0;
+  const importable =
+    frame !== null && isInsideContinentalUS(frame) && !importing && !busy;
+  const importStale =
+    imported !== null && frame !== null && !sameFrame(imported.frame, frame);
 
   return el(
     'div',
@@ -243,6 +306,23 @@ export function App(): VNode {
           { class: 'frame-status', 'data-testid': 'frame-status' },
           describeFrame(frame),
         ),
+      ),
+      el(
+        'section',
+        { class: 'import-controls' },
+        el('h2', null, 'Map data'),
+        el(
+          'button',
+          { type: 'button', disabled: !importable, onClick: onImport },
+          importing ? 'Importing…' : 'Import OpenStreetMap data',
+        ),
+        importStale
+          ? el(
+              'p',
+              { class: 'frame-status' },
+              'The frame changed since the last import. Import again to update the map.',
+            )
+          : null,
       ),
       el('p', { class: 'message', role: 'status' }, message),
     ),

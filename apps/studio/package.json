@@ -11,8 +11,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@overpass-game/map-compiler": "workspace:*",
+    "@overpass-game/map-schema": "workspace:*",
     "@overpass-game/render-style": "workspace:*",
+    "idb-keyval": "6.3.0",
     "maplibre-gl": "6.16.0",
+    "osmtogeojson": "3.0.0-beta.5",
     "preact": "10.29.8"
   },
   "devDependencies": {

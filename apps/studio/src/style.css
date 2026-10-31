@@ -155,3 +155,8 @@ button[aria-pressed='true'] {
     height: auto;
   }
 }
+
+.import-controls {
+  display: grid;
+  gap: 8px;
+}
