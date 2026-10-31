@@ -1,6 +1,18 @@
-import { defineConfig } from 'vite';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, loadEnv } from 'vite';
+import { nominatimProxy } from './dev/nominatim-proxy.ts';
+
+const here = dirname(fileURLToPath(import.meta.url));
 
 // Map Studio is a dev-only tool and is never deployed publicly.
-export default defineConfig({
-  base: '/',
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, here, '');
+  return {
+    base: '/',
+    plugins: [nominatimProxy(env.NOMINATIM_CONTACT)],
+    // MapLibre starts its worker from a file next to its own module. Vite's dependency
+    // pre-bundling moves that module and leaves the worker behind, so keep MapLibre out of it.
+    optimizeDeps: { exclude: ['maplibre-gl'] },
+  };
 });

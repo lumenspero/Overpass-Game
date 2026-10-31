@@ -1,7 +1,157 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  color: #e8e4d8;
+}
+
 html,
 body,
 #app {
   margin: 0;
   height: 100%;
   background: #111;
+}
+
+.studio {
+  display: grid;
+  grid-template-columns: minmax(260px, 300px) 1fr 1fr;
+  height: 100vh;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  overflow-y: auto;
+  background: #181b1f;
+  border-right: 1px solid #2a2f36;
+}
+
+.sidebar h1 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.sidebar h2 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9aa3ae;
+}
+
+.search {
+  display: grid;
+  gap: 6px;
+}
+
+input[type='search'],
+input[type='range'] {
+  font: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+input[type='search'] {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #3a4048;
+  background: #101214;
+  color: inherit;
+}
+
+button {
+  font: inherit;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #3a4048;
+  background: #22262c;
+  color: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button[aria-pressed='true'] {
+  background: #2f4a34;
+  border-color: #4f7a58;
+}
+
+.frame-controls {
+  display: grid;
+  gap: 8px;
+}
+
+.results {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.results button {
+  width: 100%;
+  text-align: left;
+}
+
+.results button.is-selected {
+  border-color: #ffd166;
+}
+
+.badge.is-outside {
+  color: #e5484d;
+  font-size: 12px;
+}
+
+.frame-status,
+.message {
+  margin: 0;
+  font-size: 13px;
+  color: #b8bfc8;
+}
+
+.map-panel {
+  position: relative;
+  min-width: 0;
+}
+
+.preview-panel {
+  min-width: 0;
+  background: #111;
+  border-left: 1px solid #2a2f36;
+}
+
+.preview-panel canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.place-marker {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #111;
+  background: #ffd166;
+  cursor: pointer;
+}
+
+.place-marker.is-selected {
+  width: 18px;
+  height: 18px;
+  background: #ef476f;
+}
+
+@media (max-width: 900px) {
+  .studio {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 50vh 50vh;
+    height: auto;
+  }
 }
