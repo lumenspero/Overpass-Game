@@ -12,6 +12,9 @@ export const DEFAULT_FRAME_TILES = 48;
 /** Continental United States bounding box as [west, south, east, north] in degrees. Frames must lie inside it. */
 export const CONTINENTAL_US_BBOX = [-124.85, 24.4, -66.85, 49.45] as const;
 
+/** Terrarium elevation tiles are read at this zoom: about 150 m of ground per pixel at the equator. */
+export const TERRAIN_ZOOM = 10;
+
 /** Starting view for the map: the middle of the continental United States. */
 export const DEFAULT_VIEW = { centre: [-98.58, 39.83], zoom: 3.4 } as const;
 
@@ -39,4 +42,9 @@ export const IMPORT = {
   riverWidthDefault: 0.3,
   /** Coastlines are drawn as strokes this wide. */
   coastWidth: 0.25,
+  /** The mountain slider starts here, in metres, and runs from min to max in steps. */
+  mountainThresholdDefault: 500,
+  mountainThresholdMin: 0,
+  mountainThresholdMax: 3000,
+  mountainThresholdStep: 25,
 } as const;

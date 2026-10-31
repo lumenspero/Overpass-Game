@@ -158,6 +158,8 @@ export class PreviewCanvas {
 
     for (const shape of source.layers.parks)
       drawShape(shape, hex(PALETTE.park), hex(PALETTE.park));
+    for (const shape of source.layers.mountains)
+      drawShape(shape, hex(PALETTE.mountain), hex(PALETTE.mountain));
     for (const shape of source.layers.water)
       drawShape(shape, hex(PALETTE.water), hex(PALETTE.water));
 

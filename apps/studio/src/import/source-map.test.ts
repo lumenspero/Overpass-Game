@@ -38,6 +38,30 @@ describe('buildSourceMap', () => {
     expect(map.grid.rows).toBe(30);
   });
 
+  it('places mountain shapes in the mountains layer', () => {
+    const shape = {
+      id: 'terrain-0',
+      kind: 'closedSpline' as const,
+      origin: 'osm' as const,
+      points: [
+        { x: 1, y: 1, handleIn: { x: 0, y: 0 }, handleOut: { x: 0, y: 0 } },
+        { x: 2, y: 1, handleIn: { x: 0, y: 0 }, handleOut: { x: 0, y: 0 } },
+        { x: 2, y: 2, handleIn: { x: 0, y: 0 }, handleOut: { x: 0, y: 0 } },
+      ],
+    };
+    const withMountains = buildSourceMap({
+      name: 'Tulsa',
+      frame,
+      layers: { water: [], parks: [], motorwayGuide: [] },
+      mountains: [shape],
+      queryHash: 'abcd1234',
+      fetchedAt: '2026-10-31T12:00:00.000Z',
+    });
+    expect(withMountains.layers.mountains.map((s) => s.id)).toEqual([
+      'terrain-0',
+    ]);
+  });
+
   it('records where the data came from', () => {
     expect(map.osmImport).toEqual({
       fetchedAt: '2026-10-31T12:00:00.000Z',

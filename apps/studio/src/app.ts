@@ -1,7 +1,7 @@
 import { h, type Attributes, type ComponentChildren, type VNode } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { SourceMap } from '@overpass-game/map-schema';
-import { DEFAULT_FRAME_TILES } from './config.ts';
+import { DEFAULT_FRAME_TILES, IMPORT, TERRAIN_ZOOM } from './config.ts';
 import {
   frameAt,
   frameBBox,
@@ -18,6 +18,9 @@ import { MapPanel } from './map/map-panel.ts';
 import { loadRegion } from './osm/region.ts';
 import { PreviewCanvas } from './preview/preview-canvas.ts';
 import { searchPlaces, type PlaceCandidate } from './search/nominatim.ts';
+import { loadTerrain } from './terrain/load.ts';
+import { deriveMountains } from './terrain/mountains.ts';
+import { elevationGrid } from './terrain/terrarium.ts';
 
 /**
  * Preact's h() typings are strict about prop shapes, which gets in the way of a
@@ -39,6 +42,19 @@ function describeFrame(frame: Frame | null): string {
       ? 'Inside the continental US box.'
       : 'Outside the continental US box: move or shrink the frame.'
   }`;
+}
+
+/**
+ * Terrain is optional: if its tiles cannot be loaded, the import goes ahead
+ * without mountains. Returns the elevation for each grid tile, or null.
+ */
+async function loadElevation(frame: Frame): Promise<Float32Array | null> {
+  try {
+    const tiles = await loadTerrain(frame, TERRAIN_ZOOM);
+    return elevationGrid(frame, tiles, TERRAIN_ZOOM);
+  } catch {
+    return null;
+  }
 }
 
 function sameFrame(a: Frame, b: Frame): boolean {
@@ -64,7 +80,11 @@ export function App(): VNode {
   const [imported, setImported] = useState<{
     map: SourceMap;
     frame: Frame;
+    elevation: Float32Array | null;
   } | null>(null);
+  const [mountainThreshold, setMountainThreshold] = useState<number>(
+    IMPORT.mountainThresholdDefault,
+  );
   const [message, setMessage] = useState(
     'Search for a place, or turn on Draw frame and drag across the map.',
   );
@@ -188,26 +208,60 @@ export function App(): VNode {
       const loaded = await loadRegion(current);
       setMessage(
         loaded.cached
-          ? 'Using cached OpenStreetMap data. Converting…'
-          : 'Converting features…',
+          ? 'Using cached OpenStreetMap data. Loading terrain…'
+          : 'Converting features and loading terrain…',
       );
       const layers = convertFeatures(loaded.collection, current);
+      const elevation = await loadElevation(current);
+      const mountains = elevation
+        ? deriveMountains(
+            elevation,
+            current.cols,
+            current.rows,
+            mountainThreshold,
+          )
+        : [];
       const map = buildSourceMap({
         name: placeName ?? 'Imported map',
         frame: current,
         layers,
+        mountains,
         queryHash: loaded.hash,
         fetchedAt: new Date().toISOString(),
       });
-      setImported({ map, frame: current });
+      setImported({ map, frame: current, elevation });
       setMessage(
-        `Imported ${layers.water.length} water shapes, ${layers.parks.length} parks and ${layers.motorwayGuide.length} motorway lines.`,
+        `Imported ${layers.water.length} water shapes, ${layers.parks.length} parks, ${layers.motorwayGuide.length} motorway lines and ${mountains.length} mountains.${
+          elevation
+            ? ''
+            : ' Terrain was unavailable, so no mountains were added.'
+        }`,
       );
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Import failed.');
     } finally {
       setImporting(false);
     }
+  }
+
+  /** Runs on slider release: rebuilds the mountain layer from the stored elevation. */
+  function onMountainThreshold(threshold: number): void {
+    const current = imported;
+    if (!current?.elevation) return;
+    const mountains = deriveMountains(
+      current.elevation,
+      current.frame.cols,
+      current.frame.rows,
+      threshold,
+    );
+    setImported({
+      ...current,
+      map: {
+        ...current.map,
+        layers: { ...current.map.layers, mountains },
+      },
+    });
+    setMessage(`${mountains.length} mountains at ${threshold} m and above.`);
   }
 
   function onRotate(deg: number): void {
@@ -316,6 +370,28 @@ export function App(): VNode {
           { type: 'button', disabled: !importable, onClick: onImport },
           importing ? 'Importing…' : 'Import OpenStreetMap data',
         ),
+        el(
+          'label',
+          { for: 'mountain-threshold' },
+          `Mountains above ${mountainThreshold} m`,
+        ),
+        el('input', {
+          id: 'mountain-threshold',
+          type: 'range',
+          min: IMPORT.mountainThresholdMin,
+          max: IMPORT.mountainThresholdMax,
+          step: IMPORT.mountainThresholdStep,
+          value: mountainThreshold,
+          disabled: !imported?.elevation || importStale,
+          onInput: (e: Event) =>
+            setMountainThreshold(
+              Number((e.currentTarget as HTMLInputElement).value),
+            ),
+          onChange: (e: Event) =>
+            onMountainThreshold(
+              Number((e.currentTarget as HTMLInputElement).value),
+            ),
+        }),
         importStale
           ? el(
               'p',

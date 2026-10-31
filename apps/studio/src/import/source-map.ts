@@ -1,6 +1,7 @@
 import {
   MAP_SCHEMA_VERSION,
   parseSourceMap,
+  type Shape,
   type SourceMap,
 } from '@overpass-game/map-schema';
 import { frameBBox, type Frame } from '../geo/frame.ts';
@@ -20,6 +21,8 @@ export interface BuildInput {
   readonly name: string;
   readonly frame: Frame;
   readonly layers: ImportedLayers;
+  /** Mountain outlines from terrain. Empty when terrain was unavailable. */
+  readonly mountains?: readonly Shape[];
   readonly queryHash: string;
   readonly fetchedAt: string;
 }
@@ -35,7 +38,7 @@ export function buildSourceMap(input: BuildInput): SourceMap {
     grid: { cols: frame.cols, rows: frame.rows, districts: [] },
     layers: {
       water: layers.water,
-      mountains: [],
+      mountains: input.mountains ?? [],
       parks: layers.parks,
       spawnZones: [],
       motorwayGuide: layers.motorwayGuide,

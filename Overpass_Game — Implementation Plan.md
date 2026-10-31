@@ -254,12 +254,14 @@ Done when: the test map runs from compiled JSON and the guide overlay toggles.
 - [x] Place search (Nominatim, 1 request/second, User-Agent and contact from `.env.local`), with candidates listed on the map
 - [x] Continental-US bounding box check; draw and rotate the map frame
 - [x] Overpass queries for water, coastline, motorways and trunk roads, parks and land use; responses cached in IndexedDB by query hash
-- [ ] Terrain tiles decoded to elevation; threshold slider seeds mountains
+- [x] Terrain tiles decoded to elevation; threshold slider seeds mountains
 - [x] Import converts features to simplified, smoothed source shapes tagged `origin: 'osm'`
 
 > **Status (sub-step 1 built, live check pending):** layout, place search, the continental-US box check and frame draw and turn are in place and unit-tested. The build sandbox can't reach Nominatim, the map tiles, or a browser, so run `pnpm dev:studio` with `NOMINATIM_CONTACT` set in `apps/studio/.env.local` and confirm search and framing before sub-step 2.
 
 > **Status (sub-step 2 built, live check pending):** the Overpass import, IndexedDB cache, conversion to smoothed source shapes and the preview of imported features are in place and unit-tested. Overpass and the map tiles can't be reached from the build sandbox, so run an import on your machine before sub-step 3. Sea areas are not filled yet; that is for the M8 editor.
+
+> **Status (sub-step 3 built, live check pending):** terrain tiles are decoded to elevation through the Studio's dev proxy, and the threshold slider seeds mountains. The build sandbox can't reach the terrain tile host, so run an import on your machine and move the slider: mountains should follow high ground, and the import should still finish, without mountains, if the tiles can't be reached.
 
 Done when: searching a city, framing it and importing produces a rough but recognizable map in the preview.
 
