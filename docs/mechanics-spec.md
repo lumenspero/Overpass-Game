@@ -147,4 +147,13 @@ Elevated links for faster travel between two points on the ground network. `appr
 - **Lost demand:** a car that goes home without arriving leaves its pin in place for the next car.
 - **Business rates are still open:** the original has two business speeds, meaning two rates at which businesses request workers. Each rate and how it shows on screen is not yet decided, so every destination uses the one interval for now.
 
+### Roundabouts and lights
+
+- **Placement:** a roundabout or a light goes on any open land, park or road tile with no building on it. Mountain and water are refused. Each tile takes at most one of them. Each comes from the weekly offer and takes one from stock, as bridges do. `approximated`
+- **Roundabout:** cars drive round the ring, keeping right (counter-clockwise on screen), so they never cut across the middle. The ring is drawn as a donut on the tile, with the centre left open. The junction stays open to several cars at once. A car may enter while no car on the junction is within `CAR_GAP` of the entrance, and it leaves once it has passed through. A plain junction still holds one car. Capacity is `ROUNDABOUT_CAPACITY` cars (default 3). `approximated`
+- **Light:** the tile has two phases, one for each axis (across and along). Each phase has green for `LIGHT_GREEN_TICKS` ticks (default 240), then the other phase has green. A car may enter only in its phase's green, and waits short of the junction otherwise. Phases switch on the tick count, so runs stay deterministic. `approximated`
+- **Keys:** O places a roundabout, L a light. Each is a toggle, like B, T and M.
+- **Erasing:** removing the junction's road, or the roundabout or light itself, returns its stock.
+- **Refusals:** `out-of-bounds`, `bad-endpoint` (a building, mountain or water), `locked`, `occupied` (a tile already has one), `no-stock`.
+
 _Still to write: car movement and queuing, trips, spawning, demand, scoring, clock and expansion, upgrades, bridges and tunnels, roundabouts and lights, congestion, unlocks, audio events. Each arrives with its milestone._

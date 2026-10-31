@@ -10,8 +10,11 @@ import {
 import {
   curveFrom,
   type Motorway,
+  type ControlKind,
   motorwayBetween,
   pointAtDistance,
+  polylineLength,
+  roundaboutPath,
 } from '@overpass-game/sim';
 
 /**
@@ -159,6 +162,7 @@ export function carShapes(
   grid: Grid,
   colors: readonly number[],
   motorways: readonly Motorway[] = [],
+  controls: Readonly<Record<number, ControlKind>> = {},
 ): CarShape[] {
   const out: CarShape[] = [];
   const half = TILE_SIZE / 2;
@@ -190,7 +194,33 @@ export function carShapes(
     // A car on its first tile enters as it leaves; a car on its last tile leaves as it came in.
     const inDir = inRaw ?? outRaw;
     const outDir = outRaw ?? inRaw;
-    if (inDir && outDir) {
+    if (
+      inDir &&
+      outDir &&
+      prev !== null &&
+      next !== null &&
+      controls[tile] === 'roundabout'
+    ) {
+      // Round a roundabout the car keeps to the ring, from the edge it came in by to the edge it leaves by.
+      const nIn = rightOfTravel(inDir);
+      const nOut = rightOfTravel(outDir);
+      const entry = {
+        x: c.x - inDir.dx * half + nIn.x,
+        y: c.y - inDir.dy * half + nIn.y,
+      };
+      const exit = {
+        x: c.x + outDir.dx * half + nOut.x,
+        y: c.y + outDir.dy * half + nOut.y,
+      };
+      const ring = roundaboutPath(grid, prev, tile, next).map((p) => ({
+        x: p.x * TILE_SIZE,
+        y: p.y * TILE_SIZE,
+      }));
+      const path = [entry, ...ring.slice(1, -1), exit];
+      const spot = pointAtDistance(path, along * polylineLength(path));
+      x = spot.x;
+      y = spot.y;
+    } else if (inDir && outDir) {
       // Each edge point sits in the lane on the right of the direction through it.
       const nIn = rightOfTravel(inDir);
       const nOut = rightOfTravel(outDir);

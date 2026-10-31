@@ -59,6 +59,10 @@ export const DEFAULT_TUNING = {
   MOTORWAY_MAX_LENGTH: 30, // approximated
   MOTORWAY_COST_PER_TILE: 1, // approximated
   MOTORWAY_SPEED: 2.5, // approximated
+  /** Most cars a roundabout holds at once. A plain junction holds one (spec: Roundabouts and lights). */
+  ROUNDABOUT_CAPACITY: 3, // approximated
+  /** Ticks each phase of a traffic light stays green (spec: Roundabouts and lights). */
+  LIGHT_GREEN_TICKS: 240, // approximated
 };
 
 export type Tuning = typeof DEFAULT_TUNING;
@@ -103,3 +107,5 @@ export const MOTORWAY_MAX_NODES = DEFAULT_TUNING.MOTORWAY_MAX_NODES;
 export const MOTORWAY_MAX_LENGTH = DEFAULT_TUNING.MOTORWAY_MAX_LENGTH;
 export const MOTORWAY_COST_PER_TILE = DEFAULT_TUNING.MOTORWAY_COST_PER_TILE;
 export const MOTORWAY_SPEED = DEFAULT_TUNING.MOTORWAY_SPEED;
+export const ROUNDABOUT_CAPACITY = DEFAULT_TUNING.ROUNDABOUT_CAPACITY;
+export const LIGHT_GREEN_TICKS = DEFAULT_TUNING.LIGHT_GREEN_TICKS;

@@ -17,10 +17,24 @@ import { LONG_PRESS_MS, TOUCH_SLOP_PX, WHEEL_ZOOM_RATE } from './config.ts';
 
 export type PointerKind = 'mouse' | 'touch' | 'pen';
 export type StrokeMode =
-  'select' | 'draw' | 'erase' | 'bridge' | 'tunnel' | 'motorway';
+  | 'select'
+  | 'draw'
+  | 'erase'
+  | 'bridge'
+  | 'tunnel'
+  | 'motorway'
+  | 'roundabout'
+  | 'light';
 /** The road tool is 'draw'. 'select' lays nothing: it only picks and nudges motorways. */
 export type Tool =
-  'select' | 'draw' | 'erase' | 'bridge' | 'tunnel' | 'motorway';
+  | 'select'
+  | 'draw'
+  | 'erase'
+  | 'bridge'
+  | 'tunnel'
+  | 'motorway'
+  | 'roundabout'
+  | 'light';
 
 export interface Vec2 {
   x: number;
@@ -84,7 +98,9 @@ function strokeMode(mapper: IntentMapper, wanted: StrokeMode): StrokeMode {
     wanted === 'draw' &&
     (mapper.tool === 'bridge' ||
       mapper.tool === 'tunnel' ||
-      mapper.tool === 'motorway')
+      mapper.tool === 'motorway' ||
+      mapper.tool === 'roundabout' ||
+      mapper.tool === 'light')
   ) {
     return mapper.tool;
   }

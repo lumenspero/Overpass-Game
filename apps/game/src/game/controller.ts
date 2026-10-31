@@ -10,6 +10,9 @@ import {
   distanceToCurve,
   motorwayCurve,
   motorwaysTouching,
+  placeControl,
+  type ControlKind,
+  type ControlResult,
   nudgeMotorway,
   placeMotorway,
   removeMotorway,
@@ -72,7 +75,13 @@ interface Stroke {
 /** The outcome of one bridge, tunnel or motorway release. `seq` rises with every release. */
 export type CrossingReport =
   | { seq: number; kind: CrossingKind; result: CrossingResult }
-  | { seq: number; kind: 'motorway'; result: MotorwayResult };
+  | { seq: number; kind: 'motorway'; result: MotorwayResult }
+  | {
+      seq: number;
+      kind: 'control';
+      control: ControlKind;
+      result: ControlResult;
+    };
 
 export interface Controller {
   sim: SimState;
@@ -253,6 +262,29 @@ function eraseMotorway(ctl: Controller, stroke: Stroke, id: number): boolean {
   return true;
 }
 
+/** Places a roundabout or light on the tile pressed, reporting the result like a crossing. */
+function placeControlAt(
+  ctl: Controller,
+  at: TileXY,
+  kind: ControlKind,
+): boolean {
+  const { cols, rows } = ctl.sim.grid;
+  const x = Math.floor(at.x);
+  const y = Math.floor(at.y);
+  const result: ControlResult =
+    x < 0 || y < 0 || x >= cols || y >= rows
+      ? { ok: false, reason: 'out-of-bounds' }
+      : placeControl(ctl.sim, y * cols + x, kind);
+  ctl.crossing = {
+    seq: (ctl.crossing?.seq ?? 0) + 1,
+    kind: 'control',
+    control: kind,
+    result,
+  };
+  ctl.note = result.ok ? `${kind} built` : `${kind} refused: ${result.reason}`;
+  return result.ok;
+}
+
 /** What a press at `at` takes: a handle of the selected motorway, or the curve of any motorway. */
 function grabAt(ctl: Controller, at: TileXY): Grab | null {
   const selected = ctl.sim.motorways.find((m) => m.id === ctl.selected);
@@ -348,6 +380,10 @@ export function applyIntent(
     case 'stroke-begin': {
       // A new stroke commits any unfinished one first.
       const at = toTile(intent.at);
+      if (intent.mode === 'roundabout' || intent.mode === 'light') {
+        ctl.stroke = null;
+        return placeControlAt(ctl, at, intent.mode);
+      }
       if (intent.mode === 'erase') {
         const id = curveAt(ctl, at);
         if (id !== null) {

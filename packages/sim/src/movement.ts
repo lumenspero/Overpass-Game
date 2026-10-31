@@ -1,7 +1,8 @@
 import type { Car } from './cars.ts';
 import { tuning } from './config.ts';
 import { DIAGONAL_STEP, type Grid, isDiagonal, roadLinks } from './grid.ts';
-import { motorwayBetween } from './motorways.ts';
+import { laneHasGreen, roundaboutPath } from './controls.ts';
+import { motorwayBetween, polylineLength } from './motorways.ts';
 import type { SimState } from './sim.ts';
 
 /**
@@ -68,6 +69,17 @@ function stepLength(state: SimState, a: number, b: number): number {
 function segmentLength(state: SimState, car: Car): number {
   const { route, progress } = car;
   if (progress < route.length - 1) {
+    if (progress > 0 && state.controls[route[progress]] === 'roundabout') {
+      // Across a roundabout the car drives round the ring, so its step costs that path.
+      return polylineLength(
+        roundaboutPath(
+          state.grid,
+          route[progress - 1],
+          route[progress],
+          route[progress + 1],
+        ),
+      );
+    }
     const a = route[progress];
     const b = route[progress + 1];
     const arrivedByMotorway =
@@ -112,12 +124,28 @@ export function tileOpen(
   mover: Car | null,
   lane: number | null,
 ): boolean {
+  const control = state.controls[tile];
+  if (control === 'light' && lane !== null && !laneHasGreen(state, lane)) {
+    return false;
+  }
   const junction = isJunction(state, tile);
+  // A junction or a light holds one car at a time.
+  const single = junction || control === 'light';
+  let here = 0;
   for (const d of state.cars) {
     if (d === mover || d.route[d.progress] !== tile) continue;
-    if (junction) return false;
+    if (control === 'roundabout') {
+      // A roundabout takes any car that has a gap at its entrance, up to its capacity.
+      here += 1;
+      if (d.along < tuning.CAR_GAP) return false;
+      continue;
+    }
+    if (single) return false;
     if (lane !== null && laneOf(state.grid, d) !== lane) continue;
     if (d.along < tuning.CAR_GAP) return false;
+  }
+  if (control === 'roundabout' && here >= tuning.ROUNDABOUT_CAPACITY) {
+    return false;
   }
   return true;
 }

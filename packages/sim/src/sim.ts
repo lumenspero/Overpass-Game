@@ -1,3 +1,4 @@
+import { type ControlKind, dropControlsAt } from './controls.ts';
 import type { CrossingRun } from './crossings.ts';
 import { dropMotorwaysAt } from './motorway-placement.ts';
 import type { Motorway } from './motorways.ts';
@@ -66,6 +67,8 @@ export interface SimState {
   /** Motorways placed on the map (spec: Motorways). */
   motorways: Motorway[];
   nextMotorwayId: number;
+  /** Roundabouts and traffic lights on junction tiles, by tile (spec: Roundabouts and lights). */
+  controls: Record<number, ControlKind>;
 }
 
 export interface GameOver {
@@ -122,6 +125,7 @@ export function createSim({
     nextCrossingRunId: 1,
     motorways: [],
     nextMotorwayId: 1,
+    controls: {},
   };
 }
 
@@ -164,6 +168,7 @@ export function removeRoads(state: SimState, tiles: number[]): number {
     dropLinksOf(state.links, i);
   }
   dropMotorwaysAt(state, removed);
+  dropControlsAt(state, removed);
   state.budget += removed.length;
   if (removed.length > 0) {
     updateRoadGraph(state.graph, state.grid, state.roads, state.links, removed);

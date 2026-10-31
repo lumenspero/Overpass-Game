@@ -1,4 +1,6 @@
 import {
+  type ControlKind,
+  type ControlResult,
   type CrossingKind,
   type CrossingResult,
   type MotorwayResult,
@@ -67,12 +69,41 @@ export function motorwayMessage(result: MotorwayResult): string {
   }
 }
 
+/** The line shown after a roundabout or light is placed: what was built, or why not. */
+export function controlMessage(
+  kind: ControlKind,
+  result: ControlResult,
+): string {
+  const name = kind === 'roundabout' ? 'Roundabout' : 'Light';
+  if (result.ok) return `${name} built`;
+  switch (result.reason) {
+    case 'out-of-bounds':
+      return 'Stay on the map.';
+    case 'bad-endpoint':
+      return `A ${kind} goes on land or road, not on a building, mountain or water.`;
+    case 'locked':
+      return 'That land is not open yet.';
+    case 'occupied':
+      return 'That junction already has a roundabout or light.';
+    case 'no-stock':
+      return `No ${kind === 'roundabout' ? 'roundabouts' : 'lights'} to place. Pick one from the reward panel.`;
+  }
+}
+
 /** The line shown while a crossing tool is picked: how many are in stock. */
 export function crossingHint(
-  kind: CrossingKind | 'motorway',
+  kind: CrossingKind | 'motorway' | 'roundabout' | 'light',
   stock: number,
 ): string {
   const name =
-    kind === 'bridge' ? 'Bridge' : kind === 'tunnel' ? 'Tunnel' : 'Motorway';
+    kind === 'bridge'
+      ? 'Bridge'
+      : kind === 'tunnel'
+        ? 'Tunnel'
+        : kind === 'roundabout'
+          ? 'Roundabout'
+          : kind === 'light'
+            ? 'Light'
+            : 'Motorway';
   return `${name} tool · ${stock} in stock`;
 }

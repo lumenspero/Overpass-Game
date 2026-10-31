@@ -5,6 +5,7 @@ export * from './crossings.ts';
 export * from './motorway-placement.ts';
 export * from './motorways.ts';
 export * from './config.ts';
+export * from './controls.ts';
 export * from './demand.ts';
 export * from './expansion.ts';
 export * from './graph.ts';

@@ -1,3 +1,4 @@
+import { greenIsHorizontal, ROUNDABOUT_RING_TILES } from '@overpass-game/sim';
 import Phaser from 'phaser';
 import {
   advanceClock,
@@ -68,6 +69,7 @@ import { lockedTileRects } from '../view/districts.ts';
 import { endLines, hudLine, OVERFLOW_RING_COLOR } from '../view/hud.ts';
 import {
   CROSSING_MESSAGE_MS,
+  controlMessage,
   crossingHint,
   crossingMessage,
   motorwayMessage,
@@ -88,6 +90,11 @@ import {
   buildTestGrid,
   TEST_BUILDINGS,
 } from './test-map.ts';
+
+/** Roundabout ring and the two light colours. */
+const CONTROL_OUTLINE_COLOUR = 0x3a4150;
+const LIGHT_GREEN_COLOUR = 0x5cb85c;
+const LIGHT_RED_COLOUR = 0xd9534f;
 
 const TERRAIN_COLOR: Partial<Record<TerrainKind, number>> = {
   [Terrain.Water]: PALETTE.water,
@@ -115,6 +122,7 @@ export class GameScene extends Phaser.Scene {
   private previewGfx!: Phaser.GameObjects.Graphics;
   private buildingGfx!: Phaser.GameObjects.Graphics;
   private motorwayGfx!: Phaser.GameObjects.Graphics;
+  private controlGfx!: Phaser.GameObjects.Graphics;
   private carGfx!: Phaser.GameObjects.Graphics;
   private ringGfx!: Phaser.GameObjects.Graphics;
   private hudText!: Phaser.GameObjects.Text;
@@ -166,6 +174,7 @@ export class GameScene extends Phaser.Scene {
     this.roadGfx = this.add.graphics();
     this.buildingGfx = this.add.graphics();
     this.motorwayGfx = this.add.graphics();
+    this.controlGfx = this.add.graphics();
     this.carGfx = this.add.graphics();
     this.previewGfx = this.add.graphics();
     this.previewGfx.setAlpha(0.4);
@@ -177,6 +186,7 @@ export class GameScene extends Phaser.Scene {
       this.roadGfx,
       this.buildingGfx,
       this.motorwayGfx,
+      this.controlGfx,
       this.carGfx,
       this.previewGfx,
       this.ringGfx,
@@ -241,6 +251,8 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-B', this.onBridgeKey);
     this.input.keyboard?.on('keydown-T', this.onTunnelKey);
     this.input.keyboard?.on('keydown-M', this.onMotorwayKey);
+    this.input.keyboard?.on('keydown-O', this.onRoundaboutKey);
+    this.input.keyboard?.on('keydown-L', this.onLightKey);
     this.input.keyboard?.on('keydown-F', this.onRoadKey);
     this.input.keyboard?.on('keydown', this.onKey);
     this.scale.on('resize', this.onResize);
@@ -263,6 +275,7 @@ export class GameScene extends Phaser.Scene {
     this.drawCars(); // cars move every tick, so they are redrawn every frame
     this.drawCrossingPreview();
     this.drawMotorways();
+    this.drawControls();
     this.drawRings();
     this.hudText.setText(hudLine(this.sim));
     this.showCrossingLine(time);
@@ -293,12 +306,20 @@ export class GameScene extends Phaser.Scene {
       this.setCrossingLine(
         report.kind === 'motorway'
           ? motorwayMessage(report.result)
-          : crossingMessage(report.kind, report.result),
+          : report.kind === 'control'
+            ? controlMessage(report.control, report.result)
+            : crossingMessage(report.kind, report.result),
       );
     }
     if (now >= this.crossingUntil) {
       const tool = this.mapper.tool;
-      if (tool === 'bridge' || tool === 'tunnel' || tool === 'motorway') {
+      if (
+        tool === 'bridge' ||
+        tool === 'tunnel' ||
+        tool === 'motorway' ||
+        tool === 'roundabout' ||
+        tool === 'light'
+      ) {
         this.setCrossingLine(crossingHint(tool, this.sim.stock[tool]));
       } else if (tool === 'draw') {
         this.setCrossingLine('Road tool');
@@ -379,11 +400,15 @@ export class GameScene extends Phaser.Scene {
   private onBridgeKey = (): void => this.pickCrossing('bridge');
   private onTunnelKey = (): void => this.pickCrossing('tunnel');
   private onMotorwayKey = (): void => this.pickCrossing('motorway');
+  private onRoundaboutKey = (): void => this.pickCrossing('roundabout');
+  private onLightKey = (): void => this.pickCrossing('light');
   private onRoadKey = (): void => {
     setTool(this.mapper, this.mapper.tool === 'draw' ? 'select' : 'draw');
   };
 
-  private pickCrossing(kind: 'bridge' | 'tunnel' | 'motorway'): void {
+  private pickCrossing(
+    kind: 'bridge' | 'tunnel' | 'motorway' | 'roundabout' | 'light',
+  ): void {
     setTool(this.mapper, this.mapper.tool === kind ? 'select' : kind);
   }
 
@@ -591,6 +616,7 @@ export class GameScene extends Phaser.Scene {
       this.sim.grid,
       BUILDING_COLORS,
       this.sim.motorways,
+      this.sim.controls,
     )) {
       gfx.fillStyle(c.color, 1);
       gfx.fillCircle(c.x, c.y, c.r);
@@ -598,6 +624,44 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Draws each overflowing destination's countdown ring. Redrawn every frame, as the countdown moves. */
+  /** Roundabouts as rings, and lights as a red or green dot on each axis, the green one on the axis that has it. */
+  private drawControls(): void {
+    const gfx = this.controlGfx;
+    gfx.clear();
+    const { cols } = this.sim.grid;
+    const horizontal = greenIsHorizontal(this.sim);
+    for (const [key, kind] of Object.entries(this.sim.controls)) {
+      const tile = Number(key);
+      const cx = ((tile % cols) + 0.5) * TILE_SIZE;
+      const cy = (Math.floor(tile / cols) + 0.5) * TILE_SIZE;
+      if (kind === 'roundabout') {
+        // A donut: a road-coloured band with a dark outline, the tile's centre left open.
+        const mid = TILE_SIZE * ROUNDABOUT_RING_TILES;
+        const band = TILE_SIZE * 0.28;
+        gfx.lineStyle(band + 3, CONTROL_OUTLINE_COLOUR, 1);
+        gfx.strokeCircle(cx, cy, mid);
+        gfx.lineStyle(band, PALETTE.road, 1);
+        gfx.strokeCircle(cx, cy, mid);
+        // Hollow centre: the tile's own ground shows through, so the roads under it don't.
+        const ground =
+          TERRAIN_COLOR[this.sim.grid.terrain[tile] as TerrainKind] ??
+          PALETTE.land;
+        gfx.fillStyle(ground, 1);
+        gfx.fillCircle(cx, cy, mid - band / 2);
+        continue;
+      }
+      const dot = TILE_SIZE * 0.22;
+      const east: [number, number] = [cx + dot, cy];
+      const north: [number, number] = [cx, cy - dot];
+      const colourFor = (green: boolean) =>
+        green ? LIGHT_GREEN_COLOUR : LIGHT_RED_COLOUR;
+      gfx.fillStyle(colourFor(horizontal), 1);
+      gfx.fillCircle(east[0], east[1], 3);
+      gfx.fillStyle(colourFor(!horizontal), 1);
+      gfx.fillCircle(north[0], north[1], 3);
+    }
+  }
+
   private drawRings(): void {
     const gfx = this.ringGfx;
     gfx.clear();
@@ -726,6 +790,8 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown-B', this.onBridgeKey);
     this.input.keyboard?.off('keydown-T', this.onTunnelKey);
     this.input.keyboard?.off('keydown-M', this.onMotorwayKey);
+    this.input.keyboard?.off('keydown-O', this.onRoundaboutKey);
+    this.input.keyboard?.off('keydown-L', this.onLightKey);
     this.input.keyboard?.off('keydown-F', this.onRoadKey);
     this.offerPanel.destroy();
     this.input.keyboard?.off('keydown', this.onKey);
