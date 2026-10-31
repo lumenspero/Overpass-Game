@@ -156,4 +156,11 @@ Elevated links for faster travel between two points on the ground network. `appr
 - **Erasing:** removing the junction's road, or the roundabout or light itself, returns its stock.
 - **Refusals:** `out-of-bounds`, `bad-endpoint` (a building, mountain or water), `locked`, `occupied` (a tile already has one), `no-stock`.
 
+### Congestion-aware routing
+
+- **Waiting cars:** a tile's congestion is the number of cars queued to enter it. A car is waiting when it has reached the end of its current tile and its next tile is the one in question, but it is held back from entering. `approximated`
+- **Cost:** when a car plans its route, each waiting car on a tile adds `CONGESTION_COST_PER_CAR` steps to the cost of passing through that tile (default 1.5). The base cost stays distance, as now, so a detour is taken only when the queue outweighs the extra distance. `approximated`
+- **Timing:** a car plans its route when its trip starts, using the queues it sees then. A car already driving re-plans only when a road is added or removed, and then uses the same queues, leaving out its own. It does not re-plan just because a queue has formed, so cars don't turn back for every jam.
+- **Determinism:** routes depend only on the sim state at the moment of planning, so runs stay repeatable.
+
 _Still to write: car movement and queuing, trips, spawning, demand, scoring, clock and expansion, upgrades, bridges and tunnels, roundabouts and lights, congestion, unlocks, audio events. Each arrives with its milestone._

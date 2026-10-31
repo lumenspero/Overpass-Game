@@ -1,6 +1,18 @@
 import { entranceTile } from './buildings.ts';
-import { findRoute, routeIsLinked, routeLength } from './pathfind.ts';
+import { findRoute, routeCost, routeIsLinked } from './pathfind.ts';
 import type { SimState } from './sim.ts';
+
+/** How many cars are waiting to enter each tile: each has reached the end of its tile, with the tile ahead as its next. */
+export function waitingCounts(state: SimState): number[] {
+  const counts = new Array<number>(state.grid.cols * state.grid.rows).fill(0);
+  for (const car of state.cars) {
+    if (car.state === 'parked') continue;
+    if (car.progress >= car.route.length - 1) continue;
+    if (car.along < 1 - 1e-9) continue;
+    counts[car.route[car.progress + 1]] += 1;
+  }
+  return counts;
+}
 
 /**
  * Cars carry a route of road tiles from where they are to where they are going.
@@ -70,6 +82,7 @@ export function addCar(
     start,
     end,
     state.motorways,
+    waitingCounts(state),
   );
   if (!route) return { ok: false, reason: 'no-route' };
 
@@ -115,6 +128,7 @@ function routeHome(
     from,
     home,
     state.motorways,
+    waitingCounts(state),
   );
   if (!route) return null;
   return { ...car, state: 'returning', route, progress: 0, along };
@@ -166,6 +180,11 @@ export function onRoadsChanged(
     if (routeBroken || (added.length > 0 && car.state === 'driving')) {
       const current = car.route[here];
       const goal = goalOf(state, car);
+      // The queues the car sees, leaving out the car itself: it is one of the cars waiting.
+      const waiting = waitingCounts(state);
+      if (car.along >= 1 - 1e-9 && here + 1 < car.route.length) {
+        waiting[car.route[here + 1]] -= 1;
+      }
       const fresh =
         goal === null
           ? null
@@ -176,12 +195,18 @@ export function onRoadsChanged(
               current,
               goal,
               state.motorways,
+              waiting,
             );
       if (fresh) {
         // Only the route ahead matters, so the new route starts at the car's tile.
         const improves =
-          routeLength(state.grid, fresh, state.motorways) <
-          routeLength(state.grid, car.route.slice(here), state.motorways);
+          routeCost(state.grid, fresh, state.motorways, waiting) <
+          routeCost(
+            state.grid,
+            car.route.slice(here),
+            state.motorways,
+            waiting,
+          );
         if (routeBroken || improves) {
           survivors.push({ ...car, route: fresh, progress: 0 });
           continue;

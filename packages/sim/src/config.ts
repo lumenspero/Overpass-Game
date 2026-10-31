@@ -63,6 +63,8 @@ export const DEFAULT_TUNING = {
   ROUNDABOUT_CAPACITY: 3, // approximated
   /** Ticks each phase of a traffic light stays green (spec: Roundabouts and lights). */
   LIGHT_GREEN_TICKS: 240, // approximated
+  /** Extra route cost, in tile steps, for each car waiting to enter a tile (spec: Congestion-aware routing). */
+  CONGESTION_COST_PER_CAR: 1.5, // approximated
 };
 
 export type Tuning = typeof DEFAULT_TUNING;
@@ -109,3 +111,4 @@ export const MOTORWAY_COST_PER_TILE = DEFAULT_TUNING.MOTORWAY_COST_PER_TILE;
 export const MOTORWAY_SPEED = DEFAULT_TUNING.MOTORWAY_SPEED;
 export const ROUNDABOUT_CAPACITY = DEFAULT_TUNING.ROUNDABOUT_CAPACITY;
 export const LIGHT_GREEN_TICKS = DEFAULT_TUNING.LIGHT_GREEN_TICKS;
+export const CONGESTION_COST_PER_CAR = DEFAULT_TUNING.CONGESTION_COST_PER_CAR;

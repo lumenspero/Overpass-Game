@@ -54,6 +54,23 @@ export function routeLength(
 }
 
 /**
+ * The cost a route takes to drive, as the search sees it: its length, plus the queue cost of
+ * entering each tile after the first, from `waiting` (the cars waiting to enter each tile).
+ */
+export function routeCost(
+  grid: Grid,
+  route: readonly number[],
+  motorways: readonly Motorway[] = [],
+  waiting: readonly number[] = [],
+): number {
+  let total = routeLength(grid, route, motorways);
+  for (let i = 1; i < route.length; i++) {
+    total += (waiting[route[i]] ?? 0) * tuning.CONGESTION_COST_PER_CAR;
+  }
+  return total;
+}
+
+/**
  * A* over road tiles. Roads link through edges and links: a step along an edge costs 1,
  * and a step across a corner costs DIAGONAL_STEP. A motorway is a step from one ramp to the
  * other, costing its curve length over MOTORWAY_SPEED. The heuristic never overestimates,
@@ -69,6 +86,7 @@ export function findRoute(
   from: number,
   to: number,
   motorways: readonly Motorway[] = [],
+  waiting: readonly number[] = [],
 ): number[] | null {
   if (roads[from] !== 1 || roads[to] !== 1) return null;
   if (from === to) return [from];
@@ -89,6 +107,10 @@ export function findRoute(
   const cameFrom = new Map<number, number>();
   const open: number[] = [from];
   const closed = new Set<number>();
+
+  /** The extra cost of entering tile n, for the cars already waiting to enter it. */
+  const congestion = (n: number): number =>
+    (waiting[n] ?? 0) * tuning.CONGESTION_COST_PER_CAR;
 
   while (open.length > 0) {
     let best = 0;
@@ -113,13 +135,13 @@ export function findRoute(
 
     for (const n of roadLinks(roads, links, current)) {
       if (roads[n] !== 1 || closed.has(n)) continue;
-      relax(current, n, stepCost(grid, motorways, current, n));
+      relax(current, n, stepCost(grid, motorways, current, n) + congestion(n));
     }
     for (const m of motorways) {
       if (m.a !== current && m.b !== current) continue;
       const n = m.a === current ? m.b : m.a;
       if (roads[n] !== 1 || closed.has(n)) continue;
-      relax(current, n, stepCost(grid, motorways, current, n));
+      relax(current, n, stepCost(grid, motorways, current, n) + congestion(n));
     }
 
     function relax(from: number, n: number, step: number): void {

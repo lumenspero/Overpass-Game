@@ -43,4 +43,5 @@ export const TUNING_RANGES: Record<TuningKey, TuningRange> = {
   MOTORWAY_SPEED: { min: 1, max: 5, step: 0.5 },
   ROUNDABOUT_CAPACITY: { min: 1, max: 8, step: 1 },
   LIGHT_GREEN_TICKS: { min: 30, max: 600, step: 30 },
+  CONGESTION_COST_PER_CAR: { min: 0, max: 5, step: 0.5 },
 };
