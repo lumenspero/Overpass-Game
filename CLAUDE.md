@@ -1,6 +1,6 @@
 # CLAUDE.md — Overpass_Game
 
-Browser recreation of Mini Motorways' mechanics, with 25 curated real-world maps. Read `docs/PLAN.md` for the full plan; the active milestone is the first unchecked one there.
+Browser recreation of Mini Motorways' mechanics, with 25 curated real-world maps. Read `Overpass_Game — Implementation Plan.md` (repo root) for the full plan; the active milestone is the first unchecked one there.
 
 ## Naming
 
@@ -24,11 +24,12 @@ Browser recreation of Mini Motorways' mechanics, with 25 curated real-world maps
 - `packages/render-style` — palettes, sizes, shared drawing helpers
 - `tools/` — CLI: compile, validate, seed replays
 - `maps/` — `*.map-src.json` (Studio) and `*.map.json` (game); created in M6
-- `docs/` — `PLAN.md`, `mechanics-spec.md`, `decisions.md`
+- Root — `Overpass_Game — Implementation Plan.md`
+- `docs/` — `mechanics-spec.md`, `decisions.md`
 
 ## Rules
 
-1. Start each session by reading this file, the active milestone in `docs/PLAN.md`, and any spec section it touches.
+1. Start each session by reading this file, the active milestone in `Overpass_Game — Implementation Plan.md`, and any spec section it touches.
 2. `packages/sim` must not import Phaser, the DOM, or any browser API. Its changes come with Vitest tests.
 3. Every gameplay number lives in `packages/sim/src/config.ts`. Add it to `docs/mechanics-spec.md` in the same change, tagged `approximated`.
 4. The game never makes network calls to OSM services. It only loads compiled map files.

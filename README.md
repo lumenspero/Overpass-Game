@@ -2,7 +2,7 @@
 
 A free browser game that recreates Mini Motorways' mechanics, with 25 curated maps of real continental-US places.
 
-Status: M0 (repository foundation). See `docs/PLAN.md`.
+Status: M6 (map schema and compiler) complete. See `Overpass_Game — Implementation Plan.md`.
 
 ## Setup
 

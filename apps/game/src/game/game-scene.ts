@@ -66,6 +66,13 @@ import { createTuningPanel, type TuningPanel } from '../debug/tuning-panel.ts';
 import { createOfferPanel, type OfferPanel } from '../ui/offer-panel.ts';
 import { previewRoads } from '../view/crossing-preview.ts';
 import { motorwayPreview, motorwayParts } from '../view/motorway-view.ts';
+import { guideWorldLines } from '../view/guide.ts';
+import { GUIDE_STYLE } from '@overpass-game/render-style';
+import {
+  DEFAULT_SETTINGS,
+  type GameSettings,
+  toggleGuide,
+} from './settings.ts';
 import { lockedTileRects } from '../view/districts.ts';
 import { endLines, hudLine, OVERFLOW_RING_COLOR } from '../view/hud.ts';
 import {
@@ -90,6 +97,8 @@ import {
 import {
   buildTestDistricts,
   buildTestGrid,
+  testMapGuide,
+  testMapRules,
   TEST_BUILDINGS,
 } from './test-map.ts';
 
@@ -125,6 +134,8 @@ export class GameScene extends Phaser.Scene {
   private previewGfx!: Phaser.GameObjects.Graphics;
   private buildingGfx!: Phaser.GameObjects.Graphics;
   private motorwayGfx!: Phaser.GameObjects.Graphics;
+  private guideGfx!: Phaser.GameObjects.Graphics;
+  private settings: GameSettings = DEFAULT_SETTINGS;
   private controlGfx!: Phaser.GameObjects.Graphics;
   private carGfx!: Phaser.GameObjects.Graphics;
   private ringGfx!: Phaser.GameObjects.Graphics;
@@ -163,7 +174,8 @@ export class GameScene extends Phaser.Scene {
       this.sim = createSim({
         seed: 1,
         grid: testGrid,
-        districts: buildTestDistricts(testGrid),
+        districts: buildTestDistricts(),
+        rules: testMapRules(),
       });
     }
     const grid: Grid = this.sim.grid;
@@ -178,6 +190,7 @@ export class GameScene extends Phaser.Scene {
 
     this.layer = this.add.container(0, 0);
     const terrainGfx = this.add.graphics();
+    this.guideGfx = this.add.graphics();
     this.lockGfx = this.add.graphics();
     // Roads sit under buildings, so a road that meets a building tucks in beneath its body.
     this.roadGfx = this.add.graphics();
@@ -191,6 +204,7 @@ export class GameScene extends Phaser.Scene {
     this.overlayGfx = this.add.graphics().setVisible(false);
     this.layer.add([
       terrainGfx,
+      this.guideGfx,
       this.lockGfx,
       this.roadGfx,
       this.buildingGfx,
@@ -202,6 +216,8 @@ export class GameScene extends Phaser.Scene {
       this.overlayGfx,
     ]);
     this.drawTerrain(terrainGfx, grid);
+    this.drawGuide(demo ? null : testMapGuide());
+    this.guideGfx.setVisible(this.settings.motorwayGuide);
     // Demo maps bring their own buildings; only the normal test map places these.
     if (!demo) this.placeTestBuildings();
     this.drawBuildings();
@@ -265,6 +281,7 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-L', this.onLightKey);
     this.input.keyboard?.on('keydown-U', this.onDestinationKey);
     this.input.keyboard?.on('keydown-F', this.onRoadKey);
+    this.input.keyboard?.on('keydown-G', this.onGuideKey);
     this.input.keyboard?.on('keydown', this.onKey);
     this.scale.on('resize', this.onResize);
     this.events.once('shutdown', this.teardown);
@@ -420,6 +437,12 @@ export class GameScene extends Phaser.Scene {
   private onRoundaboutKey = (): void => this.pickCrossing('roundabout');
   private onLightKey = (): void => this.pickCrossing('light');
   private onDestinationKey = (): void => this.pickCrossing('destination');
+  /** G shows or hides the motorway guide. */
+  private onGuideKey = (): void => {
+    this.settings = toggleGuide(this.settings);
+    this.guideGfx.setVisible(this.settings.motorwayGuide);
+  };
+
   private onRoadKey = (): void => {
     setTool(this.mapper, this.mapper.tool === 'draw' ? 'select' : 'draw');
   };
@@ -486,6 +509,26 @@ export class GameScene extends Phaser.Scene {
       v.width / 2 - this.view.center.x * z,
       v.height / 2 - this.view.center.y * z,
     );
+  }
+
+  /** Draws the motorway guide under the roads. A demo map has no guide, so it draws nothing. */
+  private drawGuide(lines: { x: number; y: number }[][] | null): void {
+    const gfx = this.guideGfx;
+    gfx.clear();
+    if (!lines) return;
+    gfx.lineStyle(
+      TILE_SIZE * GUIDE_STYLE.widthTiles,
+      PALETTE.motorway,
+      GUIDE_STYLE.alpha,
+    );
+    for (const line of guideWorldLines(lines)) {
+      gfx.beginPath();
+      line.forEach((p, k) => {
+        if (k === 0) gfx.moveTo(p.x, p.y);
+        else gfx.lineTo(p.x, p.y);
+      });
+      gfx.strokePath();
+    }
   }
 
   private drawTerrain(gfx: Phaser.GameObjects.Graphics, grid: Grid): void {
@@ -830,6 +873,7 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown-M', this.onMotorwayKey);
     this.input.keyboard?.off('keydown-O', this.onRoundaboutKey);
     this.input.keyboard?.off('keydown-L', this.onLightKey);
+    this.input.keyboard?.off('keydown-G', this.onGuideKey);
     this.input.keyboard?.off('keydown-U', this.onDestinationKey);
     this.input.keyboard?.off('keydown-F', this.onRoadKey);
     this.offerPanel.destroy();

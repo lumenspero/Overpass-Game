@@ -8,15 +8,16 @@
     "node": ">=20.19"
   },
   "scripts": {
-    "dev": "pnpm --filter @overpass-game/game dev",
-    "dev:studio": "pnpm --filter @overpass-game/studio dev",
+    "dev": "node apps/game/node_modules/vite/bin/vite.js apps/game --open",
+    "dev:studio": "node apps/studio/node_modules/vite/bin/vite.js apps/studio",
     "build": "pnpm --filter @overpass-game/game --filter @overpass-game/studio run build",
     "typecheck": "pnpm -r run typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm -r run test",
-    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build"
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build",
+    "compile-maps": "pnpm --filter @overpass-game/tools run compile-maps"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

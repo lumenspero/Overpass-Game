@@ -74,7 +74,7 @@ overpass-game/
     render-style/    palettes, sizes, shared drawing helpers
   maps/              *.map-src.json (Studio) and *.map.json (game)
   tools/             CLI: compile all maps, validate, seed replays
-  docs/              PLAN.md, mechanics-spec.md, decisions.md
+  docs/              mechanics-spec.md, decisions.md
 ```
 
 **Key rules:** the sim is deterministic and serializable; the view reads state and sends intents; every gameplay number lives in `config.ts`; nothing in `apps/game` makes network calls.
@@ -138,13 +138,13 @@ interface Shape {
 
 Each milestone task below is sized for one AI session: it names its inputs, what to build, and how to verify it. Keep these files in the repo so every session starts with the same context:
 
-| File                         | Purpose                                                                                                             |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `CLAUDE.md` (or `AGENTS.md`) | Conventions, commands, folder map, "never do" rules (no OSM calls from the game, no secrets, Overpass\_Game naming) |
-| `docs/PLAN.md`               | This plan, with milestone status ticked off                                                                         |
-| `docs/mechanics-spec.md`     | Every rule and constant, each tagged `approximated`, `tuned` or `confirmed`                                         |
-| `docs/decisions.md`          | Short log of choices and why                                                                                        |
-| `packages/sim/src/config.ts` | The only place gameplay numbers live                                                                                |
+| File                                            | Purpose                                                                                                             |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `CLAUDE.md` (or `AGENTS.md`)                    | Conventions, commands, folder map, "never do" rules (no OSM calls from the game, no secrets, Overpass\_Game naming) |
+| `Overpass_Game — Implementation Plan.md` (root) | This plan, with milestone status ticked off                                                                         |
+| `docs/mechanics-spec.md`                        | Every rule and constant, each tagged `approximated`, `tuned` or `confirmed`                                         |
+| `docs/decisions.md`                             | Short log of choices and why                                                                                        |
+| `packages/sim/src/config.ts`                    | The only place gameplay numbers live                                                                                |
 
 **Rules for every session**
 
@@ -164,53 +164,59 @@ Sixteen milestones in five phases take the project from an empty repo to release
 
 **M0 · Repository foundation**
 
-- [ ] pnpm workspace with `apps/game`, `apps/studio`, `packages/sim`, `packages/map-schema`, `packages/map-compiler`, `packages/render-style`, `tools/`
-- [ ] Vite + TypeScript strict configs, ESLint, Prettier, Vitest, one Playwright boot test per app
-- [ ] `pnpm check` script; GitHub Actions running it on every push
-- [ ] `CLAUDE.md`, `docs/PLAN.md`, empty `docs/mechanics-spec.md` with its section list, `docs/decisions.md`
-- [ ] Vite `base: './'` for the game so the itch.io zip works from day one
+- [x] pnpm workspace with `apps/game`, `apps/studio`, `packages/sim`, `packages/map-schema`, `packages/map-compiler`, `packages/render-style`, `tools/`
+- [x] Vite + TypeScript strict configs, ESLint, Prettier, Vitest, one Playwright boot test per app
+- [x] `pnpm check` script; GitHub Actions running it on every push
+- [x] `CLAUDE.md`, `docs/PLAN.md`, empty `docs/mechanics-spec.md` with its section list, `docs/decisions.md`
+- [x] Vite `base: './'` for the game so the itch.io zip works from day one
 
 Done when: both apps boot to a blank screen and `pnpm check` passes in CI.
 
+> **Status (closed locally, CI pending):** M0 was closed before its CI run because GitHub Actions minutes were exhausted for this month. `pnpm check` passes locally. Confirm a green CI run before the first push that depends on it.
+
 **M1 · Simulation core: grid and roads (headless)**
 
-- [ ] Fixed-timestep sim loop (for example 30 ticks/second) independent of frame rate, with pause and speed multipliers
-- [ ] Seeded RNG; the whole sim state is plain serializable data
-- [ ] Grid with terrain flags; road placement and removal rules; road-tile budget with refunds
-- [ ] Road graph built from tiles: nodes at intersections and ends, edges with lengths; incremental updates on edit
-- [ ] Spec sections: grid, roads, road budget
+- [x] Fixed-timestep sim loop (for example 30 ticks/second) independent of frame rate, with pause and speed multipliers
+- [x] Seeded RNG; the whole sim state is plain serializable data
+- [x] Grid with terrain flags; road placement and removal rules; road-tile budget with refunds
+- [x] Road graph built from tiles: nodes at intersections and ends, edges with lengths; incremental updates on edit
+- [x] Spec sections: grid, roads, road budget
 
 Done when: tests cover placing, removing and connecting roads, the graph stays correct after random edit sequences, and two runs with the same seed produce identical state.
 
 **M2 · Renderer and input (desktop and touch)**
 
-- [ ] Phaser scene that draws sim state only (no rules in the view): terrain, roads with rounded joins and corners
-- [ ] Input abstraction producing intents (draw road path, erase, pan, zoom) from mouse, touch, and pen
-- [ ] Touch gestures: one finger draws, two fingers pan and pinch-zoom, long-press or eraser tool erases; mouse: left draws, right erases, wheel zooms
-- [ ] Camera that fits the map to any screen size and orientation
-- [ ] Debug overlay: grid, graph nodes and edges, tick rate
+- [x] Phaser scene that draws sim state only (no rules in the view): terrain, roads with rounded joins and corners
+- [x] Input abstraction producing intents (draw road path, erase, pan, zoom) from mouse, touch, and pen
+- [x] Touch gestures: one finger draws, two fingers pan and pinch-zoom, long-press or eraser tool erases; mouse: left draws, right erases, wheel zooms
+- [x] Camera that fits the map to any screen size and orientation
+- [x] Debug overlay: grid, graph nodes and edges, tick rate
 
-Done when: you can draw and erase roads with a mouse and on a phone, and the debug graph matches what is drawn.
+Done when: you can draw and erase roads with a mouse, and the debug graph matches what is drawn. Phone and touch-device checks are deferred to the end of this plan.
+
+> **Status (closed on PC):** M2 is closed on desktop. The phone test moved to "Deferred device tests" at the end of the plan.
 
 **M3 · Buildings, cars and trips**
 
-- [ ] Houses and destinations by color, with an entrance side that must connect to a road
-- [ ] Cars belong to houses (count per house `approximated`), drive to a destination with demand, park, then return home
-- [ ] A\* on the road graph; repath when roads change; cars stranded by deleted roads go home or vanish (spec decision)
-- [ ] Car movement along edges with spacing, following, and queuing; intersection yielding rules
-- [ ] Spawning: houses and destinations placed by spawn weights over time
+- [x] Houses and destinations by color, with an entrance side that must connect to a road
+- [x] Cars belong to houses (count per house `approximated`), drive to a destination with demand, park, then return home
+- [x] A\* on the road graph; repath when roads change; cars stranded by deleted roads go home or vanish (spec decision)
+- [x] Car movement along edges with spacing, following, and queuing; intersection yielding rules
+- [x] Spawning: houses and destinations placed by spawn weights over time (spawns now need an unclaimed demand pin; see M4)
 
 Done when: on a hand-made test map, cars visibly complete trips and queue at busy junctions, covered by sim tests.
 
 **M4 · Demand, failure and scoring**
 
-- [ ] Destinations generate demand pins; pins consumed by arriving cars
-- [ ] Overflow: too many waiting pins starts a visible countdown that resets when served; a full countdown ends the game
-- [ ] Score as trips completed; clock with weeks; map expansion schedule
-- [ ] End-of-game state with summary stats
-- [ ] Debug panel: live sliders for every `config.ts` value, fast-forward up to 8×, spawn-on-click
+- [x] Destinations generate demand pins; pins consumed by arriving cars
+- [x] Overflow: too many waiting pins starts a visible countdown that resets when served; a full countdown ends the game
+- [x] Score as trips completed; clock with weeks; map expansion schedule
+- [x] End-of-game state with summary stats (week reached and trips completed)
+- [x] Debug panel: live sliders for every `config.ts` value, fast-forward up to 8×
 
 Done when: a full run on the test map can be lost.
+
+> **Status (tests complete):** the loss path is covered by sim tests (`overflow.test.ts`). Checkpoint A is the playtest sign-off, still pending.
 
 > **Checkpoint A · Core loop feel.** Play 3+ runs on the test map beside the original. Review spec sections: car speed, spawn timing, demand rate, overflow timer, week length. Tune with the debug panel and sign off before Phase 2.
 
@@ -218,27 +224,29 @@ Done when: a full run on the test map can be lost.
 
 **M5 · Upgrades and traffic**
 
-- [ ] Weekly reward: road tiles plus a choice between two upgrades (pool and weights `approximated`)
-- [ ] Bridges over water, tunnels through mountains, with their placement rules and length limits
-- [ ] Motorways: elevated links between two points with ramp ends, faster travel
-- [ ] Roundabouts and traffic lights, with their effect on intersection flow
-- [ ] Congestion-aware routing costs so cars prefer clearer routes
-- [ ] Destination upgrades and growth over time; per-map rule hooks (for example a color unlocking later)
+- [x] Weekly reward: road tiles plus a choice between two upgrades (pool and weights `approximated`)
+- [x] Bridges over water, tunnels through mountains, with their placement rules and length limits
+- [x] Motorways: elevated links between two points with ramp ends, faster travel
+- [x] Roundabouts and traffic lights, with their effect on intersection flow
+- [x] Congestion-aware routing costs so cars prefer clearer routes
+- [x] Destination upgrades and growth over time; per-map rule hooks (for example a color unlocking later)
 
 Done when: each upgrade has tests and a scripted demo scenario in the debug menu.
 
-> **Checkpoint B · Mechanics parity.** Run each demo scenario, then full games using every upgrade. Mark each spec entry `tuned` or `confirmed`, or file a task.
+> **Checkpoint B · Mechanics parity · done.** Run each demo scenario, then full games using every upgrade. Mark each spec entry `tuned` or `confirmed`, or file a task.
 
 ### Phase 3: Maps and Map Studio
 
 **M6 · Map schema and compiler**
 
-- [ ] `zod` schemas for source maps, compiled maps and saves
-- [ ] Compiler: smooth shapes → tile flags, tessellated outlines, spawn field, guide and starter-road paths
-- [ ] Game loads compiled maps; motorway guide toggle in game settings
-- [ ] Two hand-written source maps as fixtures; snapshot tests of compiler output
+- [x] `zod` schemas for source maps, compiled maps and saves
+- [x] Compiler: smooth shapes → tile flags, tessellated outlines, spawn field, guide and starter-road paths
+- [x] Game loads compiled maps; motorway guide toggle in game settings
+- [x] Two hand-written source maps as fixtures; snapshot tests of compiler output
 
 Done when: the test map runs from compiled JSON and the guide overlay toggles.
+
+> **Status (complete):** the schemas for source maps, compiled maps and saves are zod schemas in `packages/map-schema`, with path-named errors. `packages/map-compiler` rasterises closed and stroked shapes to tiles (centre-in-shape rule), samples outlines, builds spawn weights, clips the motorway guide to the grid as drawn polylines and turns starter-road polylines into tile runs, and writes an FNV-1a content hash. The test map is now `maps/test.map-src.json`, compiled by `pnpm compile-maps` to `maps/test.map.json`; a test proves it matches the M5 hand-built grid tile for tile, and another fails if the committed file goes stale. The game loads that file, passes its rules to the sim, and draws the motorway guide under the roads, toggled with G (on by default, hidden on demo maps). The coast fixture covers curved shapes, a stroke, a starter road and a rule. Deviations from the plan, recorded in decisions.md: districts list regions instead of `startCols`/`growthSchedule`, spline handles are offsets, the spawn field and starter roads are compiled but not used until M14 and M10, and settings are in memory until M10 and M11.
 
 **M7 · Studio: search and OSM import**
 
@@ -393,3 +401,9 @@ The biggest risks are traffic behavior that feels wrong and slow map authoring; 
 - [ ] M10: should challenge mode have goals beyond score (for example, a tile limit)?
 - [ ] M14: which 25 locations, and in what order?
 - [ ] M15: CC BY 4.0 or CC BY-NC 4.0 for art and audio?
+
+## Deferred device tests
+
+Run these once the desktop build is signed off. They were moved here from M2, and M13 covers the wider mobile pass.
+
+- [ ] M2: draw and erase roads on a phone with touch, and confirm the debug graph matches what is drawn

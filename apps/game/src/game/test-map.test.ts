@@ -81,7 +81,7 @@ describe('test map', () => {
 
   it('puts every building on a district the schedule can open', () => {
     const grid = buildTestGrid();
-    const districts = buildTestDistricts(grid);
+    const districts = buildTestDistricts();
     for (const b of TEST_BUILDINGS) {
       expect(districts[tileOf(grid, b)]).toBeLessThan(3);
     }

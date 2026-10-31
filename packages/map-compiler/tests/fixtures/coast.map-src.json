@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 1,
+  "id": "coast",
+  "name": "Coast fixture",
+  "region": {
+    "bbox": [-122.5, 37.5, -122.2, 37.9],
+    "rotationDeg": 15
+  },
+  "grid": {
+    "cols": 14,
+    "rows": 10,
+    "districts": [
+      {
+        "district": 1,
+        "region": {
+          "id": "north-east",
+          "kind": "closedSpline",
+          "origin": "painted",
+          "points": [
+            {
+              "x": 7,
+              "y": 0
+            },
+            {
+              "x": 14,
+              "y": 0
+            },
+            {
+              "x": 14,
+              "y": 10
+            },
+            {
+              "x": 7,
+              "y": 10
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "layers": {
+    "water": [
+      {
+        "id": "bay",
+        "kind": "closedSpline",
+        "origin": "osm",
+        "points": [
+          {
+            "x": 14,
+            "y": 2
+          },
+          {
+            "x": 10,
+            "y": 1
+          },
+          {
+            "x": 9,
+            "y": 4,
+            "handleIn": {
+              "x": 0.6,
+              "y": -1.2
+            },
+            "handleOut": {
+              "x": 0.6,
+              "y": 1.2
+            }
+          },
+          {
+            "x": 10,
+            "y": 7
+          },
+          {
+            "x": 14,
+            "y": 8
+          }
+        ]
+      },
+      {
+        "id": "river",
+        "kind": "strokeSpline",
+        "origin": "painted",
+        "width": 1.2,
+        "points": [
+          {
+            "x": 3,
+            "y": 0
+          },
+          {
+            "x": 4,
+            "y": 3,
+            "handleIn": {
+              "x": 0,
+              "y": -1
+            },
+            "handleOut": {
+              "x": 0,
+              "y": 1
+            }
+          },
+          {
+            "x": 2.5,
+            "y": 6
+          },
+          {
+            "x": 4,
+            "y": 10
+          }
+        ]
+      }
+    ],
+    "mountains": [
+      {
+        "id": "ridge",
+        "kind": "closedSpline",
+        "origin": "painted",
+        "points": [
+          {
+            "x": 5,
+            "y": 7
+          },
+          {
+            "x": 6.5,
+            "y": 6.5
+          },
+          {
+            "x": 7,
+            "y": 8
+          },
+          {
+            "x": 6,
+            "y": 9
+          },
+          {
+            "x": 5,
+            "y": 8.5
+          }
+        ]
+      }
+    ],
+    "parks": [
+      {
+        "id": "park",
+        "kind": "closedSpline",
+        "origin": "painted",
+        "points": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 2,
+            "y": 0
+          },
+          {
+            "x": 2,
+            "y": 2
+          },
+          {
+            "x": 0,
+            "y": 2
+          }
+        ]
+      }
+    ],
+    "spawnZones": [
+      {
+        "id": "north-spawn",
+        "kind": "closedSpline",
+        "origin": "painted",
+        "points": [
+          {
+            "x": 5,
+            "y": 2
+          },
+          {
+            "x": 8,
+            "y": 2
+          },
+          {
+            "x": 8,
+            "y": 5
+          },
+          {
+            "x": 5,
+            "y": 5
+          }
+        ],
+        "weight": 2
+      }
+    ],
+    "motorwayGuide": [
+      {
+        "id": "guide-1",
+        "points": [
+          {
+            "x": -2,
+            "y": -1
+          },
+          {
+            "x": 6,
+            "y": 6
+          },
+          {
+            "x": 16,
+            "y": 3
+          }
+        ]
+      }
+    ],
+    "starterRoads": [
+      {
+        "id": "starter-1",
+        "points": [
+          {
+            "x": 8.5,
+            "y": 6.5
+          },
+          {
+            "x": 8.5,
+            "y": 9.5
+          }
+        ]
+      }
+    ]
+  },
+  "rules": [
+    {
+      "kind": "unlockColour",
+      "colour": 2,
+      "week": 4
+    }
+  ],
+  "palette": "coast",
+  "attribution": "Fixture: hand-written. No OpenStreetMap data."
+}

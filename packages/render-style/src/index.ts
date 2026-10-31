@@ -29,3 +29,6 @@ export const DEBUG_PALETTE = {
   edge: 0x7fd1ff,
   node: 0xffb454,
 } as const;
+
+/** Motorway guide overlay: a faint line along real motorways. Visual only, not a gameplay number. */
+export const GUIDE_STYLE = { alpha: 0.3, widthTiles: 0.12 } as const;

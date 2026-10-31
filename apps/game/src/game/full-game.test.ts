@@ -23,7 +23,7 @@ describe('a full game with every upgrade', () => {
     const sim = createSim({
       seed: 1,
       grid,
-      districts: buildTestDistricts(grid),
+      districts: buildTestDistricts(),
     });
     for (const b of TEST_BUILDINGS) {
       const r = placeBuilding(sim, {

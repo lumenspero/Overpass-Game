@@ -1,17 +1,17 @@
-import {
-  createGrid,
-  type Grid,
-  type Side,
-  Terrain,
-  type TerrainKind,
-} from '@overpass-game/sim';
+import { toSimMap } from '@overpass-game/map-compiler';
+import { type CompiledMap, parseCompiledMap } from '@overpass-game/map-schema';
+import { type Grid, type MapRule, type Side } from '@overpass-game/sim';
+// The test map is compiled from maps/test.map-src.json by `pnpm compile-maps`.
+import testMapJson from '../../../../maps/test.map.json';
 
 /**
  * Hand-made test map. Not a real city: it exists so the renderer, input and
- * sim rules have something to work on. Real maps arrive compiled from M6 onward.
+ * sim rules have something to work on. Its terrain and districts come from the
+ * compiled file; buildings are still listed here until the spawn field (M14) places them.
  */
-export const TEST_MAP_COLS = 24;
-export const TEST_MAP_ROWS = 16;
+export const TEST_MAP: CompiledMap = parseCompiledMap(testMapJson);
+export const TEST_MAP_COLS = TEST_MAP.cols;
+export const TEST_MAP_ROWS = TEST_MAP.rows;
 
 export interface TestBuilding {
   kind: 'house' | 'destination';
@@ -36,42 +36,24 @@ export const TEST_BUILDINGS: TestBuilding[] = [
 ];
 
 /**
- * The districts that open over time (spec: Expansion). Land west of the river is split:
- * district 0 is columns 0 to 9, district 1 is the top half of columns 10 to 13, and
- * district 2 is the bottom half of them. Land east of the river is district 3, which opens at
- * EXPANSION_WEEK_3; a bridge can reach it after that.
+ * The district of each tile, from the compiled map (spec: Expansion). The grid argument is
+ * kept so callers read the same as before; the districts always come from the map file.
  */
-export function buildTestDistricts(grid: Grid): number[] {
-  const out = new Array<number>(grid.cols * grid.rows).fill(0);
-  for (let row = 0; row < grid.rows; row++) {
-    for (let col = 0; col < grid.cols; col++) {
-      let district = 0;
-      if (col >= 14) district = 3;
-      else if (col >= 10) district = row < 8 ? 1 : 2;
-      out[row * grid.cols + col] = district;
-    }
-  }
-  return out;
+export function buildTestDistricts(): number[] {
+  return TEST_MAP.districts.slice();
 }
 
+/** A fresh grid for the test map, built from the compiled file. */
 export function buildTestGrid(): Grid {
-  const grid = createGrid(TEST_MAP_COLS, TEST_MAP_ROWS, Terrain.Land);
-  const fill = (
-    x0: number,
-    y0: number,
-    x1: number,
-    y1: number,
-    kind: TerrainKind,
-  ): void => {
-    for (let y = y0; y <= y1; y++) {
-      for (let x = x0; x <= x1; x++) {
-        grid.terrain[y * grid.cols + x] = kind;
-      }
-    }
-  };
-  fill(14, 0, 14, 15, Terrain.Water); // a river the full height of the map
-  fill(3, 2, 6, 5, Terrain.Water); // a lake
-  fill(18, 10, 21, 13, Terrain.Mountain); // a block of mountain
-  fill(2, 9, 8, 12, Terrain.Park); // a park
-  return grid;
+  return toSimMap(TEST_MAP).grid;
+}
+
+/** The test map's rules, passed to the sim (spec: Destination upgrades, growth and rule hooks). */
+export function testMapRules(): MapRule[] {
+  return toSimMap(TEST_MAP).rules;
+}
+
+/** The test map's motorway guide: clipped lines in grid units, for the guide overlay. */
+export function testMapGuide(): { x: number; y: number }[][] {
+  return TEST_MAP.motorwayGuide;
 }

@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --open",
+    "dev": "node node_modules/vite/bin/vite.js --open",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run && playwright test",
@@ -15,6 +15,8 @@
     "vitest": "^5.0.5"
   },
   "dependencies": {
+    "@overpass-game/map-compiler": "workspace:*",
+    "@overpass-game/map-schema": "workspace:*",
     "@overpass-game/render-style": "workspace:*",
     "@overpass-game/sim": "workspace:*",
     "phaser": "4.2.1"

@@ -1,0 +1,217 @@
+{
+  "schemaVersion": 1,
+  "id": "test",
+  "name": "Test map",
+  "region": {
+    "bbox": [0, 0, 0, 0],
+    "rotationDeg": 0
+  },
+  "grid": {
+    "cols": 24,
+    "rows": 16,
+    "districts": [
+      {
+        "district": 1,
+        "region": {
+          "id": "district-1",
+          "kind": "closedSpline",
+          "origin": "painted",
+          "points": [
+            {
+              "x": 10,
+              "y": 0
+            },
+            {
+              "x": 14,
+              "y": 0
+            },
+            {
+              "x": 14,
+              "y": 8
+            },
+            {
+              "x": 10,
+              "y": 8
+            }
+          ]
+        }
+      },
+      {
+        "district": 2,
+        "region": {
+          "id": "district-2",
+          "kind": "closedSpline",
+          "origin": "painted",
+          "points": [
+            {
+              "x": 10,
+              "y": 8
+            },
+            {
+              "x": 14,
+              "y": 8
+            },
+            {
+              "x": 14,
+              "y": 16
+            },
+            {
+              "x": 10,
+              "y": 16
+            }
+          ]
+        }
+      },
+      {
+        "district": 3,
+        "region": {
+          "id": "district-3",
+          "kind": "closedSpline",
+          "origin": "painted",
+          "points": [
+            {
+              "x": 14,
+              "y": 0
+            },
+            {
+              "x": 24,
+              "y": 0
+            },
+            {
+              "x": 24,
+              "y": 16
+            },
+            {
+              "x": 14,
+              "y": 16
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "layers": {
+    "water": [
+      {
+        "id": "river",
+        "kind": "closedSpline",
+        "origin": "painted",
+        "points": [
+          {
+            "x": 14,
+            "y": 0
+          },
+          {
+            "x": 15,
+            "y": 0
+          },
+          {
+            "x": 15,
+            "y": 16
+          },
+          {
+            "x": 14,
+            "y": 16
+          }
+        ]
+      },
+      {
+        "id": "lake",
+        "kind": "closedSpline",
+        "origin": "painted",
+        "points": [
+          {
+            "x": 3,
+            "y": 2
+          },
+          {
+            "x": 7,
+            "y": 2
+          },
+          {
+            "x": 7,
+            "y": 6
+          },
+          {
+            "x": 3,
+            "y": 6
+          }
+        ]
+      }
+    ],
+    "mountains": [
+      {
+        "id": "mountain",
+        "kind": "closedSpline",
+        "origin": "painted",
+        "points": [
+          {
+            "x": 18,
+            "y": 10
+          },
+          {
+            "x": 22,
+            "y": 10
+          },
+          {
+            "x": 22,
+            "y": 14
+          },
+          {
+            "x": 18,
+            "y": 14
+          }
+        ]
+      }
+    ],
+    "parks": [
+      {
+        "id": "park",
+        "kind": "closedSpline",
+        "origin": "painted",
+        "points": [
+          {
+            "x": 2,
+            "y": 9
+          },
+          {
+            "x": 9,
+            "y": 9
+          },
+          {
+            "x": 9,
+            "y": 13
+          },
+          {
+            "x": 2,
+            "y": 13
+          }
+        ]
+      }
+    ],
+    "spawnZones": [],
+    "motorwayGuide": [
+      {
+        "id": "guide-1",
+        "points": [
+          {
+            "x": 0,
+            "y": 15
+          },
+          {
+            "x": 12,
+            "y": 9
+          },
+          {
+            "x": 24,
+            "y": 2
+          }
+        ]
+      }
+    ],
+    "starterRoads": []
+  },
+  "rules": [],
+  "palette": "default",
+  "attribution": "Hand-made test map. No OpenStreetMap data."
+}
