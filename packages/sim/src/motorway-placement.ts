@@ -50,9 +50,10 @@ function adjacent(grid: Grid, a: number, b: number): boolean {
 }
 
 /**
- * The directions a motorway takes at its ramps, from the ground road there: at `a`, the road
- * that leads toward `b`; at `b`, the road that carries on away from `a`. Null where a ramp has
- * no linked road on that side.
+ * The directions a motorway takes at its ramps, from the ground road there. Each ramp has one
+ * direction, the way its road runs through the ramp that points most toward the other ramp,
+ * so a road that ends at the ramp still lines the motorway up. Null where a ramp has no
+ * linked road at all.
  */
 function rampDirections(
   state: SimState,
@@ -60,36 +61,30 @@ function rampDirections(
   b: number,
 ): { aDir: CurvePoint | null; bDir: CurvePoint | null } {
   const { grid } = state;
-  const centre = (i: number) => tileCentre(grid, i);
+  const ca = tileCentre(grid, a);
+  const cb = tileCentre(grid, b);
+  const towardB = { x: cb.x - ca.x, y: cb.y - ca.y };
   const unit = (from: CurvePoint, to: CurvePoint): CurvePoint | null => {
     const d = Math.hypot(to.x - from.x, to.y - from.y);
     return d > 0 ? { x: (to.x - from.x) / d, y: (to.y - from.y) / d } : null;
   };
   const dot = (p: CurvePoint, q: CurvePoint) => p.x * q.x + p.y * q.y;
-  const ca = centre(a);
-  const cb = centre(b);
-  const towardB = { x: cb.x - ca.x, y: cb.y - ca.y };
-  const towardA = { x: -towardB.x, y: -towardB.y };
-  let aDir: CurvePoint | null = null;
-  let bestA = 0;
-  for (const n of roadLinks(state.roads, state.links, a)) {
-    const dir = unit(ca, centre(n));
-    if (dir && dot(dir, towardB) > bestA) {
-      bestA = dot(dir, towardB);
-      aDir = dir;
+  /** The road direction through `ramp` that points most toward the other ramp. */
+  const along = (ramp: number, centre: CurvePoint): CurvePoint | null => {
+    let best: CurvePoint | null = null;
+    let bestDot = 0;
+    for (const n of roadLinks(state.roads, state.links, ramp)) {
+      const near = tileCentre(grid, n);
+      for (const dir of [unit(near, centre), unit(centre, near)]) {
+        if (dir && dot(dir, towardB) > bestDot) {
+          bestDot = dot(dir, towardB);
+          best = dir;
+        }
+      }
     }
-  }
-  let bDir: CurvePoint | null = null;
-  let bestB = 0;
-  for (const n of roadLinks(state.roads, state.links, b)) {
-    const dir = unit(cb, centre(n));
-    if (dir && dot(dir, towardA) > bestB) {
-      bestB = dot(dir, towardA);
-      // Travel arrives at `b` from the side of `a`, so it runs from the neighbour toward `b`.
-      bDir = unit(centre(n), cb);
-    }
-  }
-  return { aDir, bDir };
+    return best;
+  };
+  return { aDir: along(a, ca), bDir: along(b, cb) };
 }
 
 /** The curve between two ramps with these handles, if it stays on the map and within the length limit. */

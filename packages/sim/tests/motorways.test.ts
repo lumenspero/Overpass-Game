@@ -257,4 +257,33 @@ describe('a motorway meets its ramps along the road', () => {
     expect(startOff(curve)).toBeLessThan(0.2);
     expect(endOff(curve)).toBeLessThan(0.2);
   });
+
+  it('lines up with a road that ends at the ramp', () => {
+    const grid = makeGrid(14, 8);
+    const sim = createSim({ seed: 1, grid, roadBudget: 80 });
+    sim.stock.motorway = 1;
+    // Two dead-end roads: one ends at (2, 2), the other starts at (11, 2).
+    const west: number[] = [];
+    const east: number[] = [];
+    for (let x = 0; x <= 2; x++) west.push(at(grid, x, 2));
+    for (let x = 11; x <= 13; x++) east.push(at(grid, x, 2));
+    placeRoads(sim, [...west, ...east]);
+    for (let x = 1; x <= 2; x++)
+      linkTiles(sim, at(grid, x - 1, 2), at(grid, x, 2));
+    for (let x = 12; x <= 13; x++)
+      linkTiles(sim, at(grid, x - 1, 2), at(grid, x, 2));
+    const r = placeMotorway(sim, at(grid, 2, 2), at(grid, 11, 2), [
+      { x: 5.5, y: 4.5 },
+      { x: 8.5, y: 4.5 },
+    ]);
+    expect(r.ok).toBe(true);
+    const m = sim.motorways[0];
+    expect(m.aDir?.x ?? 0).toBeGreaterThan(0.95);
+    expect(m.bDir?.x ?? 0).toBeGreaterThan(0.95);
+    const curve = motorwayCurve(grid, m);
+    const plain = motorwayCurve(grid, { ...m, aDir: null, bDir: null });
+    const off = (c: CurvePoint[]) =>
+      Math.abs(c[1].y - c[0].y) / Math.abs(c[1].x - c[0].x);
+    expect(off(curve)).toBeLessThan(off(plain));
+  });
 });

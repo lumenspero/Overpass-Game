@@ -6,6 +6,7 @@ import {
   type Speed,
   type TuningKey,
 } from '@overpass-game/sim';
+import { DEMOS, type DemoId } from '../game/demos.ts';
 import { TUNING_RANGES } from './tuning-ranges.ts';
 
 /**
@@ -20,6 +21,8 @@ export interface TuningPanelOptions {
   onSpeed: (speed: Speed) => void;
   /** Called when Restart is pressed. */
   onRestart: () => void;
+  /** Starts a scripted demo, or the normal test map for null, then restarts. */
+  onDemo: (id: DemoId | null) => void;
   /** Called when a +1 button for a crossing is pressed (playtest aid). */
   onGrant: (
     kind:
@@ -56,6 +59,19 @@ function button(label: string, onClick: () => void): HTMLButtonElement {
   b.style.cssText = 'margin:2px;font:12px monospace;cursor:pointer';
   b.addEventListener('click', onClick);
   return b;
+}
+
+function demoRow(onDemo: (id: DemoId | null) => void): HTMLDivElement {
+  const row = document.createElement('div');
+  row.style.marginTop = '6px';
+  const label = document.createElement('div');
+  label.textContent = 'Demos (each restarts the run)';
+  row.appendChild(label);
+  for (const demo of DEMOS) {
+    row.appendChild(button(demo.title, () => onDemo(demo.id)));
+  }
+  row.appendChild(button('Test map', () => onDemo(null)));
+  return row;
 }
 
 function grantRow(
@@ -163,6 +179,7 @@ export function createTuningPanel(options: TuningPanelOptions): TuningPanel {
   document.body.appendChild(root);
 
   root.append(grantRow(options.onGrant));
+  root.append(demoRow(options.onDemo));
   return {
     setSpeed,
     refresh,

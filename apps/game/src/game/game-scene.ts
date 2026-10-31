@@ -1,4 +1,5 @@
 import { greenIsHorizontal, ROUNDABOUT_RING_TILES } from '@overpass-game/sim';
+import { activeDemo, buildDemo, DEMOS, setActiveDemo } from './demos.ts';
 import Phaser from 'phaser';
 import {
   advanceClock,
@@ -154,12 +155,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
-    const grid: Grid = buildTestGrid();
-    this.sim = createSim({
-      seed: 1,
-      grid,
-      districts: buildTestDistricts(grid),
-    });
+    const demo = activeDemo();
+    if (demo) {
+      this.sim = buildDemo(demo);
+    } else {
+      const testGrid: Grid = buildTestGrid();
+      this.sim = createSim({
+        seed: 1,
+        grid: testGrid,
+        districts: buildTestDistricts(testGrid),
+      });
+    }
+    const grid: Grid = this.sim.grid;
     this.clock = createClock();
     this.mapper = createIntentMapper('select');
     this.controller = createController(this.sim);
@@ -195,7 +202,8 @@ export class GameScene extends Phaser.Scene {
       this.overlayGfx,
     ]);
     this.drawTerrain(terrainGfx, grid);
-    this.placeTestBuildings();
+    // Demo maps bring their own buildings; only the normal test map places these.
+    if (!demo) this.placeTestBuildings();
     this.drawBuildings();
 
     // Screen-space text, not in the scaled layer, so it stays readable at any zoom.
@@ -318,6 +326,7 @@ export class GameScene extends Phaser.Scene {
     }
     if (now >= this.crossingUntil) {
       const tool = this.mapper.tool;
+      const demo = DEMOS.find((d) => d.id === activeDemo());
       if (
         tool === 'bridge' ||
         tool === 'tunnel' ||
@@ -329,6 +338,8 @@ export class GameScene extends Phaser.Scene {
         this.setCrossingLine(crossingHint(tool, this.sim.stock[tool]));
       } else if (tool === 'draw') {
         this.setCrossingLine('Road tool');
+      } else if (demo) {
+        this.setCrossingLine(demo.hint);
       } else {
         this.setCrossingLine('');
       }
@@ -776,6 +787,10 @@ export class GameScene extends Phaser.Scene {
       this.panel = createTuningPanel({
         onSpeed: (s) => this.setGameSpeed(s),
         onRestart: () => this.scene.restart(),
+        onDemo: (id) => {
+          setActiveDemo(id);
+          this.scene.restart();
+        },
         onGrant: (kind) => {
           this.sim.stock[kind] += 1;
         },
