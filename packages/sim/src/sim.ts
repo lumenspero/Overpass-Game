@@ -5,7 +5,9 @@ import type { Motorway } from './motorways.ts';
 import type { Building, Demand, Home } from './buildings.ts';
 import { type Car, onRoadsChanged } from './cars.ts';
 import { tuning } from './config.ts';
-import { generateDemand, updateOverflow } from './demand.ts';
+import { generateDemand, growDestinations, updateOverflow } from './demand.ts';
+import { isExpansionWeek } from './expansion.ts';
+import type { MapRule } from './rules.ts';
 import { isOpenTile } from './expansion.ts';
 import { buildRoadGraph, type RoadGraph, updateRoadGraph } from './graph.ts';
 import {
@@ -69,6 +71,8 @@ export interface SimState {
   nextMotorwayId: number;
   /** Roundabouts and traffic lights on junction tiles, by tile (spec: Roundabouts and lights). */
   controls: Record<number, ControlKind>;
+  /** The map's rules, from its data (spec: Destination upgrades, growth and rule hooks). */
+  rules: MapRule[];
 }
 
 export interface GameOver {
@@ -84,6 +88,7 @@ export interface CreateSimOptions {
   roadBudget?: number;
   /** District of each tile. Defaults to district 0 everywhere, so the whole map is open. */
   districts?: number[];
+  rules?: MapRule[];
 }
 
 export type PlaceResult =
@@ -98,6 +103,7 @@ export function createSim({
   grid,
   roadBudget = tuning.ROAD_BUDGET_START,
   districts,
+  rules = [],
 }: CreateSimOptions): SimState {
   const roads = new Array<number>(grid.cols * grid.rows).fill(0);
   const links: Links = {};
@@ -126,6 +132,7 @@ export function createSim({
     motorways: [],
     nextMotorwayId: 1,
     controls: {},
+    rules,
   };
 }
 
@@ -205,7 +212,10 @@ export function unlinkTiles(state: SimState, a: number, b: number): boolean {
 export function step(state: SimState): void {
   if (state.over) return;
   state.tick += 1;
-  if (state.tick % tuning.WEEK_TICKS === 0) grantWeeklyReward(state);
+  if (state.tick % tuning.WEEK_TICKS === 0) {
+    grantWeeklyReward(state);
+    if (isExpansionWeek(state.tick)) growDestinations(state);
+  }
   generateDemand(state);
   updateOverflow(state);
   if (state.over) return;

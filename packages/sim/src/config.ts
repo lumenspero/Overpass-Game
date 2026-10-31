@@ -65,6 +65,14 @@ export const DEFAULT_TUNING = {
   LIGHT_GREEN_TICKS: 240, // approximated
   /** Extra route cost, in tile steps, for each car waiting to enter a tile (spec: Congestion-aware routing). */
   CONGESTION_COST_PER_CAR: 1.5, // approximated
+  /** Weight of the destination upgrade in the weekly offer (spec: Destination upgrades). */
+  UPGRADE_WEIGHT_DESTINATION: 1, // approximated
+  /** Demand a destination upgrade adds, as a fraction of its base rate. */
+  DEMAND_UPGRADE_STEP: 0.5, // approximated
+  /** Demand each destination gains when a new district opens. */
+  DEMAND_GROWTH_STEP: 0.25, // approximated
+  /** Most upgrades one destination takes. */
+  DESTINATION_MAX_UPGRADES: 3, // approximated
 };
 
 export type Tuning = typeof DEFAULT_TUNING;

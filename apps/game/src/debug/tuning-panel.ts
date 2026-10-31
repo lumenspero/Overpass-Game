@@ -22,7 +22,8 @@ export interface TuningPanelOptions {
   onRestart: () => void;
   /** Called when a +1 button for a crossing is pressed (playtest aid). */
   onGrant: (
-    kind: 'bridge' | 'tunnel' | 'motorway' | 'roundabout' | 'light',
+    kind:
+      'bridge' | 'tunnel' | 'motorway' | 'roundabout' | 'light' | 'destination',
   ) => void;
 }
 
@@ -59,7 +60,8 @@ function button(label: string, onClick: () => void): HTMLButtonElement {
 
 function grantRow(
   onGrant: (
-    kind: 'bridge' | 'tunnel' | 'motorway' | 'roundabout' | 'light',
+    kind:
+      'bridge' | 'tunnel' | 'motorway' | 'roundabout' | 'light' | 'destination',
   ) => void,
 ): HTMLDivElement {
   const row = document.createElement('div');
@@ -69,6 +71,7 @@ function grantRow(
     button('+1 motorway', () => onGrant('motorway')),
     button('+1 roundabout', () => onGrant('roundabout')),
     button('+1 light', () => onGrant('light')),
+    button('+1 destination', () => onGrant('destination')),
   );
   return row;
 }

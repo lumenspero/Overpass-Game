@@ -71,6 +71,7 @@ import {
   CROSSING_MESSAGE_MS,
   controlMessage,
   crossingHint,
+  destinationMessage,
   crossingMessage,
   motorwayMessage,
 } from '../view/crossing-message.ts';
@@ -95,6 +96,7 @@ import {
 const CONTROL_OUTLINE_COLOUR = 0x3a4150;
 const LIGHT_GREEN_COLOUR = 0x5cb85c;
 const LIGHT_RED_COLOUR = 0xd9534f;
+const DESTINATION_UPGRADE_COLOUR = 0xf2c14e;
 
 const TERRAIN_COLOR: Partial<Record<TerrainKind, number>> = {
   [Terrain.Water]: PALETTE.water,
@@ -253,6 +255,7 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-M', this.onMotorwayKey);
     this.input.keyboard?.on('keydown-O', this.onRoundaboutKey);
     this.input.keyboard?.on('keydown-L', this.onLightKey);
+    this.input.keyboard?.on('keydown-U', this.onDestinationKey);
     this.input.keyboard?.on('keydown-F', this.onRoadKey);
     this.input.keyboard?.on('keydown', this.onKey);
     this.scale.on('resize', this.onResize);
@@ -308,7 +311,9 @@ export class GameScene extends Phaser.Scene {
           ? motorwayMessage(report.result)
           : report.kind === 'control'
             ? controlMessage(report.control, report.result)
-            : crossingMessage(report.kind, report.result),
+            : report.kind === 'destination'
+              ? destinationMessage(report.result)
+              : crossingMessage(report.kind, report.result),
       );
     }
     if (now >= this.crossingUntil) {
@@ -318,7 +323,8 @@ export class GameScene extends Phaser.Scene {
         tool === 'tunnel' ||
         tool === 'motorway' ||
         tool === 'roundabout' ||
-        tool === 'light'
+        tool === 'light' ||
+        tool === 'destination'
       ) {
         this.setCrossingLine(crossingHint(tool, this.sim.stock[tool]));
       } else if (tool === 'draw') {
@@ -402,12 +408,14 @@ export class GameScene extends Phaser.Scene {
   private onMotorwayKey = (): void => this.pickCrossing('motorway');
   private onRoundaboutKey = (): void => this.pickCrossing('roundabout');
   private onLightKey = (): void => this.pickCrossing('light');
+  private onDestinationKey = (): void => this.pickCrossing('destination');
   private onRoadKey = (): void => {
     setTool(this.mapper, this.mapper.tool === 'draw' ? 'select' : 'draw');
   };
 
   private pickCrossing(
-    kind: 'bridge' | 'tunnel' | 'motorway' | 'roundabout' | 'light',
+    kind:
+      'bridge' | 'tunnel' | 'motorway' | 'roundabout' | 'light' | 'destination',
   ): void {
     setTool(this.mapper, this.mapper.tool === kind ? 'select' : kind);
   }
@@ -630,6 +638,21 @@ export class GameScene extends Phaser.Scene {
     gfx.clear();
     const { cols } = this.sim.grid;
     const horizontal = greenIsHorizontal(this.sim);
+    // Destination upgrades: gold pips above each upgraded destination.
+    for (const b of this.sim.buildings) {
+      const d = this.sim.demand[b.id];
+      if (b.kind !== 'destination' || !d) continue;
+      const bx = ((b.tile % cols) + 0.5) * TILE_SIZE;
+      const by = (Math.floor(b.tile / cols) + 0.5) * TILE_SIZE;
+      gfx.fillStyle(DESTINATION_UPGRADE_COLOUR, 1);
+      for (let k = 0; k < d.upgrades; k++) {
+        gfx.fillCircle(
+          bx - TILE_SIZE * 0.25 + k * TILE_SIZE * 0.25,
+          by - TILE_SIZE * 0.42,
+          2.5,
+        );
+      }
+    }
     for (const [key, kind] of Object.entries(this.sim.controls)) {
       const tile = Number(key);
       const cx = ((tile % cols) + 0.5) * TILE_SIZE;
@@ -792,6 +815,7 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown-M', this.onMotorwayKey);
     this.input.keyboard?.off('keydown-O', this.onRoundaboutKey);
     this.input.keyboard?.off('keydown-L', this.onLightKey);
+    this.input.keyboard?.off('keydown-U', this.onDestinationKey);
     this.input.keyboard?.off('keydown-F', this.onRoadKey);
     this.offerPanel.destroy();
     this.input.keyboard?.off('keydown', this.onKey);

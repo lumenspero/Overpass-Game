@@ -16,6 +16,7 @@ export const UPGRADE_KINDS = [
   'motorway',
   'roundabout',
   'light',
+  'destination',
 ] as const;
 
 export type UpgradeKind = (typeof UPGRADE_KINDS)[number];
@@ -27,13 +28,21 @@ export const IMPLEMENTED_UPGRADES: readonly UpgradeKind[] = [
   'motorway',
   'roundabout',
   'light',
+  'destination',
 ];
 
 /** How many of each upgrade the player holds, ready to place. */
 export type Stock = Record<UpgradeKind, number>;
 
 export function emptyStock(): Stock {
-  return { bridge: 0, tunnel: 0, motorway: 0, roundabout: 0, light: 0 };
+  return {
+    bridge: 0,
+    tunnel: 0,
+    motorway: 0,
+    roundabout: 0,
+    light: 0,
+    destination: 0,
+  };
 }
 
 /** How many upgrades each weekly offer gives the player to choose from. */
@@ -45,6 +54,7 @@ const WEIGHT_KEY: Record<UpgradeKind, TuningKey> = {
   motorway: 'UPGRADE_WEIGHT_MOTORWAY',
   roundabout: 'UPGRADE_WEIGHT_ROUNDABOUT',
   light: 'UPGRADE_WEIGHT_LIGHT',
+  destination: 'UPGRADE_WEIGHT_DESTINATION',
 };
 
 /** The live weight of an upgrade kind. Zero means it is never offered. */

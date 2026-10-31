@@ -44,4 +44,8 @@ export const TUNING_RANGES: Record<TuningKey, TuningRange> = {
   ROUNDABOUT_CAPACITY: { min: 1, max: 8, step: 1 },
   LIGHT_GREEN_TICKS: { min: 30, max: 600, step: 30 },
   CONGESTION_COST_PER_CAR: { min: 0, max: 5, step: 0.5 },
+  UPGRADE_WEIGHT_DESTINATION: { min: 0, max: 5, step: 1 },
+  DEMAND_UPGRADE_STEP: { min: 0, max: 2, step: 0.25 },
+  DEMAND_GROWTH_STEP: { min: 0, max: 1, step: 0.25 },
+  DESTINATION_MAX_UPGRADES: { min: 0, max: 8, step: 1 },
 };

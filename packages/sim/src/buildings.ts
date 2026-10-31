@@ -1,4 +1,5 @@
 import { tuning } from './config.ts';
+import { colourUnlocked } from './rules.ts';
 import { type Grid, isBuildable, isInBounds } from './grid.ts';
 import type { SimState } from './sim.ts';
 
@@ -27,6 +28,10 @@ export interface Demand {
   cooldown: number;
   /** Ticks left before this destination ends the game. 0 when it is not overflowing. */
   overflow: number;
+  /** Destination upgrades placed here. */
+  upgrades: number;
+  /** Expansions this destination has grown through. */
+  growth: number;
 }
 
 /** A house's cars. `owned` counts cars that belong to it; `atHome` of them are parked there. */
@@ -81,7 +86,8 @@ export function placeBuilding(
   if (
     !Number.isInteger(opts.color) ||
     opts.color < 0 ||
-    opts.color >= tuning.BUILDING_COLOR_COUNT
+    opts.color >= tuning.BUILDING_COLOR_COUNT ||
+    !colourUnlocked(state, opts.color)
   ) {
     return { ok: false, reason: 'bad-color' };
   }
@@ -105,6 +111,8 @@ export function placeBuilding(
       pins: 0,
       cooldown: tuning.DEMAND_INTERVAL_TICKS,
       overflow: 0,
+      upgrades: 0,
+      growth: 0,
     };
   }
   return { ok: true, id };

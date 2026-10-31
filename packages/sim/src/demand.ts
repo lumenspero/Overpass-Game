@@ -1,5 +1,6 @@
 import { tuning } from './config.ts';
 import { isOpenTile } from './expansion.ts';
+import type { Demand } from './buildings.ts';
 import type { SimState } from './sim.ts';
 
 /**
@@ -22,7 +23,7 @@ export function generateDemand(state: SimState): void {
     demand.cooldown = Math.max(0, demand.cooldown - 1);
     if (demand.cooldown > 0) continue;
     demand.pins += 1;
-    demand.cooldown = tuning.DEMAND_INTERVAL_TICKS;
+    demand.cooldown = cooldownFor(demand);
   }
 }
 
@@ -76,4 +77,54 @@ export function updateOverflow(state: SimState): void {
       state.over = { tick: state.tick, destination: b.id };
     }
   }
+}
+
+/** How much faster than the base rate a destination draws pins: upgrades and growth add to it. */
+export function demandRate(demand: Demand): number {
+  return (
+    1 +
+    demand.upgrades * tuning.DEMAND_UPGRADE_STEP +
+    demand.growth * tuning.DEMAND_GROWTH_STEP
+  );
+}
+
+/** Ticks between one pin and the next at this destination's rate. */
+function cooldownFor(demand: Demand): number {
+  return Math.max(
+    1,
+    Math.round(tuning.DEMAND_INTERVAL_TICKS / demandRate(demand)),
+  );
+}
+
+/** Every destination grows by one step, as a new district opens. */
+export function growDestinations(state: SimState): void {
+  for (const b of state.buildings) {
+    const demand = state.demand[b.id];
+    if (b.kind === 'destination' && demand) demand.growth += 1;
+  }
+}
+
+export type DestinationReason =
+  'not-a-destination' | 'max-upgrades' | 'no-stock';
+
+export type DestinationResult =
+  { ok: true } | { ok: false; reason: DestinationReason };
+
+/** Places a destination upgrade on a destination building, taking one from stock. */
+export function placeDestinationUpgrade(
+  state: SimState,
+  buildingId: number,
+): DestinationResult {
+  const building = state.buildings[buildingId];
+  const demand = state.demand[buildingId];
+  if (!building || building.kind !== 'destination' || !demand) {
+    return { ok: false, reason: 'not-a-destination' };
+  }
+  if (demand.upgrades >= tuning.DESTINATION_MAX_UPGRADES) {
+    return { ok: false, reason: 'max-upgrades' };
+  }
+  if (state.stock.destination < 1) return { ok: false, reason: 'no-stock' };
+  demand.upgrades += 1;
+  state.stock.destination -= 1;
+  return { ok: true };
 }

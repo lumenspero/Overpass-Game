@@ -1,6 +1,7 @@
 import {
   type ControlKind,
   type ControlResult,
+  type DestinationResult,
   type CrossingKind,
   type CrossingResult,
   type MotorwayResult,
@@ -90,9 +91,22 @@ export function controlMessage(
   }
 }
 
+/** The line shown after a destination upgrade is placed: what was done, or why not. */
+export function destinationMessage(result: DestinationResult): string {
+  if (result.ok) return 'Destination upgraded';
+  switch (result.reason) {
+    case 'not-a-destination':
+      return 'Upgrades go on destinations, the buildings cars drive to.';
+    case 'max-upgrades':
+      return `A destination takes at most ${tuning.DESTINATION_MAX_UPGRADES} upgrades.`;
+    case 'no-stock':
+      return 'No destination upgrades to place. Pick one from the reward panel.';
+  }
+}
+
 /** The line shown while a crossing tool is picked: how many are in stock. */
 export function crossingHint(
-  kind: CrossingKind | 'motorway' | 'roundabout' | 'light',
+  kind: CrossingKind | 'motorway' | 'roundabout' | 'light' | 'destination',
   stock: number,
 ): string {
   const name =
@@ -104,6 +118,8 @@ export function crossingHint(
           ? 'Roundabout'
           : kind === 'light'
             ? 'Light'
-            : 'Motorway';
+            : kind === 'destination'
+              ? 'Destination upgrade'
+              : 'Motorway';
   return `${name} tool · ${stock} in stock`;
 }

@@ -11,6 +11,8 @@ import {
   motorwayCurve,
   motorwaysTouching,
   placeControl,
+  placeDestinationUpgrade,
+  type DestinationResult,
   type ControlKind,
   type ControlResult,
   nudgeMotorway,
@@ -81,7 +83,8 @@ export type CrossingReport =
       kind: 'control';
       control: ControlKind;
       result: ControlResult;
-    };
+    }
+  | { seq: number; kind: 'destination'; result: DestinationResult };
 
 export interface Controller {
   sim: SimState;
@@ -285,6 +288,28 @@ function placeControlAt(
   return result.ok;
 }
 
+/** Upgrades the destination pressed, if there is one, reporting the result like a crossing. */
+function placeDestinationAt(ctl: Controller, at: TileXY): boolean {
+  const { cols, rows } = ctl.sim.grid;
+  const x = Math.floor(at.x);
+  const y = Math.floor(at.y);
+  const onMap = x >= 0 && y >= 0 && x < cols && y < rows;
+  const id = onMap ? ctl.sim.buildingAt[y * cols + x] : -1;
+  const result: DestinationResult =
+    id === -1
+      ? { ok: false, reason: 'not-a-destination' }
+      : placeDestinationUpgrade(ctl.sim, id);
+  ctl.crossing = {
+    seq: (ctl.crossing?.seq ?? 0) + 1,
+    kind: 'destination',
+    result,
+  };
+  ctl.note = result.ok
+    ? 'destination upgraded'
+    : `destination refused: ${result.reason}`;
+  return result.ok;
+}
+
 /** What a press at `at` takes: a handle of the selected motorway, or the curve of any motorway. */
 function grabAt(ctl: Controller, at: TileXY): Grab | null {
   const selected = ctl.sim.motorways.find((m) => m.id === ctl.selected);
@@ -380,6 +405,10 @@ export function applyIntent(
     case 'stroke-begin': {
       // A new stroke commits any unfinished one first.
       const at = toTile(intent.at);
+      if (intent.mode === 'destination') {
+        ctl.stroke = null;
+        return placeDestinationAt(ctl, at);
+      }
       if (intent.mode === 'roundabout' || intent.mode === 'light') {
         ctl.stroke = null;
         return placeControlAt(ctl, at, intent.mode);

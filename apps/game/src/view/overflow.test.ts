@@ -27,7 +27,13 @@ const dest: Building = {
 describe('overflowRings', () => {
   it('draws a full ring round an overflowing destination', () => {
     const demand: Record<number, Demand> = {
-      1: { pins: 9, cooldown: 0, overflow: OVERFLOW_TICKS },
+      1: {
+        pins: 9,
+        cooldown: 0,
+        overflow: OVERFLOW_TICKS,
+        upgrades: 0,
+        growth: 0,
+      },
     };
     const rings = overflowRings([house, dest], demand, grid);
     expect(rings).toHaveLength(1);
@@ -38,21 +44,33 @@ describe('overflowRings', () => {
 
   it('empties as the countdown runs down', () => {
     const demand: Record<number, Demand> = {
-      1: { pins: 9, cooldown: 0, overflow: OVERFLOW_TICKS / 2 },
+      1: {
+        pins: 9,
+        cooldown: 0,
+        overflow: OVERFLOW_TICKS / 2,
+        upgrades: 0,
+        growth: 0,
+      },
     };
     expect(overflowRings([dest], demand, grid)[0].fraction).toBeCloseTo(0.5);
   });
 
   it('draws nothing for a destination that is not overflowing', () => {
     const demand: Record<number, Demand> = {
-      1: { pins: 2, cooldown: 0, overflow: 0 },
+      1: { pins: 2, cooldown: 0, overflow: 0, upgrades: 0, growth: 0 },
     };
     expect(overflowRings([dest], demand, grid)).toEqual([]);
   });
 
   it('never draws a ring round a house', () => {
     const demand: Record<number, Demand> = {
-      0: { pins: 9, cooldown: 0, overflow: OVERFLOW_TICKS },
+      0: {
+        pins: 9,
+        cooldown: 0,
+        overflow: OVERFLOW_TICKS,
+        upgrades: 0,
+        growth: 0,
+      },
     };
     expect(overflowRings([house], demand, grid)).toEqual([]);
   });

@@ -9,6 +9,16 @@ import type { SimState } from './sim.ts';
  * open, never close.
  */
 
+/** Whether a tick starts a week in which a new district opens. */
+export function isExpansionWeek(tick: number): boolean {
+  const week = weekOf(tick);
+  return (
+    week === tuning.EXPANSION_WEEK_1 ||
+    week === tuning.EXPANSION_WEEK_2 ||
+    week === tuning.EXPANSION_WEEK_3
+  );
+}
+
 /** How many districts, counted from district 0, are open at a tick. */
 export function openDistricts(tick: number): number {
   const week = weekOf(tick);

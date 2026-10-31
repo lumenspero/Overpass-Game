@@ -24,7 +24,8 @@ export type StrokeMode =
   | 'tunnel'
   | 'motorway'
   | 'roundabout'
-  | 'light';
+  | 'light'
+  | 'destination';
 /** The road tool is 'draw'. 'select' lays nothing: it only picks and nudges motorways. */
 export type Tool =
   | 'select'
@@ -34,7 +35,8 @@ export type Tool =
   | 'tunnel'
   | 'motorway'
   | 'roundabout'
-  | 'light';
+  | 'light'
+  | 'destination';
 
 export interface Vec2 {
   x: number;
@@ -100,7 +102,8 @@ function strokeMode(mapper: IntentMapper, wanted: StrokeMode): StrokeMode {
       mapper.tool === 'tunnel' ||
       mapper.tool === 'motorway' ||
       mapper.tool === 'roundabout' ||
-      mapper.tool === 'light')
+      mapper.tool === 'light' ||
+      mapper.tool === 'destination')
   ) {
     return mapper.tool;
   }
