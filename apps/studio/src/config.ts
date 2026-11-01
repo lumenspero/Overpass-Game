@@ -49,10 +49,18 @@ export const IMPORT = {
   mountainThresholdStep: 25,
 } as const;
 
-/** Editor settings: snapping and undo depth. Authoring choices, not gameplay numbers. */
+/** Editor settings: snapping, undo depth, and drawn and hit sizes. Authoring choices, not gameplay numbers. */
 export const EDIT = {
   /** Points snap to multiples of this many tiles. */
   snapStep: 0.25,
   /** Undo steps kept in memory. */
   historyLimit: 200,
+  /** How close the pointer must be to an anchor, handle or edge to grab it, in screen pixels. */
+  hitRadiusPx: 8,
+  /** Drawn size of an anchor square, in screen pixels. */
+  anchorPx: 7,
+  /** Drawn diameter of a handle dot, in screen pixels. */
+  handlePx: 5,
+  /** Width of the bold outline drawn around each shape, in screen pixels. */
+  outlinePx: 2,
 } as const;

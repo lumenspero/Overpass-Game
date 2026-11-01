@@ -340,3 +340,15 @@ export function nextId(map: SourceMap, prefix: string): string {
     if (!taken.has(candidate)) return candidate;
   }
 }
+
+/** Replaces every item in a layer, for example when the mountain slider rebuilds the mountains. */
+export function replaceLayer(
+  map: SourceMap,
+  layer: EditableLayer,
+  items: readonly Layers[EditableLayer][number][],
+): SourceMap {
+  return {
+    ...map,
+    layers: { ...map.layers, [layer]: items.slice() } as Layers,
+  };
+}

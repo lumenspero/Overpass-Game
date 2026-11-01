@@ -5,10 +5,17 @@ import {
 } from '@overpass-game/render-style';
 import { sampleSpline } from '@overpass-game/map-compiler';
 import type { Polyline, Shape, SourceMap } from '@overpass-game/map-schema';
+import { EDIT } from '../config.ts';
 import type { Frame } from '../geo/frame.ts';
+import type { Selection } from '../edit/editor.ts';
+import { pixelToSource } from '../edit/coords.ts';
+import { listItems, type Pt } from '../edit/hit.ts';
 import { previewLayout } from './layout.ts';
 
 const OUTSIDE_COLOUR = '#e5484d';
+const OUTLINE_COLOUR = '#ffffff';
+const SELECTED_COLOUR = '#ffd60a';
+const ANCHOR_EDGE_COLOUR = '#111111';
 
 function hex(colour: number): string {
   return `#${colour.toString(16).padStart(6, '0')}`;
@@ -17,7 +24,9 @@ function hex(colour: number): string {
 /**
  * Game-style preview of the map frame: the tile grid in the game's land
  * colour, turned to match the real map, with any imported features drawn on
- * top. It draws only; the frame and source state come from the app.
+ * top. When editing is on, shapes get bold outlines, and the selected shape
+ * shows its anchors and handles. It draws only; the frame, the map and the
+ * selection come from the app and the editor.
  */
 export class PreviewCanvas {
   private readonly canvas: HTMLCanvasElement;
@@ -26,6 +35,8 @@ export class PreviewCanvas {
   private frame: Frame | null = null;
   private inside = true;
   private source: SourceMap | null = null;
+  private editable = false;
+  private selection: Selection | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
@@ -47,6 +58,37 @@ export class PreviewCanvas {
   setSource(source: SourceMap | null): void {
     this.source = source;
     this.draw();
+  }
+
+  /** Turns the editing overlay on or off for the drawn source, and sets the selection it shows. */
+  setEditState(editable: boolean, selection: Selection | null): void {
+    this.editable = editable;
+    this.selection = selection;
+    this.draw();
+  }
+
+  /** The source-grid point under a client position, or null when no frame is drawn. */
+  locate(
+    clientX: number,
+    clientY: number,
+  ): { point: Pt; tilesPerPixel: number } | null {
+    const frame = this.frame;
+    if (!frame) return null;
+    const { scale, matrix } = previewLayout(
+      frame,
+      this.canvas.clientWidth,
+      this.canvas.clientHeight,
+    );
+    if (scale <= 0) return null;
+    const rect = this.canvas.getBoundingClientRect();
+    const point = pixelToSource(
+      matrix,
+      frame.cols,
+      frame.rows,
+      clientX - rect.left,
+      clientY - rect.top,
+    );
+    return point ? { point, tilesPerPixel: 1 / scale } : null;
   }
 
   destroy(): void {
@@ -117,6 +159,10 @@ export class PreviewCanvas {
     ctx.strokeStyle = this.inside ? hex(PALETTE.road) : OUTSIDE_COLOUR;
     ctx.lineWidth = 2 / scale;
     ctx.strokeRect(x0, y0, frame.cols, frame.rows);
+
+    if (this.editable && this.source) {
+      this.drawEditOverlay(this.source, frame, scale);
+    }
     ctx.restore();
   }
 
@@ -172,5 +218,84 @@ export class PreviewCanvas {
       ctx.globalAlpha = 1;
     };
     for (const line of source.layers.motorwayGuide) drawGuide(line);
+  }
+
+  /**
+   * Bold outlines on every shape, and for the selected shape its handle arms, handle dots and
+   * anchor squares. Sizes are in screen pixels, converted to tiles with the current scale.
+   */
+  private drawEditOverlay(
+    source: SourceMap,
+    frame: Frame,
+    scale: number,
+  ): void {
+    const { ctx } = this;
+    const local = (p: { x: number; y: number }): Pt => ({
+      x: p.x - frame.cols / 2,
+      y: frame.rows / 2 - p.y,
+    });
+    const px = (n: number): number => n / scale;
+    const selection = this.selection;
+
+    for (const { layer, item } of listItems(source)) {
+      const closed = item.kind === 'closedSpline';
+      const selected =
+        selection !== null &&
+        selection.layer === layer &&
+        selection.id === item.id;
+
+      const ring = sampleSpline(item.points, closed);
+      ctx.beginPath();
+      ring.forEach((p, i) => {
+        const q = local(p);
+        if (i === 0) ctx.moveTo(q.x, q.y);
+        else ctx.lineTo(q.x, q.y);
+      });
+      if (closed) ctx.closePath();
+      ctx.strokeStyle = selected ? SELECTED_COLOUR : OUTLINE_COLOUR;
+      ctx.lineWidth = px(EDIT.outlinePx);
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+
+      if (!selected) continue;
+
+      ctx.beginPath();
+      for (const p of item.points) {
+        const anchor = local(p);
+        for (const off of [p.handleIn, p.handleOut]) {
+          if (!off) continue;
+          const handle = local({ x: p.x + off.x, y: p.y + off.y });
+          ctx.moveTo(anchor.x, anchor.y);
+          ctx.lineTo(handle.x, handle.y);
+        }
+      }
+      ctx.strokeStyle = SELECTED_COLOUR;
+      ctx.lineWidth = px(1);
+      ctx.stroke();
+
+      for (const p of item.points) {
+        for (const off of [p.handleIn, p.handleOut]) {
+          if (!off) continue;
+          const handle = local({ x: p.x + off.x, y: p.y + off.y });
+          ctx.beginPath();
+          ctx.arc(handle.x, handle.y, px(EDIT.handlePx / 2), 0, Math.PI * 2);
+          ctx.fillStyle = SELECTED_COLOUR;
+          ctx.fill();
+        }
+      }
+
+      const size = px(EDIT.anchorPx);
+      item.points.forEach((p, i) => {
+        const a = local(p);
+        ctx.beginPath();
+        ctx.rect(a.x - size / 2, a.y - size / 2, size, size);
+        ctx.fillStyle =
+          selection?.index === i ? SELECTED_COLOUR : OUTLINE_COLOUR;
+        ctx.fill();
+        ctx.strokeStyle = ANCHOR_EDGE_COLOUR;
+        ctx.lineWidth = px(1);
+        ctx.stroke();
+      });
+    }
   }
 }

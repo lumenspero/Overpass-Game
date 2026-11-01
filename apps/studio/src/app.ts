@@ -1,6 +1,5 @@
 import { h, type Attributes, type ComponentChildren, type VNode } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { SourceMap } from '@overpass-game/map-schema';
 import { DEFAULT_FRAME_TILES, IMPORT, TERRAIN_ZOOM } from './config.ts';
 import {
   frameAt,
@@ -16,6 +15,9 @@ import { convertFeatures } from './import/convert.ts';
 import { buildSourceMap } from './import/source-map.ts';
 import { MapPanel } from './map/map-panel.ts';
 import { loadRegion } from './osm/region.ts';
+import { Editor, type Selection } from './edit/editor.ts';
+import { attachInteraction } from './edit/interaction.ts';
+import { replaceLayer } from './edit/ops.ts';
 import { PreviewCanvas } from './preview/preview-canvas.ts';
 import { searchPlaces, type PlaceCandidate } from './search/nominatim.ts';
 import { loadTerrain } from './terrain/load.ts';
@@ -67,6 +69,13 @@ function sameFrame(a: Frame, b: Frame): boolean {
   );
 }
 
+function describeSelection(sel: Selection | null): string {
+  if (!sel) return 'Click a shape to select it.';
+  return sel.index === null
+    ? `Selected ${sel.id}.`
+    : `Selected ${sel.id}, point ${sel.index + 1}.`;
+}
+
 /** The Studio's screen: place search, the real map, the frame, the OSM import and the game-style preview. */
 export function App(): VNode {
   const [frame, setFrame] = useState<Frame | null>(null);
@@ -78,7 +87,6 @@ export function App(): VNode {
   const [busy, setBusy] = useState(false);
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState<{
-    map: SourceMap;
     frame: Frame;
     elevation: Float32Array | null;
   } | null>(null);
@@ -98,6 +106,8 @@ export function App(): VNode {
   const canvasElement = useRef<HTMLCanvasElement | null>(null);
   const mapPanel = useRef<MapPanel | null>(null);
   const preview = useRef<PreviewCanvas | null>(null);
+  const editor = useRef<Editor | null>(null);
+  const [, setVersion] = useState(0);
 
   const pickPlace = (id: string): void => {
     const place = latestPlaces.current.find((p) => p.id === id);
@@ -143,7 +153,13 @@ export function App(): VNode {
     const previewCanvas = new PreviewCanvas(canvas);
     mapPanel.current = panel;
     preview.current = previewCanvas;
+    const detach = attachInteraction(
+      canvas,
+      previewCanvas,
+      () => editor.current,
+    );
     return () => {
+      detach();
       panel.destroy();
       previewCanvas.destroy();
       mapPanel.current = null;
@@ -161,11 +177,23 @@ export function App(): VNode {
   }, [frame]);
 
   // Imported features show only while the frame is the one they were imported for.
+  // The editor's map is the source, so edits show as they are made.
+  const editorMap = editor.current?.map ?? null;
   const sourceForPreview =
-    imported && frame && sameFrame(imported.frame, frame) ? imported.map : null;
+    imported && frame && sameFrame(imported.frame, frame) ? editorMap : null;
   useEffect(() => {
     preview.current?.setSource(sourceForPreview);
   }, [sourceForPreview]);
+
+  const selection = editor.current?.selection ?? null;
+  useEffect(() => {
+    preview.current?.setEditState(sourceForPreview !== null, selection);
+  }, [sourceForPreview, selection]);
+
+  // Each edit re-renders the screen, so the preview and the panels stay in step.
+  useEffect(() => {
+    return editor.current?.subscribe(() => setVersion((v) => v + 1));
+  }, [imported]);
 
   useEffect(() => {
     mapPanel.current?.setCandidates(places, selectedId);
@@ -229,7 +257,8 @@ export function App(): VNode {
         queryHash: loaded.hash,
         fetchedAt: new Date().toISOString(),
       });
-      setImported({ map, frame: current, elevation });
+      editor.current = new Editor(map);
+      setImported({ frame: current, elevation });
       setMessage(
         `Imported ${layers.water.length} water shapes, ${layers.parks.length} parks, ${layers.motorwayGuide.length} motorway lines and ${mountains.length} mountains.${
           elevation
@@ -244,7 +273,7 @@ export function App(): VNode {
     }
   }
 
-  /** Runs on slider release: rebuilds the mountain layer from the stored elevation. */
+  /** Runs on slider release: rebuilds the mountain layer. It is one undoable edit, and it replaces hand-edited mountains. */
   function onMountainThreshold(threshold: number): void {
     const current = imported;
     if (!current?.elevation) return;
@@ -254,13 +283,7 @@ export function App(): VNode {
       current.frame.rows,
       threshold,
     );
-    setImported({
-      ...current,
-      map: {
-        ...current.map,
-        layers: { ...current.map.layers, mountains },
-      },
-    });
+    editor.current?.apply((m) => replaceLayer(m, 'mountains', mountains));
     setMessage(`${mountains.length} mountains at ${threshold} m and above.`);
   }
 
@@ -400,6 +423,98 @@ export function App(): VNode {
             )
           : null,
       ),
+      imported
+        ? el(
+            'section',
+            { class: 'edit-controls' },
+            el('h2', null, 'Edit'),
+            el(
+              'p',
+              { class: 'frame-status', 'data-testid': 'edit-status' },
+              describeSelection(selection),
+            ),
+            el(
+              'div',
+              { class: 'edit-row' },
+              el(
+                'button',
+                {
+                  type: 'button',
+                  disabled: !editor.current?.undoable,
+                  onClick: () => editor.current?.undo(),
+                },
+                'Undo',
+              ),
+              el(
+                'button',
+                {
+                  type: 'button',
+                  disabled: !editor.current?.redoable,
+                  onClick: () => editor.current?.redo(),
+                },
+                'Redo',
+              ),
+            ),
+            el(
+              'button',
+              {
+                type: 'button',
+                disabled: selection === null || selection.index === null,
+                onClick: () => editor.current?.deleteSelectedPoint(),
+              },
+              'Delete point',
+            ),
+            el(
+              'div',
+              { class: 'edit-row' },
+              el(
+                'button',
+                {
+                  type: 'button',
+                  disabled: selection === null,
+                  onClick: () => editor.current?.rotateSelected(-15),
+                },
+                'Turn −15°',
+              ),
+              el(
+                'button',
+                {
+                  type: 'button',
+                  disabled: selection === null,
+                  onClick: () => editor.current?.rotateSelected(15),
+                },
+                'Turn +15°',
+              ),
+            ),
+            el(
+              'div',
+              { class: 'edit-row' },
+              el(
+                'button',
+                {
+                  type: 'button',
+                  disabled: selection === null,
+                  onClick: () => editor.current?.scaleSelected(0.9),
+                },
+                'Shrink 10%',
+              ),
+              el(
+                'button',
+                {
+                  type: 'button',
+                  disabled: selection === null,
+                  onClick: () => editor.current?.scaleSelected(1.1),
+                },
+                'Grow 10%',
+              ),
+            ),
+            el(
+              'p',
+              { class: 'frame-status' },
+              'Drag an anchor, a handle or a shape. Double-click an edge to add a point. Ctrl+Z undoes, Ctrl+Y redoes.',
+            ),
+          )
+        : null,
       el('p', { class: 'message', role: 'status' }, message),
     ),
     el('div', {
