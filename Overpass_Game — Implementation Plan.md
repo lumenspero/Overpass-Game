@@ -269,14 +269,16 @@ M7 is closed. The Studio can search a US place, frame it and import its water, p
 
 **M8 · Studio: the editor**
 
-- [ ] Shapes drawn with bold outlines and draggable anchor and handle points; insert and delete points; move, scale and rotate whole shapes
-- [ ] Paint tools: water (lake, river with width), mountain, park, spawn zone, motorway guide, starter road
-- [ ] Layer panel with visibility and lock; snapping to grid; multi-select
-- [ ] Undo/redo for every action; autosaved drafts in IndexedDB
-- [ ] Rules panel: grid size, growth schedule, colors and timing, upgrade pool, palette
-- [ ] "Play this map" button that launches the game with the current compile; export to `maps/`
+- [x] Shapes drawn with bold outlines and draggable anchor and handle points; insert and delete points; move, scale and rotate whole shapes
+- [x] Paint tools: water (lake, river with width), mountain, park, spawn zone, motorway guide, starter road
+- [x] Layer panel with visibility and lock; snapping to grid; multi-select
+- [x] Undo/redo for every action; autosaved drafts in IndexedDB
+- [ ] Rules panel: grid size, growth schedule, colors and timing, upgrade pool, palette (moved to M14 with the spawn system)
+- [x] "Play this map" button that launches the game with the current compile; export to `maps/`
 
 Done when: you can build a complete map from import to playable export without editing JSON.
+
+> **Status (closed except for the rules panel, which moved to M14; Checkpoint C pending):** the editor, drafts, export and Play are in. Sea fill and multipolygon holes stay deferred from M7. The complete-map check needs houses and destinations, which arrive with the M14 spawn field, so a Studio map plays as terrain only until then. Details are in `docs/M8-session-delta.md`.
 
 > **Checkpoint C · First real maps.** Author 2–3 maps yourself. Note what was slow or awkward; fixes become tasks before content production in M14.
 
