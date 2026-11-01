@@ -1,6 +1,9 @@
 import { ROAD_WIDTH_TILES, TILE_SIZE } from '@overpass-game/render-style';
 import {
+  accessTile,
+  BUILDING_SIZE,
   type Building,
+  buildingCentre,
   type Car,
   type Links,
   type Grid,
@@ -70,9 +73,10 @@ export function roadShapes(
 }
 
 /**
- * A road-width bar from each building's entrance tile to the building's own centre, when
- * the entrance tile is a road. The road itself only reaches its tile's centre, so without
- * this bar the entrance tick floats in a gap; the building covers the bar's far end.
+ * A road-width bar from each house's entrance tile to the house's own centre, when the
+ * entrance tile is a road. The road itself only reaches its tile's centre, so without this
+ * bar the entrance tick floats in a gap; the house covers the bar's far end. Destinations
+ * need no stub: their lot's inlet road reaches the footprint on its own.
  */
 export function entranceStubShapes(
   buildings: readonly Building[],
@@ -82,11 +86,13 @@ export function entranceStubShapes(
   const r = (ROAD_WIDTH_TILES * TILE_SIZE) / 2;
   const out: RoadShape[] = [];
   for (const b of buildings) {
+    if (b.kind !== 'house') continue;
     const { dx, dy } = SIDE_STEP[b.entrance];
     const entrance = b.tile + dy * grid.cols + dx;
     if (roads[entrance] !== 1) continue;
-    const bx = ((b.tile % grid.cols) + 0.5) * TILE_SIZE;
-    const by = (Math.floor(b.tile / grid.cols) + 0.5) * TILE_SIZE;
+    const c = buildingCentre(grid, b);
+    const bx = c.x * TILE_SIZE;
+    const by = c.y * TILE_SIZE;
     const ex = ((entrance % grid.cols) + 0.5) * TILE_SIZE;
     const ey = (Math.floor(entrance / grid.cols) + 0.5) * TILE_SIZE;
     out.push({ kind: 'line', x1: ex, y1: ey, x2: bx, y2: by, w: 2 * r });
@@ -122,6 +128,9 @@ export type BuildingShape =
 
 export const BUILDING_SCALE = 0.6; // building body as a fraction of one tile
 export const ENTRANCE_WIDTH = 3;
+/** A destination's disc radius: its 3×3 footprint at the house body's scale. */
+export const DESTINATION_RADIUS =
+  (BUILDING_SIZE * TILE_SIZE * BUILDING_SCALE) / 2;
 
 /** Unit step for each entrance side (y grows downwards). */
 const SIDE_STEP = {
@@ -170,10 +179,18 @@ export function carShapes(
     x: ((tile % grid.cols) + 0.5) * TILE_SIZE,
     y: (Math.floor(tile / grid.cols) + 0.5) * TILE_SIZE,
   });
-  /** The road tile in front of a building's entrance. */
-  const entranceOf = (b: Building): number => {
-    const { dx, dy } = SIDE_STEP[b.entrance];
-    return b.tile + dy * grid.cols + dx;
+  /** The road tile a building connects through: its house entrance, or a destination's lot inlet road. */
+  const entranceOf = (b: Building): number => accessTile(grid, b) ?? -1;
+  /**
+   * Where a car on its arrival or departure tile moves to or from. A house is a building it
+   * drives into; a destination is parked on its access road tile, so the car stays on the road.
+   */
+  const anchorOf = (b: Building, tileCentre: { x: number; y: number }) =>
+    b.kind === 'house' ? centreOf(b) : tileCentre;
+  /** A building's centre in world units: a house's tile, or a destination's footprint. */
+  const centreOf = (b: Building) => {
+    const c = buildingCentre(grid, b);
+    return { x: c.x * TILE_SIZE, y: c.y * TILE_SIZE };
   };
   /** Unit step from tile `a` to the adjacent tile `b`. */
   const step = (a: number, b: number) => ({
@@ -269,7 +286,7 @@ export function carShapes(
     if (rideOut) {
       const enter =
         fromHome && home
-          ? centre(home.tile)
+          ? centreOf(home)
           : prev !== null && !rideIn && inRaw
             ? edgeIn(inRaw)
             : c;
@@ -334,7 +351,7 @@ export function carShapes(
       progress === route.length - 1 &&
       tile === entranceOf(arrival)
     ) {
-      const b = centre(arrival.tile);
+      const b = anchorOf(arrival, c);
       x += (b.x - x) * along;
       y += (b.y - y) * along;
     } else if (
@@ -344,7 +361,7 @@ export function carShapes(
       tile === entranceOf(departure) &&
       !rideOut
     ) {
-      const b = centre(departure.tile);
+      const b = anchorOf(departure, c);
       x = b.x + (x - b.x) * along;
       y = b.y + (y - b.y) * along;
     }
@@ -360,8 +377,9 @@ export function carShapes(
 }
 
 /**
- * Houses are squares, destinations are discs, each with a tick from the body to
- * the tile edge on its entrance side, so the player can see which way it faces.
+ * Houses are squares, destinations are discs at their footprint's centre. Houses also get a
+ * tick from the body to the tile edge on their entrance side, so the player can see which way
+ * they face. Destinations have no tick: their lot's inlet shows where they connect.
  */
 export function buildingShapes(
   buildings: readonly Building[],
@@ -371,8 +389,9 @@ export function buildingShapes(
   const out: BuildingShape[] = [];
   const half = (TILE_SIZE * BUILDING_SCALE) / 2;
   for (const b of buildings) {
-    const cx = ((b.tile % grid.cols) + 0.5) * TILE_SIZE;
-    const cy = (Math.floor(b.tile / grid.cols) + 0.5) * TILE_SIZE;
+    const c = buildingCentre(grid, b);
+    const cx = c.x * TILE_SIZE;
+    const cy = c.y * TILE_SIZE;
     const color = colors[b.color] ?? colors[0];
     if (b.kind === 'house') {
       out.push({
@@ -382,17 +401,23 @@ export function buildingShapes(
         size: 2 * half,
         color,
       });
+      const { dx, dy } = SIDE_STEP[b.entrance];
+      out.push({
+        kind: 'entrance',
+        x1: cx + dx * half,
+        y1: cy + dy * half,
+        x2: cx + (dx * TILE_SIZE) / 2,
+        y2: cy + (dy * TILE_SIZE) / 2,
+      });
     } else {
-      out.push({ kind: 'circle', x: cx, y: cy, r: half, color });
+      out.push({
+        kind: 'circle',
+        x: cx,
+        y: cy,
+        r: DESTINATION_RADIUS,
+        color,
+      });
     }
-    const { dx, dy } = SIDE_STEP[b.entrance];
-    out.push({
-      kind: 'entrance',
-      x1: cx + dx * half,
-      y1: cy + dy * half,
-      x2: cx + (dx * TILE_SIZE) / 2,
-      y2: cy + (dy * TILE_SIZE) / 2,
-    });
   }
   return out;
 }

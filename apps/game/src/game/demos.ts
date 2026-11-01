@@ -65,7 +65,7 @@ export function setActiveDemo(id: DemoId | null): void {
 }
 
 const COLS = 16;
-const ROWS = 12;
+const ROWS = 14;
 const at = (x: number, y: number): number => y * COLS + x;
 
 /** The tiles of a straight horizontal or vertical line, from one end to the other. */
@@ -122,30 +122,32 @@ function building(
 export function buildDemo(id: DemoId): SimState {
   const grid = createGrid(COLS, ROWS, Terrain.Land);
   const sim = createSim({ seed: 1, grid });
+  // A destination is 3×3 with a 5×3 lot. The coordinates given are the lot's origin (its top-left
+  // tile), and the lot's inlet joins the road on the side the destination faces.
   if (id === 'bridge') {
     fill(grid, 7, 0, 7, ROWS - 1, Terrain.Water);
     road(sim, line([4, 5], [6, 5]));
     road(sim, line([8, 5], [11, 5]));
     building(sim, 'house', 0, 3, 5, 'e');
-    building(sim, 'destination', 0, 12, 5, 'w');
+    building(sim, 'destination', 0, 12, 1, 'w');
   } else if (id === 'tunnel') {
     fill(grid, 7, 0, 8, ROWS - 1, Terrain.Mountain);
     road(sim, line([4, 5], [6, 5]));
     road(sim, line([9, 5], [11, 5]));
     building(sim, 'house', 0, 3, 5, 'e');
-    building(sim, 'destination', 0, 12, 5, 'w');
+    building(sim, 'destination', 0, 12, 1, 'w');
   } else if (id === 'motorway') {
     fill(grid, 6, 0, 9, ROWS - 1, Terrain.Mountain);
     road(sim, line([4, 5], [5, 5]));
     road(sim, line([10, 5], [12, 5]));
     building(sim, 'house', 0, 3, 5, 'e');
-    building(sim, 'destination', 0, 13, 5, 'w');
+    building(sim, 'destination', 0, 13, 1, 'w');
   } else if (id === 'roundabout' || id === 'light') {
     // A crossing at (7, 6), with a house and a destination on each road of the cross.
     road(sim, line([4, 6], [10, 6]));
     road(sim, line([7, 3], [7, 9]));
     building(sim, 'house', 0, 3, 6, 'e');
-    building(sim, 'destination', 0, 11, 6, 'w');
+    building(sim, 'destination', 0, 11, 2, 'w');
     building(sim, 'house', 1, 7, 2, 's');
     building(sim, 'destination', 1, 7, 10, 'n');
   }

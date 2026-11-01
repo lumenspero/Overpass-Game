@@ -14,12 +14,12 @@ import {
 import { at, makeGrid } from './helpers.ts';
 
 function destinationWorld() {
-  const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 0 });
+  const sim = createSim({ seed: 1, grid: makeGrid(8, 8), roadBudget: 0 });
   placeBuilding(sim, {
     kind: 'destination',
     color: 0,
-    tile: at(sim.grid, 4, 2),
-    entrance: 'w',
+    tile: at(sim.grid, 3, 3),
+    entrance: 'n',
   });
   return sim;
 }

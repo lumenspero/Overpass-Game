@@ -149331,6 +149331,7 @@
   ],
   "rules": [],
   "palette": "orange",
+  "waterPalette": "shared",
   "attribution": "© OpenStreetMap contributors (ODbL)",
-  "contentHash": "45b653db"
+  "contentHash": "6f5a9966"
 }

@@ -17,20 +17,25 @@ import { at, makeGrid } from './helpers.ts';
  * A house sits on column 0 facing east, a destination on column 4 facing west.
  */
 function strip(): SimState {
-  const grid = makeGrid(5, 1);
-  const districts = [0, 0, 1, 2, 2];
+  const grid = makeGrid(8, 5);
+  // Columns 0-1 are district 0, column 2 district 1, columns 3-7 district 2.
+  const columns = [0, 0, 1, 2, 2, 2, 2, 2];
+  const districts = Array.from(
+    { length: grid.cols * grid.rows },
+    (_, i) => columns[i % grid.cols],
+  );
   const sim = createSim({ seed: 1, grid, roadBudget: 100, districts });
   placeBuilding(sim, {
     kind: 'house',
     color: 0,
-    tile: at(grid, 0, 0),
+    tile: at(grid, 0, 1),
     entrance: 'e',
   });
   placeBuilding(sim, {
     kind: 'destination',
     color: 0,
-    tile: at(grid, 4, 0),
-    entrance: 'w',
+    tile: at(grid, 3, 2),
+    entrance: 'n',
   });
   return sim;
 }
@@ -68,12 +73,12 @@ describe('districts', () => {
   it('refuses roads on a locked tile, and allows them once it opens', () => {
     const sim = strip();
     atWeek(sim, 1);
-    expect(placeRoads(sim, [at(sim.grid, 2, 0)])).toEqual({
+    expect(placeRoads(sim, [at(sim.grid, 2, 1)])).toEqual({
       ok: false,
       reason: 'locked',
     });
     atWeek(sim, 3);
-    expect(placeRoads(sim, [at(sim.grid, 2, 0)])).toEqual({
+    expect(placeRoads(sim, [at(sim.grid, 2, 1)])).toEqual({
       ok: true,
       added: 1,
     });
@@ -82,7 +87,7 @@ describe('districts', () => {
   it('keeps a locked house from sending cars', () => {
     const sim = strip();
     atWeek(sim, 1);
-    placeRoads(sim, [at(sim.grid, 1, 0)]); // the house is connected, but its own district is open
+    placeRoads(sim, [at(sim.grid, 1, 1)]); // the house is connected, but its own district is open
     sim.demand[1].pins = 5;
     for (let i = 0; i < 200; i++) step(sim);
     // The destination is in district 2, still locked, so no car may be sent.

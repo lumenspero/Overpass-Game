@@ -55,7 +55,11 @@ describe('placing buildings', () => {
   });
 
   it('places destinations on parks too', () => {
-    const sim = newSim([[1, 1, Terrain.Park]]);
+    const sim = createSim({
+      seed: 1,
+      grid: makeGrid(6, 5, [[1, 1, Terrain.Park]]),
+      roadBudget: 20,
+    });
     const r = placeBuilding(sim, {
       kind: 'destination',
       color: 1,

@@ -1,5 +1,5 @@
 import {
-  entranceTile,
+  accessTile,
   findRoute,
   roadLinks,
   type SimState,
@@ -16,8 +16,8 @@ function ends(sim: SimState): { house: number; dest: number } {
   const dest = sim.buildings.find((b) => b.kind === 'destination');
   if (!house || !dest) throw new Error('demo has no house or destination');
   return {
-    house: entranceTile(sim.grid, house.tile, house.entrance) ?? -1,
-    dest: entranceTile(sim.grid, dest.tile, dest.entrance) ?? -1,
+    house: accessTile(sim.grid, house) ?? -1,
+    dest: accessTile(sim.grid, dest) ?? -1,
   };
 }
 

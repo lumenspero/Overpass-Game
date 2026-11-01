@@ -1,4 +1,5 @@
 import {
+  accessTile,
   createSim,
   entranceTile,
   isBuildable,
@@ -68,7 +69,14 @@ describe('test map', () => {
       expect(dest, `destination of colour ${color}`).toBeDefined();
       if (!house || !dest) continue;
       const start = entranceTile(grid, tileOf(grid, house), house.entrance);
-      const end = entranceTile(grid, tileOf(grid, dest), dest.entrance);
+      // A destination connects through the road outside its lot's inlet.
+      const end = accessTile(grid, {
+        id: -1,
+        kind: dest.kind,
+        color: dest.color,
+        tile: tileOf(grid, dest),
+        entrance: dest.entrance,
+      });
       expect(start !== null && end !== null, `entrances of ${color}`).toBe(
         true,
       );

@@ -45,11 +45,11 @@ export interface TestBuilding {
  */
 export const TEST_BUILDINGS: TestBuilding[] = [
   { kind: 'house', color: 0, col: 8, row: 6, entrance: 'e' },
-  { kind: 'destination', color: 0, col: 12, row: 11, entrance: 'n' },
+  { kind: 'destination', color: 0, col: 11, row: 8, entrance: 'w' },
   { kind: 'house', color: 1, col: 7, row: 1, entrance: 's' },
-  { kind: 'destination', color: 1, col: 4, row: 14, entrance: 'n' },
+  { kind: 'destination', color: 1, col: 9, row: 3, entrance: 'n' },
   { kind: 'house', color: 2, col: 11, row: 2, entrance: 'e' },
-  { kind: 'destination', color: 2, col: 13, row: 6, entrance: 'w' },
+  { kind: 'destination', color: 2, col: 9, row: 13, entrance: 'n' },
 ];
 
 /**

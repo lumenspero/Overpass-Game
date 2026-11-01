@@ -13,9 +13,9 @@ import {
 } from '../src/index.ts';
 import { at, drawRoads, makeGrid } from './helpers.ts';
 
-/** House at (0,2), destination at (4,2), road between them on row 2. */
+/** House at (0,2), destination at (3,3) facing north, road between them on row 2. */
 function world(): SimState {
-  const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 100 });
+  const sim = createSim({ seed: 1, grid: makeGrid(8, 8), roadBudget: 100 });
   placeBuilding(sim, {
     kind: 'house',
     color: 0,
@@ -25,8 +25,8 @@ function world(): SimState {
   placeBuilding(sim, {
     kind: 'destination',
     color: 0,
-    tile: at(sim.grid, 4, 2),
-    entrance: 'w',
+    tile: at(sim.grid, 3, 3),
+    entrance: 'n',
   });
   drawRoads(sim, [at(sim.grid, 1, 2), at(sim.grid, 2, 2), at(sim.grid, 3, 2)]);
   return sim;
@@ -79,12 +79,12 @@ describe('the game summary', () => {
 
   it('reports how the game ended once it is over', () => {
     // A destination with no house, so no car arrives to use up its pins and end the overflow early.
-    const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 0 });
+    const sim = createSim({ seed: 1, grid: makeGrid(8, 8), roadBudget: 0 });
     placeBuilding(sim, {
       kind: 'destination',
       color: 0,
-      tile: at(sim.grid, 4, 2),
-      entrance: 'w',
+      tile: at(sim.grid, 3, 3),
+      entrance: 'n',
     });
     sim.demand[0].pins = OVERFLOW_PIN_LIMIT + 1;
     while (sim.over === null) step(sim);

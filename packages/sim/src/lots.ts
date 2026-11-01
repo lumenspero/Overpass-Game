@@ -1,5 +1,4 @@
 import type { Building, Side } from './buildings.ts';
-import { isOpenTile } from './expansion.ts';
 import { isBuildable, type Grid } from './grid.ts';
 import type { SimState } from './sim.ts';
 
@@ -109,7 +108,7 @@ export function reservedLotTiles(sim: SimState): Set<number> {
 }
 
 export type LotReason =
-  'no-lot' | 'unbuildable' | 'locked' | 'road' | 'occupied' | 'reserved';
+  'no-lot' | 'unbuildable' | 'road' | 'occupied' | 'reserved';
 
 /**
  * Why a destination cannot spawn with this origin and road side, or null when it can. Every lot
@@ -125,7 +124,6 @@ export function lotBlocker(
   const reserved = reservedLotTiles(sim);
   for (const t of lot.tiles) {
     if (!isBuildable(sim.grid, t)) return 'unbuildable';
-    if (!isOpenTile(sim, t)) return 'locked';
     if (sim.roads[t] === 1) return 'road';
     if (sim.buildingAt[t] !== -1) return 'occupied';
     if (reserved.has(t)) return 'reserved';

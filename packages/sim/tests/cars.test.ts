@@ -10,11 +10,12 @@ import {
 import { at, drawRoads, makeGrid } from './helpers.ts';
 
 /**
- * A 5×5 world with a house at (0,2) facing east and a destination at (4,2) facing west.
- * Their entrances are (1,2) and (3,2).
+ * An 8×8 world with a house at (0,2) facing east and a destination at (3,3) facing north. Its
+ * 3×3 building sits in a 5×3 lot at columns 3-7, rows 3-5. The house's entrance is (1,2) and
+ * the destination's inlet road is (3,2).
  */
 function world(): SimState {
-  const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 100 });
+  const sim = createSim({ seed: 1, grid: makeGrid(8, 8), roadBudget: 100 });
   placeBuilding(sim, {
     kind: 'house',
     color: 0,
@@ -24,8 +25,8 @@ function world(): SimState {
   placeBuilding(sim, {
     kind: 'destination',
     color: 0,
-    tile: at(sim.grid, 4, 2),
-    entrance: 'w',
+    tile: at(sim.grid, 3, 3),
+    entrance: 'n',
   });
   return sim;
 }
@@ -117,8 +118,8 @@ describe('cars when roads change', () => {
   });
 
   it('removes a car that cannot reach home from where it stands', () => {
-    // House (0,2) → (1,2), (2,2), (3,3), (3,4) → destination at (4,4) entered from (3,4).
-    const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 100 });
+    // House (0,2) → (1,2), (2,2), (3,3), (3,4) → destination at (3,5), its inlet road (3,4).
+    const sim = createSim({ seed: 1, grid: makeGrid(8, 8), roadBudget: 100 });
     placeBuilding(sim, {
       kind: 'house',
       color: 0,
@@ -128,8 +129,8 @@ describe('cars when roads change', () => {
     placeBuilding(sim, {
       kind: 'destination',
       color: 0,
-      tile: t(sim, 4, 4),
-      entrance: 'w',
+      tile: t(sim, 3, 5),
+      entrance: 'n',
     });
     drawRoads(sim, [
       t(sim, 1, 2),

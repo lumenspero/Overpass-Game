@@ -12,9 +12,9 @@ import {
 } from '../src/index.ts';
 import { at, drawRoads, makeGrid } from './helpers.ts';
 
-/** House at (0,2) facing east, destination at (4,2) facing west, road between them on row 2. */
+/** House at (0,2) facing east, destination at (3,3) facing north, road between them on row 2. */
 function world(withRoad = true): SimState {
-  const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 100 });
+  const sim = createSim({ seed: 1, grid: makeGrid(8, 8), roadBudget: 100 });
   placeBuilding(sim, {
     kind: 'house',
     color: 0,
@@ -24,8 +24,8 @@ function world(withRoad = true): SimState {
   placeBuilding(sim, {
     kind: 'destination',
     color: 0,
-    tile: at(sim.grid, 4, 2),
-    entrance: 'w',
+    tile: at(sim.grid, 3, 3),
+    entrance: 'n',
   });
   // A few waiting pins, so these tests check travel rather than demand, and stay under the overflow limit.
   sim.demand[1].pins = 2;
@@ -104,8 +104,8 @@ describe('trips', () => {
   });
 
   it('a car that loses its way home is dropped, and its house owns one fewer', () => {
-    // House (0,2) → (1,2), (2,2), (3,3), (3,4) → destination at (4,4) entered from (3,4).
-    const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 100 });
+    // House (0,2) → (1,2), (2,2), (3,3), (3,4) → destination at (3,5), its inlet road (3,4).
+    const sim = createSim({ seed: 1, grid: makeGrid(8, 8), roadBudget: 100 });
     placeBuilding(sim, {
       kind: 'house',
       color: 0,
@@ -115,8 +115,8 @@ describe('trips', () => {
     placeBuilding(sim, {
       kind: 'destination',
       color: 0,
-      tile: at(sim.grid, 4, 4),
-      entrance: 'w',
+      tile: at(sim.grid, 3, 5),
+      entrance: 'n',
     });
     drawRoads(sim, [
       at(sim.grid, 1, 2),
@@ -139,7 +139,7 @@ describe('trips', () => {
 
 describe('leaving the destination', () => {
   it('starts the trip home at the entrance edge, not at the far edge', () => {
-    const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 100 });
+    const sim = createSim({ seed: 1, grid: makeGrid(8, 8), roadBudget: 100 });
     placeBuilding(sim, {
       kind: 'house',
       color: 0,
@@ -149,8 +149,8 @@ describe('leaving the destination', () => {
     placeBuilding(sim, {
       kind: 'destination',
       color: 0,
-      tile: at(sim.grid, 4, 2),
-      entrance: 'w',
+      tile: at(sim.grid, 3, 3),
+      entrance: 'n',
     });
     drawRoads(sim, [
       at(sim.grid, 1, 2),

@@ -2,11 +2,14 @@ import { tuning } from './config.ts';
 import { colourUnlocked } from './rules.ts';
 import { type Grid, isBuildable, isInBounds } from './grid.ts';
 import type { SimState } from './sim.ts';
+import { destinationLot, lotAt, type LotReason, lotBlocker } from './lots.ts';
 
 /**
  * Buildings: houses (where cars start and end) and destinations (where they go).
- * A building occupies one tile. Its entrance faces one side, and it is connected
- * only while the neighbour on that side is a road. Buildings are never removed in M3.
+ * A house occupies one tile, and its entrance faces one side. It is connected only while the
+ * neighbour on that side is a road. A destination is a 3×3 building in a lot (spec: Parking lots
+ * and building kinds). Its lot's inlet is its only connection, and its lot is reserved when it
+ * spawns. Buildings are never removed in M3.
  */
 
 export type Side = 'n' | 'e' | 's' | 'w';
@@ -68,11 +71,58 @@ export function entranceTile(
   return ny * grid.cols + nx;
 }
 
-/** True when the building's entrance faces a road tile. */
+/**
+ * The road tile a building connects through. A house's is the tile in front of its entrance. A
+ * destination's is the road outside its lot's inlet. Null when it falls off the grid.
+ */
+export function accessTile(grid: Grid, b: Building): number | null {
+  if (b.kind === 'destination') return destinationLot(grid, b)?.road ?? null;
+  return entranceTile(grid, b.tile, b.entrance);
+}
+
+/**
+ * A building's centre, in tile units. A house's is its tile's centre. A destination's is the
+ * centre of its 3×3 footprint, so it sits in the middle of its building rather than at its origin.
+ */
+export function buildingCentre(
+  grid: Grid,
+  b: Building,
+): { x: number; y: number } {
+  if (b.kind === 'destination') {
+    const lot = destinationLot(grid, b);
+    if (lot) {
+      let sx = 0;
+      let sy = 0;
+      for (const t of lot.footprint) {
+        sx += (t % grid.cols) + 0.5;
+        sy += Math.floor(t / grid.cols) + 0.5;
+      }
+      return { x: sx / lot.footprint.length, y: sy / lot.footprint.length };
+    }
+  }
+  return {
+    x: (b.tile % grid.cols) + 0.5,
+    y: Math.floor(b.tile / grid.cols) + 0.5,
+  };
+}
+
+/** True when the building's access tile is a road. */
 export function isConnected(state: SimState, b: Building): boolean {
-  const e = entranceTile(state.grid, b.tile, b.entrance);
+  const e = accessTile(state.grid, b);
   return e !== null && state.roads[e] === 1;
 }
+
+/** How a refused destination spawn is reported in the placement result. */
+const LOT_REFUSAL: Record<
+  LotReason,
+  'out-of-bounds' | 'unbuildable' | 'occupied'
+> = {
+  'no-lot': 'out-of-bounds',
+  unbuildable: 'unbuildable',
+  road: 'occupied',
+  occupied: 'occupied',
+  reserved: 'occupied',
+};
 
 export function placeBuilding(
   state: SimState,
@@ -89,15 +139,26 @@ export function placeBuilding(
   ) {
     return { ok: false, reason: 'bad-color' };
   }
-  if (!isBuildable(state.grid, opts.tile)) {
-    return { ok: false, reason: 'unbuildable' };
-  }
-  if (state.roads[opts.tile] === 1 || state.buildingAt[opts.tile] !== -1) {
-    return { ok: false, reason: 'occupied' };
+  if (opts.kind === 'destination') {
+    // A destination takes its whole lot, so every lot tile must be free before it spawns.
+    const why = lotBlocker(state, opts.tile, opts.entrance);
+    if (why) return { ok: false, reason: LOT_REFUSAL[why] };
+  } else {
+    if (!isBuildable(state.grid, opts.tile)) {
+      return { ok: false, reason: 'unbuildable' };
+    }
+    if (state.roads[opts.tile] === 1 || state.buildingAt[opts.tile] !== -1) {
+      return { ok: false, reason: 'occupied' };
+    }
   }
   const id = state.buildings.length;
   state.buildings.push({ id, ...opts });
-  state.buildingAt[opts.tile] = id;
+  // A house occupies its tile. A destination occupies its 3×3 footprint; its lot stays reserved.
+  const occupied =
+    opts.kind === 'destination'
+      ? (lotAt(state.grid, opts.tile, opts.entrance)?.footprint ?? [opts.tile])
+      : [opts.tile];
+  for (const t of occupied) state.buildingAt[t] = id;
   if (opts.kind === 'house') {
     state.homes[id] = {
       owned: tuning.CARS_PER_HOUSE,

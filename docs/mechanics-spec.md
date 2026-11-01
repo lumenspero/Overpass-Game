@@ -62,7 +62,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 ### Buildings
 
-- **Kinds:** houses (where cars start and end) and destinations (where cars go). Both occupy one tile.
+- **Kinds:** houses (where cars start and end) and destinations (where cars go). A house occupies one tile; a destination occupies a 3×3 building inside its 5×3 lot (see Parking lots and building kinds).
 - **Colours:** `BUILDING_COLOR_COUNT` colours. A house pairs with destinations of its own colour. `approximated`
 - **Placement:** on land or park, on a tile with no road or building. Water and mountains are refused.
 - **Entrance:** each building has one entrance side. It is connected only while the neighbour on that side is a road. A building can be placed before its road.

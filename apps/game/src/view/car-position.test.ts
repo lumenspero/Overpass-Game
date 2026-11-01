@@ -1,5 +1,6 @@
 import { TILE_SIZE } from '@overpass-game/render-style';
 import {
+  accessTile,
   createGrid,
   createSim,
   linkTiles,
@@ -25,7 +26,7 @@ const LAYOUTS: Layout[] = [
   {
     name: 'straight, house west of destination',
     house: [1, 2, 'e'],
-    destination: [6, 2, 'w'],
+    destination: [5, 3, 'n'],
     road: [
       [2, 2],
       [3, 2],
@@ -36,7 +37,7 @@ const LAYOUTS: Layout[] = [
   {
     name: 'bend, as in the screenshot',
     house: [1, 1, 'e'],
-    destination: [7, 4, 'w'],
+    destination: [6, 5, 'n'],
     road: [
       [2, 1],
       [3, 1],
@@ -110,7 +111,7 @@ describe.each(LAYOUTS)('car dots, $name', (layout) => {
         next.set(car.id, { x: p.x, y: p.y });
         const tile = tileAt(sim, p.x, p.y);
         const onRoad = tile >= 0 && sim.roads[tile] === 1;
-        const inBuilding = sim.buildings.some((b) => b.tile === tile);
+        const inBuilding = tile >= 0 && sim.buildingAt[tile] !== -1;
         if (!onRoad && !inBuilding && problems.length < 6) {
           problems.push(
             `tick ${sim.tick}: car ${car.id} ${car.state} off road at (${(p.x / TILE_SIZE).toFixed(2)}, ${(p.y / TILE_SIZE).toFixed(2)})`,
@@ -132,7 +133,7 @@ describe.each(LAYOUTS)('car dots, $name', (layout) => {
     expect(problems).toEqual([]);
   });
 
-  it('a parked car sits at the centre of its destination', () => {
+  it('a parked car sits on the road tile in front of its destination lot', () => {
     const sim = build(layout);
     for (let t = 0; t < 1500; t++) {
       step(sim);
@@ -141,9 +142,7 @@ describe.each(LAYOUTS)('car dots, $name', (layout) => {
         const idx = sim.cars.indexOf(car);
         const p = carShapes(sim.cars, sim.buildings, sim.grid, [0])[idx];
         const b = sim.buildings[car.destination];
-        const cx = ((b.tile % sim.grid.cols) + 0.5) * TILE_SIZE;
-        const cy = (Math.floor(b.tile / sim.grid.cols) + 0.5) * TILE_SIZE;
-        expect(Math.hypot(p.x - cx, p.y - cy)).toBeLessThan(0.01);
+        expect(tileAt(sim, p.x, p.y)).toBe(accessTile(sim.grid, b));
         return;
       }
     }

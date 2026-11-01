@@ -12,7 +12,7 @@ import { at, makeGrid } from './helpers.ts';
 
 /** A single destination (id 0) with no road. Overflow does not depend on roads. */
 function world(): SimState {
-  const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 0 });
+  const sim = createSim({ seed: 1, grid: makeGrid(7, 5), roadBudget: 0 });
   placeBuilding(sim, {
     kind: 'destination',
     color: 0,

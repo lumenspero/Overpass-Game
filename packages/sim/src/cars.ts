@@ -1,4 +1,4 @@
-import { entranceTile } from './buildings.ts';
+import { accessTile } from './buildings.ts';
 import { findRoute, routeCost, routeIsLinked } from './pathfind.ts';
 import type { SimState } from './sim.ts';
 
@@ -50,14 +50,17 @@ export type AddCarResult =
   | { ok: true; id: number }
   | { ok: false; reason: 'bad-building' | 'not-connected' | 'no-route' };
 
-/** The road tile in front of a building's entrance, or null if there is none. */
+/**
+ * The road tile a building connects through (in front of a house's entrance, or outside a
+ * destination's lot inlet), or null if there is none.
+ */
 export function roadEntrance(
   state: SimState,
   buildingId: number,
 ): number | null {
   const b = state.buildings[buildingId];
   if (!b) return null;
-  const e = entranceTile(state.grid, b.tile, b.entrance);
+  const e = accessTile(state.grid, b);
   return e !== null && state.roads[e] === 1 ? e : null;
 }
 

@@ -10,9 +10,9 @@ import {
 } from '../src/index.ts';
 import { at, drawRoads, makeGrid } from './helpers.ts';
 
-/** House at (0,2) facing east, destination at (4,2) facing west, road between them on row 2. */
+/** House at (0,2) facing east, destination at (3,3) facing north, road between them on row 2. */
 function world(withRoad = true): SimState {
-  const sim = createSim({ seed: 1, grid: makeGrid(5, 5), roadBudget: 100 });
+  const sim = createSim({ seed: 1, grid: makeGrid(8, 8), roadBudget: 100 });
   placeBuilding(sim, {
     kind: 'house',
     color: 0,
@@ -22,8 +22,8 @@ function world(withRoad = true): SimState {
   placeBuilding(sim, {
     kind: 'destination',
     color: 0,
-    tile: at(sim.grid, 4, 2),
-    entrance: 'w',
+    tile: at(sim.grid, 3, 3),
+    entrance: 'n',
   });
   if (withRoad) {
     drawRoads(sim, [

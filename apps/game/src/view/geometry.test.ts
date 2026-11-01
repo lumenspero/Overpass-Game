@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildingShapes,
   carShapes,
+  DESTINATION_RADIUS,
   entranceStubShapes,
   LANE_OFFSET,
   roadShapes,
@@ -211,6 +212,27 @@ describe('buildingShapes', () => {
     expect(tick.y2).toBeCloseTo(1.5 * TILE_SIZE);
     expect(tick.x1).toBeLessThan(tick.x2);
     expect(tick.y1).toBeCloseTo(tick.y2);
+  });
+
+  it('centres a destination disc on its 3×3 footprint, at the destination radius', () => {
+    // Origin (3,3) facing north: the footprint is columns 5-7 and rows 3-5 of an 8×8 grid.
+    const big = createGrid(8, 8);
+    const d: Building = {
+      id: 2,
+      kind: 'destination',
+      color: 0,
+      tile: 3 * 8 + 3,
+      entrance: 'n',
+    };
+    expect(buildingShapes([d], big, colors)).toEqual([
+      {
+        kind: 'circle',
+        x: 6.5 * TILE_SIZE,
+        y: 4.5 * TILE_SIZE,
+        r: DESTINATION_RADIUS,
+        color: 0xff0000,
+      },
+    ]);
   });
 
   it('falls back to the first colour for an unknown colour index', () => {

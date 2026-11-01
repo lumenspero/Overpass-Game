@@ -16,7 +16,7 @@ afterEach(() => resetTuning());
 
 /** A map with a house and a destination, both colour 0, and the destination's id. */
 function town(rules: Parameters<typeof createSim>[0]['rules'] = []) {
-  const grid = makeGrid(7, 7);
+  const grid = makeGrid(9, 9);
   const sim: SimState = createSim({ seed: 1, grid, roadBudget: 80, rules });
   const house = placeBuilding(sim, {
     kind: 'house',
@@ -27,8 +27,8 @@ function town(rules: Parameters<typeof createSim>[0]['rules'] = []) {
   const dest = placeBuilding(sim, {
     kind: 'destination',
     color: 0,
-    tile: at(grid, 5, 5),
-    entrance: 'w',
+    tile: at(grid, 4, 6),
+    entrance: 'n',
   });
   if (!house.ok || !dest.ok) throw new Error('setup failed');
   return { sim, destId: dest.id, houseId: house.id };
@@ -75,7 +75,7 @@ describe('per-map colour rules', () => {
   });
 
   it('refuse a building in a colour that is still locked', () => {
-    const grid = makeGrid(7, 7);
+    const grid = makeGrid(9, 9);
     const sim = createSim({
       seed: 1,
       grid,
