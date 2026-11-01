@@ -1,5 +1,5 @@
 import type { SourceMap } from '@overpass-game/map-schema';
-import { EDIT } from '../config.ts';
+import { EDIT, IMPORT } from '../config.ts';
 import * as history from './history.ts';
 import {
   anchorOf,
@@ -10,6 +10,12 @@ import {
   type Pt,
   type Target,
 } from './hit.ts';
+import {
+  buildPainted,
+  PAINT_SPECS,
+  type PaintTool,
+  type Tool,
+} from './paint.ts';
 import * as ops from './ops.ts';
 
 export interface Selection extends Target {
@@ -79,11 +85,15 @@ function applyDrag(
 }
 
 /**
- * The editing state for the Studio: the map, its undo history, the selection, and the drag in
- * progress. It has no DOM and no rendering; the canvas and panels read it and call into it.
+ * The editing state for the Studio: the map, its undo history, the selection, the drag in
+ * progress, and the shape being painted. It has no DOM and no rendering; the canvas and panels
+ * read it and call into it.
  *
  * A drag is one undo step. While it runs, `map` shows the drag's draft, and the history is
  * untouched until `endDrag`. Cancelling a drag leaves no step.
+ *
+ * A painted shape is also one step, made when it is finished. Its points wait in `pending`
+ * until then, so Ctrl+Z first removes the last pending point.
  */
 export class Editor {
   private timeline: history.History<SourceMap>;
@@ -91,6 +101,9 @@ export class Editor {
     null;
   private draft: SourceMap | null = null;
   private sel: Selection | null = null;
+  private toolState: Tool = 'select';
+  private pending: readonly Pt[] = [];
+  private river: number = IMPORT.riverWidthDefault;
   private readonly listeners = new Set<() => void>();
 
   constructor(map: SourceMap) {
@@ -106,8 +119,33 @@ export class Editor {
     return this.sel;
   }
 
+  get tool(): Tool {
+    return this.toolState;
+  }
+
+  /** Points of the shape being painted, not yet committed. */
+  get pendingPoints(): readonly Pt[] {
+    return this.pending;
+  }
+
+  /** Width in tiles for the next river. */
+  get riverWidth(): number {
+    return this.river;
+  }
+
+  /** True when the current tool makes a closed shape, which a click on its first point closes. */
+  get closesOnFirst(): boolean {
+    return (
+      this.toolState !== 'select' &&
+      PAINT_SPECS[this.toolState].form === 'closed'
+    );
+  }
+
   get undoable(): boolean {
-    return this.gesture === null && history.canUndo(this.timeline);
+    return (
+      this.gesture === null &&
+      (this.pending.length > 0 || history.canUndo(this.timeline))
+    );
   }
 
   get redoable(): boolean {
@@ -121,12 +159,13 @@ export class Editor {
     };
   }
 
-  /** Starts over with a new map: history, selection and any drag are cleared. */
+  /** Starts over with a new map: history, selection, pending points and any drag are cleared. */
   load(map: SourceMap): void {
     this.timeline = history.createHistory(map);
     this.gesture = null;
     this.draft = null;
     this.sel = null;
+    this.pending = [];
     this.emit();
   }
 
@@ -203,7 +242,7 @@ export class Editor {
     this.emit();
   }
 
-  /** Applies one change as a single undo step. Returns nothing; a no-op leaves no step. */
+  /** Applies one change as a single undo step. A change that does nothing leaves no step. */
   apply(change: (m: SourceMap) => SourceMap): void {
     this.gesture = null;
     this.draft = null;
@@ -216,10 +255,15 @@ export class Editor {
     this.emit();
   }
 
+  /** Removes the last pending point if there is one; otherwise undoes the last step. */
   undo(): void {
     if (this.gesture) return;
-    this.timeline = history.undo(this.timeline);
-    this.settle();
+    if (this.pending.length > 0) {
+      this.pending = this.pending.slice(0, -1);
+    } else {
+      this.timeline = history.undo(this.timeline);
+      this.settle();
+    }
     this.emit();
   }
 
@@ -267,6 +311,67 @@ export class Editor {
     const c = centreOf(this.timeline.present, s);
     if (!c) return;
     this.apply((m) => ops.scaleShape(m, s.layer, s.id, c.x, c.y, factor));
+  }
+
+  /** Switches tool. Points pending for the old tool are dropped. */
+  setTool(tool: Tool): void {
+    if (tool === this.toolState) return;
+    this.toolState = tool;
+    this.pending = [];
+    this.emit();
+  }
+
+  setRiverWidth(width: number): void {
+    if (!(width > 0) || width === this.river) return;
+    this.river = width;
+    this.emit();
+  }
+
+  /** Adds a point to the shape being painted, snapped to the grid. */
+  addPaintPoint(at: Pt): void {
+    if (this.toolState === 'select') return;
+    this.pending = [...this.pending, ops.snapPoint(at, EDIT.snapStep)];
+    this.emit();
+  }
+
+  /**
+   * Makes the painted shape from the pending points and selects it. A shape with too few
+   * points is dropped without a step. The tool stays active, so several shapes can be painted in
+   * a row.
+   */
+  finishPaint(): void {
+    const tool = this.toolState;
+    if (tool === 'select') return;
+    const built = buildPainted(
+      this.timeline.present,
+      tool as PaintTool,
+      this.pending,
+      {
+        riverWidth: this.river,
+        spawnWeight: EDIT.spawnWeight,
+      },
+    );
+    this.pending = [];
+    if (built) {
+      this.apply((m) => ops.addItem(m, built.layer, built.item));
+      this.sel = { layer: built.layer, id: built.item.id, index: null };
+    }
+    this.settle();
+    this.emit();
+  }
+
+  /** Removes the last pending point only. Unlike undo, it never reaches back to a finished shape. */
+  removePaintPoint(): void {
+    if (this.pending.length === 0) return;
+    this.pending = this.pending.slice(0, -1);
+    this.emit();
+  }
+
+  /** Drops the pending shape without making it. */
+  cancelPaint(): void {
+    if (this.pending.length === 0) return;
+    this.pending = [];
+    this.emit();
   }
 
   /** Keeps the selection valid after an undo, redo or edit. */

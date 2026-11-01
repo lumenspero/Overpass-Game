@@ -10,6 +10,7 @@ import type { Frame } from '../geo/frame.ts';
 import type { Selection } from '../edit/editor.ts';
 import { pixelToSource } from '../edit/coords.ts';
 import { listItems, type Pt } from '../edit/hit.ts';
+import { PAINT_SPECS, type PaintTool } from '../edit/paint.ts';
 import { previewLayout } from './layout.ts';
 
 const OUTSIDE_COLOUR = '#e5484d';
@@ -37,6 +38,11 @@ export class PreviewCanvas {
   private source: SourceMap | null = null;
   private editable = false;
   private selection: Selection | null = null;
+  private pending: {
+    tool: PaintTool;
+    points: readonly Pt[];
+    riverWidth: number;
+  } | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
@@ -64,6 +70,16 @@ export class PreviewCanvas {
   setEditState(editable: boolean, selection: Selection | null): void {
     this.editable = editable;
     this.selection = selection;
+    this.draw();
+  }
+
+  /** The shape being painted: its points so far, and the tool that will make it. Null hides it. */
+  setPending(
+    tool: PaintTool | null,
+    points: readonly Pt[],
+    riverWidth: number,
+  ): void {
+    this.pending = tool ? { tool, points, riverWidth } : null;
     this.draw();
   }
 
@@ -163,6 +179,7 @@ export class PreviewCanvas {
     if (this.editable && this.source) {
       this.drawEditOverlay(this.source, frame, scale);
     }
+    this.drawPending(frame, scale);
     ctx.restore();
   }
 
@@ -218,6 +235,53 @@ export class PreviewCanvas {
       ctx.globalAlpha = 1;
     };
     for (const line of source.layers.motorwayGuide) drawGuide(line);
+  }
+
+  /**
+   * The shape being painted: a dashed path through its points, a translucent band for a river,
+   * and a dot on each point. Closed shapes show their closing edge too.
+   */
+  private drawPending(frame: Frame, scale: number): void {
+    const p = this.pending;
+    if (!p || p.points.length === 0) return;
+    const { ctx } = this;
+    const local = (q: Pt): Pt => ({
+      x: q.x - frame.cols / 2,
+      y: frame.rows / 2 - q.y,
+    });
+    const px = (n: number): number => n / scale;
+    const pts = p.points.map(local);
+    const closed = PAINT_SPECS[p.tool].form === 'closed';
+    const trace = (): void => {
+      ctx.beginPath();
+      pts.forEach((q, i) => {
+        if (i === 0) ctx.moveTo(q.x, q.y);
+        else ctx.lineTo(q.x, q.y);
+      });
+      if (closed && pts.length > 2) ctx.closePath();
+    };
+    if (PAINT_SPECS[p.tool].form === 'stroke') {
+      trace();
+      ctx.strokeStyle = hex(PALETTE.water);
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth = p.riverWidth;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    trace();
+    ctx.setLineDash([px(6), px(4)]);
+    ctx.strokeStyle = SELECTED_COLOUR;
+    ctx.lineWidth = px(2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (const q of pts) {
+      ctx.beginPath();
+      ctx.arc(q.x, q.y, px(4), 0, Math.PI * 2);
+      ctx.fillStyle = SELECTED_COLOUR;
+      ctx.fill();
+    }
   }
 
   /**

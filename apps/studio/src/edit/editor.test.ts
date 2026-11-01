@@ -112,6 +112,82 @@ describe('Editor drags', () => {
   });
 });
 
+describe('Editor painting', () => {
+  const p = (x: number, y: number) => ({ x, y });
+
+  it('a point click adds a snapped point while a paint tool is active', () => {
+    const editor = new Editor(makeMap());
+    editor.setTool('lake');
+    editor.addPaintPoint(p(1.1, 2.2));
+    expect(editor.pendingPoints).toEqual([p(1.0, 2.25)]);
+  });
+
+  it('ignores clicks in the select tool', () => {
+    const editor = new Editor(makeMap());
+    editor.addPaintPoint(p(1, 1));
+    expect(editor.pendingPoints).toHaveLength(0);
+  });
+
+  it('finishing makes one selected shape and is one undo step', () => {
+    const editor = new Editor(makeMap());
+    editor.setTool('mountain');
+    editor.addPaintPoint(p(2, 2));
+    editor.addPaintPoint(p(6, 2));
+    editor.addPaintPoint(p(6, 6));
+    editor.finishPaint();
+    expect(editor.map.layers.mountains).toHaveLength(1);
+    expect(editor.selection).toEqual({
+      layer: 'mountains',
+      id: 'mountain-1',
+      index: null,
+    });
+    expect(editor.pendingPoints).toHaveLength(0);
+    editor.undo();
+    expect(editor.map.layers.mountains).toHaveLength(0);
+  });
+
+  it('too few points finish to nothing and leave no step', () => {
+    const editor = new Editor(makeMap());
+    editor.setTool('lake');
+    editor.addPaintPoint(p(2, 2));
+    editor.addPaintPoint(p(6, 2));
+    editor.finishPaint();
+    expect(editor.map.layers.water).toHaveLength(1);
+    expect(editor.pendingPoints).toHaveLength(0);
+    // Only the undo of the pending points is available, not a map step.
+    expect(editor.undoable).toBe(false);
+  });
+
+  it('undo removes the last pending point before any map step', () => {
+    const editor = new Editor(makeMap());
+    editor.setTool('park');
+    editor.addPaintPoint(p(2, 2));
+    editor.addPaintPoint(p(6, 2));
+    editor.undo();
+    expect(editor.pendingPoints).toHaveLength(1);
+    expect(editor.map.layers.water).toHaveLength(1);
+  });
+
+  it('switching tool drops pending points', () => {
+    const editor = new Editor(makeMap());
+    editor.setTool('road');
+    editor.addPaintPoint(p(2, 2));
+    editor.setTool('guide');
+    expect(editor.pendingPoints).toHaveLength(0);
+  });
+
+  it('makes a river with the chosen width', () => {
+    const editor = new Editor(makeMap());
+    editor.setTool('river');
+    editor.setRiverWidth(0.6);
+    editor.addPaintPoint(p(2, 2));
+    editor.addPaintPoint(p(8, 2));
+    editor.finishPaint();
+    const river = editor.map.layers.water.find((w) => w.id === 'river-1');
+    expect(river).toMatchObject({ kind: 'strokeSpline', width: 0.6 });
+  });
+});
+
 describe('Editor edits', () => {
   it('inserts a point on an edge and selects it', () => {
     const editor = new Editor(makeMap());
@@ -181,5 +257,17 @@ describe('Editor edits', () => {
     editor.load(makeMap());
     expect(editor.undoable).toBe(false);
     expect(editor.selection).toBeNull();
+  });
+});
+
+describe('Editor paint point removal', () => {
+  it('removes only the last pending point, never a finished shape', () => {
+    const editor = new Editor(makeMap());
+    editor.setTool('park');
+    editor.addPaintPoint({ x: 2, y: 2 });
+    editor.removePaintPoint();
+    editor.removePaintPoint();
+    expect(editor.pendingPoints).toHaveLength(0);
+    expect(editor.map.layers.water).toHaveLength(1);
   });
 });

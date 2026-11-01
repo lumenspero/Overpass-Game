@@ -18,6 +18,8 @@ import { loadRegion } from './osm/region.ts';
 import { Editor, type Selection } from './edit/editor.ts';
 import { attachInteraction } from './edit/interaction.ts';
 import { replaceLayer } from './edit/ops.ts';
+import { PAINT_SPECS, PAINT_TOOLS } from './edit/paint.ts';
+import type { Pt } from './edit/hit.ts';
 import { PreviewCanvas } from './preview/preview-canvas.ts';
 import { searchPlaces, type PlaceCandidate } from './search/nominatim.ts';
 import { loadTerrain } from './terrain/load.ts';
@@ -68,6 +70,8 @@ function sameFrame(a: Frame, b: Frame): boolean {
     a.rotationDeg === b.rotationDeg
   );
 }
+
+const NO_POINTS: readonly Pt[] = [];
 
 function describeSelection(sel: Selection | null): string {
   if (!sel) return 'Click a shape to select it.';
@@ -189,6 +193,18 @@ export function App(): VNode {
   useEffect(() => {
     preview.current?.setEditState(sourceForPreview !== null, selection);
   }, [sourceForPreview, selection]);
+
+  // The shape being painted is drawn over the map.
+  const tool = editor.current?.tool ?? 'select';
+  const pendingPoints = editor.current?.pendingPoints ?? NO_POINTS;
+  const riverWidth = editor.current?.riverWidth ?? IMPORT.riverWidthDefault;
+  useEffect(() => {
+    preview.current?.setPending(
+      tool === 'select' ? null : tool,
+      pendingPoints,
+      riverWidth,
+    );
+  }, [tool, pendingPoints, riverWidth]);
 
   // Each edit re-renders the screen, so the preview and the panels stay in step.
   useEffect(() => {
@@ -513,6 +529,73 @@ export function App(): VNode {
               { class: 'frame-status' },
               'Drag an anchor, a handle or a shape. Double-click an edge to add a point. Ctrl+Z undoes, Ctrl+Y redoes.',
             ),
+          )
+        : null,
+      imported
+        ? el(
+            'section',
+            { class: 'tools' },
+            el('h2', null, 'Draw'),
+            el(
+              'div',
+              { class: 'tool-grid' },
+              el(
+                'button',
+                {
+                  type: 'button',
+                  class: tool === 'select' ? 'toggle on' : 'toggle',
+                  'aria-pressed': tool === 'select' ? 'true' : 'false',
+                  onClick: () => editor.current?.setTool('select'),
+                },
+                'Select',
+              ),
+              ...PAINT_TOOLS.map((t) =>
+                el(
+                  'button',
+                  {
+                    key: t,
+                    type: 'button',
+                    class: tool === t ? 'toggle on' : 'toggle',
+                    'aria-pressed': tool === t ? 'true' : 'false',
+                    onClick: () => editor.current?.setTool(t),
+                  },
+                  PAINT_SPECS[t].label,
+                ),
+              ),
+            ),
+            tool === 'river'
+              ? el(
+                  'div',
+                  null,
+                  el(
+                    'label',
+                    { for: 'river-width' },
+                    'River width: ' + riverWidth.toFixed(2) + ' tiles',
+                  ),
+                  el('input', {
+                    id: 'river-width',
+                    type: 'range',
+                    min: IMPORT.riverWidthMin,
+                    max: IMPORT.riverWidthMax,
+                    step: 0.05,
+                    value: riverWidth,
+                    onInput: (e: Event) =>
+                      editor.current?.setRiverWidth(
+                        Number((e.currentTarget as HTMLInputElement).value),
+                      ),
+                  }),
+                )
+              : null,
+            tool !== 'select'
+              ? el(
+                  'p',
+                  { class: 'frame-status', 'data-testid': 'paint-status' },
+                  PAINT_SPECS[tool].label +
+                    ': click to add points (' +
+                    pendingPoints.length +
+                    ' so far). Double-click or Enter finishes; click the first point to close; Escape cancels.',
+                )
+              : null,
           )
         : null,
       el('p', { class: 'message', role: 'status' }, message),
