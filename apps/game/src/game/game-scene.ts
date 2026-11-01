@@ -20,7 +20,8 @@ import {
   Terrain,
   type TerrainKind,
 } from '@overpass-game/sim';
-import { type CurvePoint, motorwayCurve } from '@overpass-game/sim';
+import { type Car, type CurvePoint, motorwayCurve } from '@overpass-game/sim';
+import { carOutline, headingBetween } from '../view/car-shape.ts';
 import {
   BUILDING_COLORS,
   DEBUG_PALETTE,
@@ -184,6 +185,8 @@ export class GameScene extends Phaser.Scene {
   private settings: GameSettings = DEFAULT_SETTINGS;
   private controlGfx!: Phaser.GameObjects.Graphics;
   private carGfx!: Phaser.GameObjects.Graphics;
+  /** Each car's heading when last drawn, by car id, so a stopped car keeps facing the way it was going. */
+  private carHeadings = new Map<number, number>();
   private ringGfx!: Phaser.GameObjects.Graphics;
   private hudText!: Phaser.GameObjects.Text;
   private crossingText!: Phaser.GameObjects.Text;
@@ -933,20 +936,63 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Draws each car as a small rounded rectangle facing its direction of travel. carShapes gives one
+   * shape per car, in the same order, so shapes[i] belongs to cars[i].
+   */
   private drawCars(): void {
     const gfx = this.carGfx;
     gfx.clear();
-    for (const c of carShapes(
+    const shapes = carShapes(
       this.sim.cars,
       this.sim.buildings,
       this.sim.grid,
       BUILDING_COLORS,
       this.sim.motorways,
       this.sim.controls,
-    )) {
-      gfx.fillStyle(c.color, 1);
-      gfx.fillCircle(c.x, c.y, c.r);
-    }
+    );
+    const headings = new Map<number, number>();
+    this.sim.cars.forEach((car, i) => {
+      const shape = shapes[i];
+      if (!shape) return;
+      const heading = this.carHeading(car) ?? this.carHeadings.get(car.id) ?? 0;
+      headings.set(car.id, heading);
+      const outline = carOutline(
+        { x: shape.x, y: shape.y },
+        heading,
+        2 * shape.r,
+      );
+      gfx.fillStyle(shape.color, 1);
+      gfx.fillPoints(
+        outline.map((p) => new Phaser.Math.Vector2(p.x, p.y)),
+        true,
+      );
+    });
+    this.carHeadings = headings;
+  }
+
+  /**
+   * The way a car faces, from where it is a little before and a little after its current point.
+   * Null when it is not moving (a parked car), so the caller keeps its last heading.
+   */
+  private carHeading(car: Car): number | null {
+    const eps = 0.05;
+    const lo = Math.max(0, car.along - eps);
+    const hi = Math.min(1, car.along + eps);
+    if (hi - lo < 1e-9) return null;
+    const at = (along: number) =>
+      carShapes(
+        [{ ...car, along }],
+        this.sim.buildings,
+        this.sim.grid,
+        BUILDING_COLORS,
+        this.sim.motorways,
+        this.sim.controls,
+      )[0];
+    const before = at(lo);
+    const after = at(hi);
+    if (!before || !after) return null;
+    return headingBetween(before, after);
   }
 
   /** Draws each overflowing destination's countdown ring. Redrawn every frame, as the countdown moves. */

@@ -179,4 +179,27 @@ _Planned for M14 with the spawn system. Not built yet._
 - **Supply ratio:** for each colour, the sim keeps houses per destination inside a band, `SUPPLY_RATIO_MIN` to `SUPPLY_RATIO_MAX` (global tuning, `approximated`). Houses are added when the ratio falls below the minimum. None are added above the maximum. This stops a colour being oversupplied with houses where it has no demand, while still allowing new houses in the middle of the week.
 - **Open for M14:** how a new business's colour is chosen, and the tuning values.
 
+### Parking lots and building kinds
+
+_Planned for M9a. Not built yet. Where this conflicts with the Buildings, Cars and routing, and Demand entries above, this section replaces them once M9a lands._
+
+- **Houses:** 1×1 square, as now. Houses start and end trips.
+- **Destinations:** 2×2 tiles. Two kinds:
+  - **Square:** slower demand, from the starter game to the mid game.
+  - **Round:** higher demand, from the mid game to the late game.
+    Each kind has its own demand interval, to be tuned. Square is always the slower of the two. `approximated`
+- **Lot:** each destination sits on a standard lot, 3 tiles across and 2 deep. Its 2×2 building is shifted to one side, leaving an open strip of 2 tiles on the other. The inlet is the strip tile that touches the road, and it is the only connection. Cars drive from the road through the inlet into the lot. Houses have no lot; they keep the entrance tile.
+- **Double lot:** a later-game lot has two inlets and room for two buildings. It starts with one building placed. The other space is an empty square outline inside the lot, drawn in the lot's colours, until a second building is added to it. A car may use either inlet.
+- **Parking:** a car drives into the lot and stops in front of its building, where it finishes the trip. It stops at a set spot in the lot.
+- **Leaving:** after finishing, the car turns round in the lot and drives out through an inlet. The turn is a visible manoeuvre, not an instant change of direction.
+- **Waiting:** a car that finds the lot's spot taken waits in the lot, not on the road. `approximated`
+
+**Open for M9a:**
+
+- Demand interval for each kind, and the weeks each kind appears.
+- The turnaround path, and whether a lot needs a minimum size to turn in.
+- The week double lots appear.
+- How and when the second building is added to a double lot: what triggers it, what it costs, and which kind it can be.
+- Map format and Studio placement for 2×2 footprints and lot inlets.
+
 _Still to write: car movement and queuing, trips, spawning, demand, scoring, clock and expansion, upgrades, bridges and tunnels, roundabouts and lights, congestion, unlocks, audio events. Each arrives with its milestone._
