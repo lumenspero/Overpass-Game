@@ -5,6 +5,7 @@ import {
   type Building,
   buildingCentre,
   type Car,
+  destinationLot,
   type Links,
   type Grid,
   Terrain,
@@ -28,6 +29,7 @@ import {
 export type RoadShape =
   | { kind: 'circle'; x: number; y: number; r: number }
   | { kind: 'rect'; x: number; y: number; w: number; h: number }
+  | { kind: 'roundrect'; x: number; y: number; w: number; h: number; r: number }
   | { kind: 'line'; x1: number; y1: number; x2: number; y2: number; w: number };
 
 /**
@@ -125,6 +127,83 @@ export type BuildingShape =
   | { kind: 'square'; x: number; y: number; size: number; color: number }
   | { kind: 'circle'; x: number; y: number; r: number; color: number }
   | { kind: 'entrance'; x1: number; y1: number; x2: number; y2: number };
+
+/** Corner radius of a destination lot's pavement, in world units. */
+export const LOT_CORNER = 0.2 * TILE_SIZE;
+
+/**
+ * Each destination's lot as rounded pavement, with a rounded neck from its road's edge into the
+ * inlet. Both go through the road painter, so where they meet a road the outline drops out, the
+ * same way it does between two road sections. Houses have no lot.
+ */
+export function lotShapes(
+  buildings: readonly Building[],
+  grid: Grid,
+): RoadShape[] {
+  const out: RoadShape[] = [];
+  const centreOfTile = (t: number) => ({
+    x: ((t % grid.cols) + 0.5) * TILE_SIZE,
+    y: (Math.floor(t / grid.cols) + 0.5) * TILE_SIZE,
+  });
+  const width = ROAD_WIDTH_TILES * TILE_SIZE;
+  for (const b of buildings) {
+    if (b.kind !== 'destination') continue;
+    const lot = destinationLot(grid, b);
+    if (!lot) continue;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const t of lot.tiles) {
+      const x = t % grid.cols;
+      const y = Math.floor(t / grid.cols);
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+    out.push({
+      kind: 'roundrect',
+      x: minX * TILE_SIZE,
+      y: minY * TILE_SIZE,
+      w: (maxX - minX + 1) * TILE_SIZE,
+      h: (maxY - minY + 1) * TILE_SIZE,
+      r: LOT_CORNER,
+    });
+    // The tab is part of the footprint: a road-width segment from the access road's centre into the
+    // inlet, with rounded ends. It shows whether or not the road node is placed.
+    const inlet = centreOfTile(lot.inlet);
+    const road = centreOfTile(lot.road);
+    const dx = Math.sign(inlet.x - road.x);
+    const dy = Math.sign(inlet.y - road.y);
+    const r = width / 2;
+    // The tab's far end is a rounded cap centred on the road, and its near end runs into the lot.
+    const farX = road.x - dx * r;
+    const farY = road.y - dy * r;
+    const nearX = inlet.x + dx * TILE_SIZE * 0.3;
+    const nearY = inlet.y + dy * TILE_SIZE * 0.3;
+    if (dx !== 0) {
+      out.push({
+        kind: 'roundrect',
+        x: Math.min(farX, nearX),
+        y: road.y - r,
+        w: Math.abs(nearX - farX),
+        h: width,
+        r,
+      });
+    } else {
+      out.push({
+        kind: 'roundrect',
+        x: road.x - r,
+        y: Math.min(farY, nearY),
+        w: width,
+        h: Math.abs(nearY - farY),
+        r,
+      });
+    }
+  }
+  return out;
+}
 
 export const BUILDING_SCALE = 0.6; // building body as a fraction of one tile
 export const ENTRANCE_WIDTH = 3;

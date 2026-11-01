@@ -14,6 +14,7 @@ import {
   DESTINATION_RADIUS,
   entranceStubShapes,
   LANE_OFFSET,
+  lotShapes,
   roadShapes,
   terrainTiles,
 } from './geometry.ts';
@@ -335,5 +336,57 @@ describe('carShapes on a bend', () => {
     };
     const [dot] = carShapes([car], [house], grid, [0xff0000]);
     expect(dot.r).toBeLessThan((ROAD_WIDTH_TILES * TILE_SIZE) / 2);
+  });
+});
+
+describe('lotShapes', () => {
+  // Origin (3,3) facing north: the lot is columns 3-7 and rows 3-5. Its road is (3,2) and its inlet (3,3).
+  const big = createGrid(8, 8);
+  const d: Building = {
+    id: 2,
+    kind: 'destination',
+    color: 0,
+    tile: 3 * 8 + 3,
+    entrance: 'n',
+  };
+  const width = ROAD_WIDTH_TILES * TILE_SIZE;
+
+  it("covers a destination's 5×3 lot with rounded pavement", () => {
+    const [lot] = lotShapes([d], big);
+    expect(lot).toMatchObject({
+      kind: 'roundrect',
+      x: 3 * TILE_SIZE,
+      y: 3 * TILE_SIZE,
+      w: 5 * TILE_SIZE,
+      h: 3 * TILE_SIZE,
+    });
+  });
+
+  it('has a road-width tab from the access road centre into the inlet, with rounded ends', () => {
+    const shape = lotShapes([d], big)[1];
+    if (shape.kind !== 'roundrect') throw new Error('expected a tab');
+    expect(shape.r).toBeCloseTo(width / 2);
+    expect(shape.w).toBeCloseTo(width);
+    // The far cap is centred on the road (3.5, 2.5) and the tab runs 0.3 tiles into the lot (to 3.8).
+    expect(shape.x).toBeCloseTo(3.25 * TILE_SIZE);
+    expect(shape.y).toBeCloseTo(2.25 * TILE_SIZE);
+    expect(shape.y + shape.h).toBeCloseTo(3.8 * TILE_SIZE);
+  });
+
+  it('keeps the tab in the footprint even before a road node is placed', () => {
+    const shapes = lotShapes([d], big);
+    expect(shapes).toHaveLength(2);
+    expect(shapes[1].kind).toBe('roundrect');
+  });
+
+  it('draws no lot for a house', () => {
+    const house: Building = {
+      id: 0,
+      kind: 'house',
+      color: 0,
+      tile: 0,
+      entrance: 'e',
+    };
+    expect(lotShapes([house], big)).toEqual([]);
   });
 });

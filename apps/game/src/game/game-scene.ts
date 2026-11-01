@@ -61,6 +61,7 @@ import {
 import { debugShapes } from '../view/debug-geometry.ts';
 import {
   buildingShapes,
+  lotShapes,
   carShapes,
   entranceStubShapes,
   roadShapes,
@@ -744,6 +745,7 @@ export class GameScene extends Phaser.Scene {
       isOpenTile(this.sim, b.tile),
     );
     const shapes = buildingShapes(visible, this.sim.grid, BUILDING_COLORS);
+    this.drawRoads();
     // Shadows first, so every building's shadow falls under its neighbours.
     gfx.fillStyle(this.pal.shadow, SHADOW_ALPHA);
     for (const s of shapes) {
@@ -780,6 +782,7 @@ export class GameScene extends Phaser.Scene {
     const shapes = [
       ...roadShapes(this.sim.grid, this.sim.roads, this.sim.links),
       ...entranceStubShapes(visible, this.sim.grid, this.sim.roads),
+      ...lotShapes(visible, this.sim.grid),
     ];
     // Kerb first, a little wider, then the pavement on top, so each road has a thin outline.
     this.paintRoadShapes(gfx, shapes, this.pal.kerb, BORDER_PX);
@@ -796,6 +799,14 @@ export class GameScene extends Phaser.Scene {
     gfx.fillStyle(colour, 1);
     for (const s of shapes) {
       if (s.kind === 'circle') gfx.fillCircle(s.x, s.y, s.r + grow);
+      else if (s.kind === 'roundrect')
+        gfx.fillRoundedRect(
+          s.x - grow,
+          s.y - grow,
+          s.w + grow * 2,
+          s.h + grow * 2,
+          s.r + grow,
+        );
       else if (s.kind === 'rect')
         gfx.fillRect(s.x - grow, s.y - grow, s.w + grow * 2, s.h + grow * 2);
       else {
@@ -929,7 +940,7 @@ export class GameScene extends Phaser.Scene {
     for (const sh of roadShapes(this.sim.grid, preview.roads, preview.links)) {
       if (sh.kind === 'circle') gfx.fillCircle(sh.x, sh.y, sh.r);
       else if (sh.kind === 'rect') gfx.fillRect(sh.x, sh.y, sh.w, sh.h);
-      else {
+      else if (sh.kind === 'line') {
         gfx.lineStyle(sh.w, this.pal.road, 1);
         gfx.lineBetween(sh.x1, sh.y1, sh.x2, sh.y2);
       }
