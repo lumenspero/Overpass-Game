@@ -160,3 +160,20 @@ button[aria-pressed='true'] {
   display: grid;
   gap: 8px;
 }
+
+.draft-list {
+  display: grid;
+  gap: 6px;
+}
+
+.draft-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.draft-row span {
+  flex: 1 1 100%;
+  font-size: 0.9em;
+}

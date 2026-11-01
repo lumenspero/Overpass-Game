@@ -69,3 +69,6 @@ export const EDIT = {
   viewZoomMin: 0.5,
   viewZoomMax: 40,
 } as const;
+
+/** How long the work must be still before a draft is saved, in milliseconds. */
+export const AUTOSAVE_MS = 1000;

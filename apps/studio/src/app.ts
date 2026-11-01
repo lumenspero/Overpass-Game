@@ -1,6 +1,11 @@
 import { h, type Attributes, type ComponentChildren, type VNode } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { DEFAULT_FRAME_TILES, IMPORT, TERRAIN_ZOOM } from './config.ts';
+import {
+  AUTOSAVE_MS,
+  DEFAULT_FRAME_TILES,
+  IMPORT,
+  TERRAIN_ZOOM,
+} from './config.ts';
 import {
   frameAt,
   frameBBox,
@@ -25,6 +30,9 @@ import { searchPlaces, type PlaceCandidate } from './search/nominatim.ts';
 import { loadTerrain } from './terrain/load.ts';
 import { deriveMountains } from './terrain/mountains.ts';
 import { elevationGrid } from './terrain/terrarium.ts';
+import { debounce, type Debouncer } from './drafts/debounce.ts';
+import { makeDraft, type Draft } from './drafts/draft.ts';
+import { listDrafts, removeDraft, saveDraft } from './drafts/store.ts';
 
 /**
  * Preact's h() typings are strict about prop shapes, which gets in the way of a
@@ -122,6 +130,15 @@ function layerRow(editor: Editor | null, layer: EditableLayer): VNode {
 
 const NO_POINTS: readonly Pt[] = [];
 
+/** Every saved draft. A store that cannot be read counts as having none. */
+async function readDraftList(): Promise<{ id: string; draft: Draft }[]> {
+  try {
+    return await listDrafts();
+  } catch {
+    return [];
+  }
+}
+
 function describeSelection(sel: Selection | null, count: number): string {
   if (count > 1) return `${count} shapes selected.`;
   if (!sel) return 'Click a shape to select it.';
@@ -163,6 +180,25 @@ export function App(): VNode {
   const editor = useRef<Editor | null>(null);
   const [, setVersion] = useState(0);
   const [shortMax, setShortMax] = useState(2);
+  const [outlines, setOutlines] = useState(false);
+  const [drafts, setDrafts] = useState<{ id: string; draft: Draft }[]>([]);
+  const [draftNote, setDraftNote] = useState('');
+  const saver = useRef<Debouncer | null>(null);
+  // Read by the autosave when it fires, so it always sees the latest state.
+  const draftInputs = useRef<{
+    imported: { frame: Frame; elevation: Float32Array | null } | null;
+    mountainThreshold: number;
+  }>({ imported: null, mountainThreshold: IMPORT.mountainThresholdDefault });
+  draftInputs.current = { imported, mountainThreshold };
+
+  useEffect(() => {
+    const d = debounce(AUTOSAVE_MS, () => {
+      void saveDraftNow();
+    });
+    saver.current = d;
+    void readDraftList().then(setDrafts);
+    return () => d.flush();
+  }, []);
 
   const pickPlace = (id: string): void => {
     const place = latestPlaces.current.find((p) => p.id === id);
@@ -261,7 +297,16 @@ export function App(): VNode {
 
   // Each edit re-renders the screen, so the preview and the panels stay in step.
   useEffect(() => {
-    return editor.current?.subscribe(() => setVersion((v) => v + 1));
+    let seen = editor.current?.map;
+    return editor.current?.subscribe(() => {
+      setVersion((v) => v + 1);
+      // Selection and view changes leave the map alone, so only map edits schedule a save.
+      const ed = editor.current;
+      if (ed && ed.map !== seen) {
+        seen = ed.map;
+        saver.current?.schedule();
+      }
+    });
   }, [imported]);
 
   useEffect(() => {
@@ -271,6 +316,10 @@ export function App(): VNode {
   useEffect(() => {
     mapPanel.current?.setDrawMode(drawMode);
   }, [drawMode]);
+
+  useEffect(() => {
+    preview.current?.setOutlines(outlines);
+  }, [outlines]);
 
   async function onSearch(event: Event): Promise<void> {
     event.preventDefault();
@@ -293,6 +342,56 @@ export function App(): VNode {
       setMessage(err instanceof Error ? err.message : 'Search failed.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  /** Saves the open map as a draft. It reads the editor when it runs, so it always saves the latest state. */
+  async function saveDraftNow(): Promise<void> {
+    const ed = editor.current;
+    const inputs = draftInputs.current;
+    if (!ed || !inputs.imported) return;
+    const map = ed.map;
+    try {
+      await saveDraft(
+        map.id,
+        makeDraft({
+          placeName: map.name,
+          frame: inputs.imported.frame,
+          mountainThreshold: inputs.mountainThreshold,
+          elevation: inputs.imported.elevation,
+          map,
+        }),
+      );
+      setDraftNote(`Draft saved at ${new Date().toLocaleTimeString()}.`);
+      setDrafts(await readDraftList());
+    } catch {
+      setDraftNote(
+        'Could not save a draft. Browser storage may be blocked, so this work lasts only until the page is reloaded.',
+      );
+    }
+  }
+
+  /** Reopens a saved draft. The open map is saved first, so nothing is lost. */
+  function onRestore(draft: Draft): void {
+    saver.current?.flush();
+    editor.current = new Editor(draft.map);
+    setImported({ frame: draft.frame, elevation: draft.elevation });
+    setFrame(draft.frame);
+    setPlaceName(draft.placeName);
+    setMountainThreshold(draft.mountainThreshold);
+    setMessage(
+      `Restored the draft of ${draft.placeName}, saved ${new Date(draft.savedAt).toLocaleString()}.`,
+    );
+  }
+
+  /** Deletes a saved draft. */
+  async function onDiscard(id: string, name: string): Promise<void> {
+    try {
+      await removeDraft(id);
+      setDrafts(await readDraftList());
+      setDraftNote(`Discarded the draft of ${name}.`);
+    } catch {
+      setDraftNote('Could not discard the draft.');
     }
   }
 
@@ -328,6 +427,7 @@ export function App(): VNode {
       });
       editor.current = new Editor(map);
       setImported({ frame: current, elevation });
+      saver.current?.schedule();
       setMessage(
         `Imported ${layers.water.length} water shapes, ${layers.parks.length} parks, ${layers.motorwayGuide.length} motorway lines and ${mountains.length} mountains.${
           elevation
@@ -489,6 +589,40 @@ export function App(): VNode {
               'p',
               { class: 'frame-status' },
               'The frame changed since the last import. Import again to update the map.',
+            )
+          : null,
+        draftNote
+          ? el('p', { class: 'frame-status', role: 'status' }, draftNote)
+          : null,
+        drafts.length > 0
+          ? el(
+              'div',
+              { class: 'draft-list' },
+              el('h3', null, 'Drafts'),
+              ...drafts.map(({ id, draft }) =>
+                el(
+                  'div',
+                  { class: 'draft-row' },
+                  el(
+                    'span',
+                    null,
+                    `${draft.placeName}, saved ${new Date(draft.savedAt).toLocaleString()}`,
+                  ),
+                  el(
+                    'button',
+                    { type: 'button', onClick: () => onRestore(draft) },
+                    'Restore',
+                  ),
+                  el(
+                    'button',
+                    {
+                      type: 'button',
+                      onClick: () => onDiscard(id, draft.placeName),
+                    },
+                    'Discard',
+                  ),
+                ),
+              ),
             )
           : null,
       ),
@@ -757,6 +891,17 @@ export function App(): VNode {
                   ),
               }),
               ' Snap to grid',
+            ),
+            el(
+              'label',
+              null,
+              el('input', {
+                type: 'checkbox',
+                checked: outlines,
+                onChange: (e: Event) =>
+                  setOutlines((e.currentTarget as HTMLInputElement).checked),
+              }),
+              ' Show edit outlines',
             ),
           )
         : null,

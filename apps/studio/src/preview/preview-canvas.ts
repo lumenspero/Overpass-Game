@@ -38,6 +38,8 @@ export class PreviewCanvas {
   private inside = true;
   private source: SourceMap | null = null;
   private editable = false;
+  // Edit outlines for unselected shapes. Off by default so the preview shows the finished look.
+  private outlines = false;
   private selection: Selection | null = null;
   private shapes: readonly Target[] = [];
   private marquee: Rect | null = null;
@@ -178,6 +180,12 @@ export class PreviewCanvas {
 
   destroy(): void {
     this.observer.disconnect();
+  }
+
+  /** Shows or hides the edit outlines of unselected shapes. Selected shapes are always outlined. */
+  setOutlines(show: boolean): void {
+    this.outlines = show;
+    this.draw();
   }
 
   private draw(): void {
@@ -391,6 +399,7 @@ export class PreviewCanvas {
         (t) => t.layer === layer && t.id === item.id,
       );
 
+      if (!selected && !this.outlines) continue;
       const ring = sampleSpline(item.points, closed);
       ctx.beginPath();
       ring.forEach((p, i) => {
