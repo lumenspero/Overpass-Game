@@ -1,5 +1,7 @@
-import type { Side } from './buildings.ts';
-import type { Grid } from './grid.ts';
+import type { Building, Side } from './buildings.ts';
+import { isOpenTile } from './expansion.ts';
+import { isBuildable, type Grid } from './grid.ts';
+import type { SimState } from './sim.ts';
 
 /**
  * Destination parking lots (spec: Parking lots and building kinds, M9a). A standard lot is 5
@@ -88,4 +90,45 @@ export function lotAt(grid: Grid, origin: number, side: Side): Lot | null {
   const inlet = tileOf(0, 0);
   if (road === null || inlet === null) return null;
   return { footprint, tiles, strip, inlet, road };
+}
+
+/** The lot a destination occupies, from its origin and the side its road is on. */
+export function destinationLot(grid: Grid, b: Building): Lot | null {
+  return lotAt(grid, b.tile, b.entrance);
+}
+
+/** Every tile reserved by the lots of destinations already placed. */
+export function reservedLotTiles(sim: SimState): Set<number> {
+  const out = new Set<number>();
+  for (const b of sim.buildings) {
+    if (b.kind !== 'destination') continue;
+    const lot = destinationLot(sim.grid, b);
+    if (lot) for (const t of lot.tiles) out.add(t);
+  }
+  return out;
+}
+
+export type LotReason =
+  'no-lot' | 'unbuildable' | 'locked' | 'road' | 'occupied' | 'reserved';
+
+/**
+ * Why a destination cannot spawn with this origin and road side, or null when it can. Every lot
+ * tile is checked. A road that is not yet placed does not block the spawn, as with houses.
+ */
+export function lotBlocker(
+  sim: SimState,
+  origin: number,
+  side: Side,
+): LotReason | null {
+  const lot = lotAt(sim.grid, origin, side);
+  if (!lot) return 'no-lot';
+  const reserved = reservedLotTiles(sim);
+  for (const t of lot.tiles) {
+    if (!isBuildable(sim.grid, t)) return 'unbuildable';
+    if (!isOpenTile(sim, t)) return 'locked';
+    if (sim.roads[t] === 1) return 'road';
+    if (sim.buildingAt[t] !== -1) return 'occupied';
+    if (reserved.has(t)) return 'reserved';
+  }
+  return null;
 }

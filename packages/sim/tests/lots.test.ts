@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import type { Side } from '../src/buildings.ts';
 import { createGrid, type Grid } from '../src/grid.ts';
+import { createSim, placeBuilding, Terrain } from '../src/index.ts';
 import {
   BUILDING_SIZE,
   LOT_DEPTH,
   LOT_LENGTH,
   lotAt,
+  lotBlocker,
   STRIP_LENGTH,
 } from '../src/lots.ts';
+import { at, drawRoads, makeGrid } from './helpers.ts';
 
 const SIDES: Side[] = ['n', 'e', 's', 'w'];
 
@@ -98,5 +101,70 @@ describe('lotAt', () => {
     const edge = 8 * grid.cols + 8;
     expect(lotAt(grid, edge, 's')).toBeNull();
     expect(lotAt(grid, edge, 'e')).toBeNull();
+  });
+});
+
+describe('lotBlocker', () => {
+  const fresh = () =>
+    createSim({ seed: 1, grid: makeGrid(9, 9), roadBudget: 50 });
+
+  it('allows a clear lot', () => {
+    const sim = fresh();
+    expect(lotBlocker(sim, at(sim.grid, 3, 3), 'n')).toBeNull();
+  });
+
+  it('refuses a lot that is off the map', () => {
+    const sim = fresh();
+    expect(lotBlocker(sim, at(sim.grid, 3, 0), 'n')).toBe('no-lot');
+  });
+
+  it('refuses a lot with water in it', () => {
+    const sim = createSim({
+      seed: 1,
+      grid: makeGrid(9, 9, [[5, 4, Terrain.Water]]),
+      roadBudget: 50,
+    });
+    expect(lotBlocker(sim, at(sim.grid, 3, 3), 'n')).toBe('unbuildable');
+  });
+
+  it('refuses a lot with a road on it', () => {
+    const sim = fresh();
+    drawRoads(sim, [at(sim.grid, 5, 4)]);
+    expect(lotBlocker(sim, at(sim.grid, 3, 3), 'n')).toBe('road');
+  });
+
+  it('refuses a lot with a building on it', () => {
+    const sim = fresh();
+    placeBuilding(sim, {
+      tile: at(sim.grid, 5, 4),
+      kind: 'house',
+      color: 0,
+      entrance: 's',
+    });
+    expect(lotBlocker(sim, at(sim.grid, 3, 3), 'n')).toBe('occupied');
+  });
+
+  it('refuses a lot that overlaps a destination already placed', () => {
+    const sim = fresh();
+    sim.buildings.push({
+      id: 0,
+      kind: 'destination',
+      color: 0,
+      tile: at(sim.grid, 3, 3),
+      entrance: 'n',
+    });
+    expect(lotBlocker(sim, at(sim.grid, 4, 2), 'n')).toBe('reserved');
+  });
+
+  it('allows a lot beside a destination that is already placed', () => {
+    const sim = fresh();
+    sim.buildings.push({
+      id: 0,
+      kind: 'destination',
+      color: 0,
+      tile: at(sim.grid, 3, 3),
+      entrance: 'n',
+    });
+    expect(lotBlocker(sim, at(sim.grid, 3, 6), 'n')).toBeNull();
   });
 });

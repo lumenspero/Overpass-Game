@@ -194,6 +194,8 @@ _Planned for M9a. Not built yet. Where this conflicts with the Buildings, Cars a
 - **Leaving:** after finishing, the car turns in the lot and drives out through the inlet on the opposite lane to the one it came in on. The turn is a visible manoeuvre, not an instant change of direction.
 - **Waiting:** a car that finds the lot's spot taken waits in the lot, not on the road. `approximated`
 
+- **Spawning reserves the lot:** the lot is part of the destination. Spawning one reserves all fifteen of its lot tiles, so roads and other buildings cannot use them. A spawn is refused when any lot tile is water, mountain or locked, has a road or building on it, or is already reserved. A spawn may come before its road, as houses may.
+
 **Open for M9a:**
 
 - Demand interval for each kind, and the weeks each kind appears.
