@@ -121,18 +121,21 @@ describe('@overpass-game/render-style', () => {
     }
   });
 
+  // resolvePalette merges in the water set, so it returns a new object with the family's values.
   it('resolves a palette id and mode to that family', () => {
-    expect(resolvePalette('default', 'light')).toBe(
+    expect(resolvePalette('default', 'light')).toStrictEqual(
       BASE_PALETTES.default.light,
     );
-    expect(resolvePalette('default', 'dark')).toBe(BASE_PALETTES.default.dark);
+    expect(resolvePalette('default', 'dark')).toStrictEqual(
+      BASE_PALETTES.default.dark,
+    );
   });
 
   it('falls back to the default palette for an unknown id', () => {
-    expect(resolvePalette('no-such-palette', 'dark')).toBe(
+    expect(resolvePalette('no-such-palette', 'dark')).toStrictEqual(
       BASE_PALETTES.default.dark,
     );
-    expect(resolvePalette('__proto__', 'light')).toBe(
+    expect(resolvePalette('__proto__', 'light')).toStrictEqual(
       BASE_PALETTES.default.light,
     );
   });

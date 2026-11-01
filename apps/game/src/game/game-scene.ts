@@ -73,7 +73,16 @@ import {
 } from '../debug/tuning-panel.ts';
 import { createOfferPanel, type OfferPanel } from '../ui/offer-panel.ts';
 import { previewRoads } from '../view/crossing-preview.ts';
-import { motorwayPreview, motorwayParts } from '../view/motorway-view.ts';
+import {
+  BADGE_H,
+  BADGE_STROKE_TILES,
+  BADGE_TEXT_SCALE_X,
+  BADGE_TEXT_TILES,
+  badgeAnchor,
+  motorwayPreview,
+  motorwayParts,
+  shieldOutline,
+} from '../view/motorway-view.ts';
 import { guideWorldLines } from '../view/guide.ts';
 import { GUIDE_STYLE } from '@overpass-game/render-style';
 import {
@@ -169,6 +178,8 @@ export class GameScene extends Phaser.Scene {
   /** The map's named labels, and the text objects drawn for them. */
   private mapLabels: CompiledMap['labels'] = [];
   private labelTexts: Phaser.GameObjects.Text[] = [];
+  /** The number on each motorway's shield. Kept and reused, as the motorways are drawn every frame. */
+  private badgeTexts: Phaser.GameObjects.Text[] = [];
   private guideLines: { x: number; y: number }[][] | null = null;
   private settings: GameSettings = DEFAULT_SETTINGS;
   private controlGfx!: Phaser.GameObjects.Graphics;
@@ -817,8 +828,14 @@ export class GameScene extends Phaser.Scene {
     const px = (points: CurvePoint[]): CurvePoint[] =>
       points.map((p) => ({ x: p.x * TILE_SIZE, y: p.y * TILE_SIZE }));
     const width = TILE_SIZE * ROAD_WIDTH_TILES;
+    // Shields are drawn after every motorway, so no road covers one. Numbers count up in the order placed.
+    const badges: { at: CurvePoint; n: number }[] = [];
+    let n = 0;
     for (const m of this.sim.motorways) {
-      const parts = motorwayParts(motorwayCurve(this.sim.grid, m));
+      n += 1;
+      const curve = motorwayCurve(this.sim.grid, m);
+      badges.push({ at: badgeAnchor(curve), n });
+      const parts = motorwayParts(curve);
       // The shadow is only under the raised middle, so it does not show at the ramps.
       line(
         px(parts.middle).map((p) => ({ x: p.x + 3, y: p.y + 4 })),
@@ -841,10 +858,56 @@ export class GameScene extends Phaser.Scene {
           gfx.fillCircle(h.x * TILE_SIZE, h.y * TILE_SIZE, 5);
       }
     }
+    this.drawBadges(gfx, badges);
     const s = this.controller.stroke;
     if (s && s.mode === 'motorway') {
       const preview = motorwayPreview(this.sim.grid, s.drag);
       if (preview) line(px(preview), width, this.pal.motorway, 0.4);
+    }
+  }
+
+  /** Draws each motorway's shield, with its number. The shields are drawn in the palette's badge colour on the paper colour. */
+  private drawBadges(
+    gfx: Phaser.GameObjects.Graphics,
+    badges: { at: CurvePoint; n: number }[],
+  ): void {
+    const colour = this.pal.motorwayBadge;
+    const hex = hexString(colour);
+    badges.forEach(({ at, n }, k) => {
+      const shield = shieldOutline(at).map(
+        (p) => new Phaser.Math.Vector2(p.x * TILE_SIZE, p.y * TILE_SIZE),
+      );
+      gfx.fillStyle(this.pal.background, 1);
+      gfx.lineStyle(BADGE_STROKE_TILES * TILE_SIZE, colour, 1);
+      gfx.fillPoints(shield, true);
+      gfx.strokePoints(shield, true);
+
+      let text = this.badgeTexts[k];
+      if (!text) {
+        text = this.add
+          .text(0, 0, '', {
+            fontFamily: 'system-ui, sans-serif',
+            fontStyle: 'bold',
+            fontSize: `${BADGE_TEXT_TILES * TILE_SIZE}px`,
+            color: hex,
+          })
+          .setOrigin(0.5)
+          .setResolution(2)
+          .setScale(BADGE_TEXT_SCALE_X, 1);
+        this.layer.addAt(text, this.layer.getIndex(this.controlGfx));
+        this.badgeTexts.push(text);
+      }
+      const label = String(n);
+      if (text.text !== label) text.setText(label);
+      if (text.style.color !== hex) text.setColor(hex);
+      // Two digits sit a little low, as on the reference shields. A single digit is centred.
+      const dy = label.length > 1 ? BADGE_H * 0.06 : 0;
+      text
+        .setPosition(at.x * TILE_SIZE, (at.y + dy) * TILE_SIZE)
+        .setVisible(true);
+    });
+    for (let k = badges.length; k < this.badgeTexts.length; k++) {
+      this.badgeTexts[k]!.setVisible(false);
     }
   }
 

@@ -2234,6 +2234,7 @@
   "labels": [],
   "rules": [],
   "palette": "default",
+  "waterPalette": "shared",
   "attribution": "Hand-made test map. No OpenStreetMap data.",
-  "contentHash": "b166d86d"
+  "contentHash": "4d9d723e"
 }
