@@ -166,6 +166,17 @@ Elevated links for faster travel between two points on the ground network. `appr
 ### Destination growth and rule hooks
 
 - **Growth:** every week, every destination gains `DEMAND_GROWTH_STEP` (default 0.25) demand, so demand rises as the game goes on. It is automatic: the player has no choice in it, and destinations are not upgraded by hand. `approximated`
-- **Rule hooks:** a map's rules are a list passed to the sim when it starts, each with a week it applies from. The first rule kind is `unlockColour`: a building colour is unused until its week. The sim reads the list at each week boundary, so a map changes by data, not code. `approximated`
+- **Rule hooks:** a map's rules are a list passed to the sim when it starts, each with a week it applies from. The first rule kind, `unlockColour` (a colour is unused until its week), is a temporary stopgap. Business arrival below replaces it at M14, and then it is removed. The sim reads the list at each week boundary, so a map changes by data, not code. `approximated`
+
+### Business arrival and house supply
+
+_Planned for M14 with the spawn system. Not built yet._
+
+- **Arrival:** from `BUSINESS_ARRIVAL_START_WEEK` on, new destinations (businesses) arrive in each week, up to a count set by global tuning. Arrivals are not tied to a map's rules. `approximated`
+- **Colours:** a colour appears when a business of that colour arrives. There is no guarantee of a new colour at each arrival. `approximated`
+- **Supply at arrival:** a new business has its demand met by houses spawned at the same moment as the business.
+- **Supply through the week:** houses also spawn during the week, so a business can gain supply after it opens.
+- **Supply ratio:** for each colour, the sim keeps houses per destination inside a band, `SUPPLY_RATIO_MIN` to `SUPPLY_RATIO_MAX` (global tuning, `approximated`). Houses are added when the ratio falls below the minimum. None are added above the maximum. This stops a colour being oversupplied with houses where it has no demand, while still allowing new houses in the middle of the week.
+- **Open for M14:** how a new business's colour is chosen, and the tuning values.
 
 _Still to write: car movement and queuing, trips, spawning, demand, scoring, clock and expansion, upgrades, bridges and tunnels, roundabouts and lights, congestion, unlocks, audio events. Each arrives with its milestone._

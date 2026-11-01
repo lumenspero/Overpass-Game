@@ -237,10 +237,19 @@ export function App(): VNode {
     const container = mapElement.current;
     const canvas = canvasElement.current;
     if (!container || !canvas) return;
-    const panel = new MapPanel(container, {
-      onFrameDrawn: (start, end) => handlers.current.drawFrame(start, end),
-      onPickPlace: (id) => handlers.current.pickPlace(id),
-    });
+    // If the real map cannot start (for example, no WebGL), keep the rest of the screen working.
+    let panel: MapPanel | null = null;
+    try {
+      panel = new MapPanel(container, {
+        onFrameDrawn: (start, end) => handlers.current.drawFrame(start, end),
+        onPickPlace: (id) => handlers.current.pickPlace(id),
+      });
+    } catch (err) {
+      console.error(err);
+      setMessage(
+        `The real map could not start: ${err instanceof Error ? err.message : String(err)}. The preview still works.`,
+      );
+    }
     const previewCanvas = new PreviewCanvas(canvas);
     mapPanel.current = panel;
     preview.current = previewCanvas;
@@ -251,7 +260,7 @@ export function App(): VNode {
     );
     return () => {
       detach();
-      panel.destroy();
+      panel?.destroy();
       previewCanvas.destroy();
       mapPanel.current = null;
       preview.current = null;
