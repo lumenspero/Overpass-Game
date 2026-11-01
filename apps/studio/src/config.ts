@@ -48,3 +48,11 @@ export const IMPORT = {
   mountainThresholdMax: 3000,
   mountainThresholdStep: 25,
 } as const;
+
+/** Editor settings: snapping and undo depth. Authoring choices, not gameplay numbers. */
+export const EDIT = {
+  /** Points snap to multiples of this many tiles. */
+  snapStep: 0.25,
+  /** Undo steps kept in memory. */
+  historyLimit: 200,
+} as const;

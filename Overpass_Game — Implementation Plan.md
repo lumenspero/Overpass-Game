@@ -265,6 +265,8 @@ Done when: the test map runs from compiled JSON and the guide overlay toggles.
 
 Done when: searching a city, framing it and importing produces a rough but recognizable map in the preview.
 
+M7 is closed. The Studio can search a US place, frame it and import its water, parks, motorways and terrain as source shapes, with a mountain threshold slider and a game-style preview. Search, framing, import and the preview were checked live on Tulsa, and the frame update on Denver. The slider's Denver count is still to be recorded. The Studio still cannot edit what it imports, so cleaning and painting wait for M8, and imports stay in memory until M8's autosave. Coastline sea fill and multipolygon holes are also deferred to M8. Details are in `docs/M7-session-delta.md`.
+
 **M8 · Studio: the editor**
 
 - [ ] Shapes drawn with bold outlines and draggable anchor and handle points; insert and delete points; move, scale and rotate whole shapes
