@@ -28,6 +28,7 @@ export type Hit =
 export interface EditItem {
   readonly id: string;
   readonly kind?: 'closedSpline' | 'strokeSpline';
+  readonly locked?: boolean;
   points: {
     x: number;
     y: number;
@@ -223,4 +224,23 @@ export function hitTest(
     }
   }
   return null;
+}
+
+/** The middle of the anchors of several shapes together, or null when none exist. */
+export function groupCentre(
+  map: SourceMap,
+  targets: readonly Target[],
+): Pt | null {
+  const pts: Pt[] = [];
+  for (const t of targets) {
+    const item = findItem(map, t);
+    if (item) pts.push(...item.points);
+  }
+  if (pts.length === 0) return null;
+  const xs = pts.map((p) => p.x);
+  const ys = pts.map((p) => p.y);
+  return {
+    x: (Math.min(...xs) + Math.max(...xs)) / 2,
+    y: (Math.min(...ys) + Math.max(...ys)) / 2,
+  };
 }

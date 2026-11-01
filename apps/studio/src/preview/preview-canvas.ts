@@ -9,8 +9,9 @@ import { EDIT } from '../config.ts';
 import type { Frame } from '../geo/frame.ts';
 import type { Selection } from '../edit/editor.ts';
 import { pixelToSource } from '../edit/coords.ts';
-import { listItems, type Pt } from '../edit/hit.ts';
+import { listItems, type Pt, type Target } from '../edit/hit.ts';
 import { PAINT_SPECS, type PaintTool } from '../edit/paint.ts';
+import type { Rect } from '../edit/select.ts';
 import { previewLayout } from './layout.ts';
 
 const OUTSIDE_COLOUR = '#e5484d';
@@ -38,6 +39,9 @@ export class PreviewCanvas {
   private source: SourceMap | null = null;
   private editable = false;
   private selection: Selection | null = null;
+  private shapes: readonly Target[] = [];
+  private marquee: Rect | null = null;
+  private view = { zoom: 1, panX: 0, panY: 0 };
   private pending: {
     tool: PaintTool;
     points: readonly Pt[];
@@ -67,9 +71,14 @@ export class PreviewCanvas {
   }
 
   /** Turns the editing overlay on or off for the drawn source, and sets the selection it shows. */
-  setEditState(editable: boolean, selection: Selection | null): void {
+  setEditState(
+    editable: boolean,
+    selection: Selection | null,
+    shapes: readonly Target[],
+  ): void {
     this.editable = editable;
     this.selection = selection;
+    this.shapes = shapes;
     this.draw();
   }
 
@@ -83,6 +92,66 @@ export class PreviewCanvas {
     this.draw();
   }
 
+  /** Zooms about a client position, keeping the point under the pointer where it is. */
+  zoomAt(clientX: number, clientY: number, factor: number): void {
+    const rect = this.canvas.getBoundingClientRect();
+    const cx = this.canvas.clientWidth / 2;
+    const cy = this.canvas.clientHeight / 2;
+    const qx = clientX - rect.left - cx;
+    const qy = clientY - rect.top - cy;
+    const z = this.view.zoom;
+    const next = Math.min(
+      EDIT.viewZoomMax,
+      Math.max(EDIT.viewZoomMin, z * factor),
+    );
+    if (next === z) return;
+    // The point under the pointer, before the zoom, in untransformed coordinates.
+    const lx = (qx - this.view.panX) / z;
+    const ly = (qy - this.view.panY) / z;
+    this.view = { zoom: next, panX: qx - next * lx, panY: qy - next * ly };
+    this.draw();
+  }
+
+  panBy(dx: number, dy: number): void {
+    this.view = {
+      zoom: this.view.zoom,
+      panX: this.view.panX + dx,
+      panY: this.view.panY + dy,
+    };
+    this.draw();
+  }
+
+  resetView(): void {
+    this.view = { zoom: 1, panX: 0, panY: 0 };
+    this.draw();
+  }
+
+  /** The box-select rectangle while it is being drawn, in source-grid units. Null hides it. */
+  setMarquee(rect: Rect | null): void {
+    this.marquee = rect;
+    this.draw();
+  }
+
+  /** The preview transform: the fitted layout, zoomed and panned about the canvas centre. */
+  private layoutFor(frame: Frame, width: number, height: number) {
+    const base = previewLayout(frame, width, height);
+    const z = this.view.zoom;
+    const cx = width / 2;
+    const cy = height / 2;
+    const m = base.matrix;
+    return {
+      scale: base.scale * z,
+      matrix: {
+        a: z * m.a,
+        b: z * m.b,
+        c: z * m.c,
+        d: z * m.d,
+        e: cx + z * (m.e - cx) + this.view.panX,
+        f: cy + z * (m.f - cy) + this.view.panY,
+      },
+    };
+  }
+
   /** The source-grid point under a client position, or null when no frame is drawn. */
   locate(
     clientX: number,
@@ -90,7 +159,7 @@ export class PreviewCanvas {
   ): { point: Pt; tilesPerPixel: number } | null {
     const frame = this.frame;
     if (!frame) return null;
-    const { scale, matrix } = previewLayout(
+    const { scale, matrix } = this.layoutFor(
       frame,
       this.canvas.clientWidth,
       this.canvas.clientHeight,
@@ -131,7 +200,7 @@ export class PreviewCanvas {
       return;
     }
 
-    const { scale, matrix } = previewLayout(frame, width, height);
+    const { scale, matrix } = this.layoutFor(frame, width, height);
     if (scale <= 0) return;
 
     const x0 = -frame.cols / 2;
@@ -180,6 +249,21 @@ export class PreviewCanvas {
       this.drawEditOverlay(this.source, frame, scale);
     }
     this.drawPending(frame, scale);
+    if (this.marquee) {
+      const r = this.marquee;
+      ctx.beginPath();
+      ctx.rect(
+        r.x0 - frame.cols / 2,
+        frame.rows / 2 - r.y1,
+        r.x1 - r.x0,
+        r.y1 - r.y0,
+      );
+      ctx.setLineDash([4 / scale, 4 / scale]);
+      ctx.strokeStyle = SELECTED_COLOUR;
+      ctx.lineWidth = 1.5 / scale;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
     ctx.restore();
   }
 
@@ -303,10 +387,9 @@ export class PreviewCanvas {
 
     for (const { layer, item } of listItems(source)) {
       const closed = item.kind === 'closedSpline';
-      const selected =
-        selection !== null &&
-        selection.layer === layer &&
-        selection.id === item.id;
+      const selected = this.shapes.some(
+        (t) => t.layer === layer && t.id === item.id,
+      );
 
       const ring = sampleSpline(item.points, closed);
       ctx.beginPath();
@@ -354,7 +437,11 @@ export class PreviewCanvas {
         ctx.beginPath();
         ctx.rect(a.x - size / 2, a.y - size / 2, size, size);
         ctx.fillStyle =
-          selection?.index === i ? SELECTED_COLOUR : OUTLINE_COLOUR;
+          selection?.index === i &&
+          selection.layer === layer &&
+          selection.id === item.id
+            ? SELECTED_COLOUR
+            : OUTLINE_COLOUR;
         ctx.fill();
         ctx.strokeStyle = ANCHOR_EDGE_COLOUR;
         ctx.lineWidth = px(1);

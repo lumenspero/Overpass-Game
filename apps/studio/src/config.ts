@@ -65,4 +65,7 @@ export const EDIT = {
   outlinePx: 2,
   /** Relative weight for a new spawn zone. */
   spawnWeight: 1,
+  /** The preview zooms between these factors. */
+  viewZoomMin: 0.5,
+  viewZoomMax: 40,
 } as const;

@@ -271,3 +271,183 @@ describe('Editor paint point removal', () => {
     expect(editor.map.layers.water).toHaveLength(1);
   });
 });
+
+describe('Editor layers, snapping and multi-select', () => {
+  const pond: Shape = {
+    id: 'pond',
+    kind: 'closedSpline',
+    origin: 'painted',
+    points: [
+      { x: 20, y: 0 },
+      { x: 30, y: 0 },
+      { x: 30, y: 10 },
+      { x: 20, y: 10 },
+    ],
+  };
+  function twoLakes(): SourceMap {
+    const base = makeMap();
+    return { ...base, layers: { ...base.layers, water: [lake, pond] } };
+  }
+  const waterIds = (m: SourceMap) => m.layers.water.map((w) => w.id);
+
+  it('hiding a layer empties it in display only', () => {
+    const editor = new Editor(makeMap());
+    editor.toggleLayerVisible('water');
+    expect(editor.display.layers.water).toHaveLength(0);
+    expect(editor.map.layers.water).toHaveLength(1);
+    editor.toggleLayerVisible('water');
+    expect(editor.display).toBe(editor.map);
+  });
+
+  it('a locked layer cannot be picked, but still displays', () => {
+    const editor = new Editor(makeMap());
+    editor.toggleLayerLocked('water');
+    expect(editor.pick({ x: 0.1, y: 0.1 }, 0.5)).toBeNull();
+    expect(editor.display.layers.water).toHaveLength(1);
+    editor.toggleLayerLocked('water');
+    expect(editor.pick({ x: 0.1, y: 0.1 }, 0.5)).not.toBeNull();
+  });
+
+  it('hiding a layer drops its shapes from the selection', () => {
+    const editor = new Editor(twoLakes());
+    editor.toggleShape({ layer: 'water', id: 'lake' });
+    editor.toggleShape({ layer: 'water', id: 'pond' });
+    editor.toggleLayerVisible('water');
+    expect(editor.selectedShapes).toEqual([]);
+  });
+
+  it('with snapping off, a drag lands exactly on the pointer', () => {
+    const editor = new Editor(makeMap());
+    editor.setSnapping(false);
+    editor.beginDrag(
+      { kind: 'point', layer: 'water', id: 'lake', index: 1 },
+      { x: 10.1, y: 0.1 },
+    );
+    editor.dragTo({ x: 12.3, y: 0.1 });
+    editor.endDrag();
+    expect(lakeOf(editor.map).points[1]!.x).toBeCloseTo(12.2, 9);
+  });
+
+  it('shift-click builds a selection that moves together', () => {
+    const editor = new Editor(twoLakes());
+    editor.toggleShape({ layer: 'water', id: 'lake' });
+    editor.toggleShape({ layer: 'water', id: 'pond' });
+    expect(editor.selectedShapes).toHaveLength(2);
+    editor.beginDrag(
+      { kind: 'body', layer: 'water', id: 'lake' },
+      { x: 5, y: 5 },
+    );
+    editor.dragTo({ x: 6, y: 5 });
+    editor.endDrag();
+    expect(waterIds(editor.map)).toEqual(['lake', 'pond']);
+    expect(editor.map.layers.water[0]!.points[0]!.x).toBe(1);
+    expect(editor.map.layers.water[1]!.points[0]!.x).toBe(21);
+    editor.undo();
+    expect(editor.map.layers.water[1]!.points[0]!.x).toBe(20);
+  });
+
+  it('shift-click removes a shape that is already selected', () => {
+    const editor = new Editor(twoLakes());
+    editor.toggleShape({ layer: 'water', id: 'lake' });
+    editor.toggleShape({ layer: 'water', id: 'pond' });
+    editor.toggleShape({ layer: 'water', id: 'lake' });
+    expect(editor.selectedShapes).toEqual([{ layer: 'water', id: 'pond' }]);
+  });
+
+  it('grabbing an unselected shape selects it alone', () => {
+    const editor = new Editor(twoLakes());
+    editor.toggleShape({ layer: 'water', id: 'lake' });
+    editor.beginDrag(
+      { kind: 'body', layer: 'water', id: 'pond' },
+      { x: 25, y: 5 },
+    );
+    editor.endDrag();
+    expect(editor.selectedShapes).toEqual([{ layer: 'water', id: 'pond' }]);
+  });
+
+  it('deletes the selected shapes as one step, and undo restores them', () => {
+    const editor = new Editor(twoLakes());
+    editor.toggleShape({ layer: 'water', id: 'lake' });
+    editor.toggleShape({ layer: 'water', id: 'pond' });
+    editor.deleteSelectedShapes();
+    expect(editor.map.layers.water).toHaveLength(0);
+    expect(editor.selectedShapes).toEqual([]);
+    editor.undo();
+    expect(waterIds(editor.map)).toEqual(['lake', 'pond']);
+  });
+
+  it('a locked shape cannot move or be deleted, and locking is undoable', () => {
+    const editor = new Editor(twoLakes());
+    editor.select({ layer: 'water', id: 'lake', index: null });
+    editor.setShapesLocked(true);
+    expect(editor.map.layers.water[0]!.locked).toBe(true);
+    editor.beginDrag(
+      { kind: 'body', layer: 'water', id: 'lake' },
+      { x: 5, y: 5 },
+    );
+    editor.dragTo({ x: 9, y: 5 });
+    editor.endDrag();
+    expect(editor.map.layers.water[0]!.points[0]!.x).toBe(0);
+    editor.deleteSelectedShapes();
+    expect(waterIds(editor.map)).toEqual(['lake', 'pond']);
+    editor.undo();
+    expect(editor.map.layers.water[0]!.locked).toBeUndefined();
+  });
+
+  it('turns a multi-selection about its group centre', () => {
+    const editor = new Editor(twoLakes());
+    editor.toggleShape({ layer: 'water', id: 'lake' });
+    editor.toggleShape({ layer: 'water', id: 'pond' });
+    // Group bounds run from x 0 to 30 and y 0 to 10, so the centre is (15, 5).
+    editor.rotateSelected(180);
+    // The lake's corner (0, 0) turns about (15, 5) to (30, 10).
+    expect(editor.map.layers.water[0]!.points[0]!.x).toBeCloseTo(30, 9);
+    expect(editor.map.layers.water[0]!.points[0]!.y).toBeCloseTo(10, 9);
+  });
+});
+
+describe('Editor box and length selection', () => {
+  const river: Shape = {
+    id: 'river',
+    kind: 'strokeSpline',
+    origin: 'painted',
+    width: 0.3,
+    points: [
+      { x: 30, y: 0 },
+      { x: 31, y: 0 },
+    ],
+  };
+  function lakeAndRiver(): SourceMap {
+    const base = makeMap();
+    return { ...base, layers: { ...base.layers, water: [lake, river] } };
+  }
+
+  it('box select takes only shapes fully inside', () => {
+    const editor = new Editor(lakeAndRiver());
+    editor.selectInRect({ x0: -1, y0: -1, x1: 11, y1: 11 }, false);
+    expect(editor.selectedShapes).toEqual([{ layer: 'water', id: 'lake' }]);
+  });
+
+  it('shift box select adds to the selection', () => {
+    const editor = new Editor(lakeAndRiver());
+    editor.selectInRect({ x0: -1, y0: -1, x1: 11, y1: 11 }, false);
+    editor.selectInRect({ x0: 29, y0: -1, x1: 32, y1: 1 }, true);
+    expect(editor.selectedShapes).toHaveLength(2);
+  });
+
+  it('selects shapes shorter than a length, and counts them', () => {
+    const editor = new Editor(lakeAndRiver());
+    // The lake has a perimeter of 40 tiles, the river a length of 1.
+    expect(editor.shortCount(5)).toBe(1);
+    editor.selectShorterThan(5);
+    expect(editor.selectedShapes).toEqual([{ layer: 'water', id: 'river' }]);
+  });
+
+  it('hidden layers are left out of box and length selection', () => {
+    const editor = new Editor(lakeAndRiver());
+    editor.toggleLayerVisible('water');
+    expect(editor.shortCount(5)).toBe(0);
+    editor.selectInRect({ x0: -1, y0: -1, x1: 40, y1: 40 }, false);
+    expect(editor.selectedShapes).toEqual([]);
+  });
+});

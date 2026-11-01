@@ -3,9 +3,12 @@ import { EDIT, IMPORT } from '../config.ts';
 import * as history from './history.ts';
 import {
   anchorOf,
-  centreOf,
   findItem,
+  groupCentre,
   handleOf,
+  hitTest,
+  listItems,
+  type EditItem,
   type Hit,
   type Pt,
   type Target,
@@ -17,7 +20,10 @@ import {
   type Tool,
 } from './paint.ts';
 import * as ops from './ops.ts';
+import { insideRect, lengthOf, type Rect } from './select.ts';
+import type { EditableLayer } from './ops.ts';
 
+/** The point (or whole shape) the primary selection is on. */
 export interface Selection extends Target {
   /** The selected point, or null when the whole shape is selected. */
   readonly index: number | null;
@@ -37,8 +43,15 @@ type Drag =
       readonly which: 'handleIn' | 'handleOut';
       readonly offset: Pt;
     }
-  | { readonly kind: 'body'; readonly target: Target; readonly start: Pt };
+  | {
+      readonly kind: 'body';
+      readonly targets: readonly Target[];
+      readonly start: Pt;
+    };
 
+const sameTarget = (a: Target, b: Target): boolean =>
+  a.layer === b.layer && a.id === b.id;
+const toTarget = (s: Selection): Target => ({ layer: s.layer, id: s.id });
 const offsetBetween = (from: Pt, to: Pt): Pt => ({
   x: to.x - from.x,
   y: to.y - from.y,
@@ -54,9 +67,9 @@ function applyDrag(
   at: Pt,
   step: number,
 ): SourceMap {
-  const { layer, id } = drag.target;
   switch (drag.kind) {
-    case 'point':
+    case 'point': {
+      const { layer, id } = drag.target;
       return ops.movePoint(
         base,
         layer,
@@ -65,7 +78,9 @@ function applyDrag(
         { x: at.x + drag.offset.x, y: at.y + drag.offset.y },
         step,
       );
-    case 'handle':
+    }
+    case 'handle': {
+      const { layer, id } = drag.target;
       return ops.moveHandle(
         base,
         layer,
@@ -75,48 +90,84 @@ function applyDrag(
         { x: at.x + drag.offset.x, y: at.y + drag.offset.y },
         step,
       );
+    }
     case 'body': {
       const dx = ops.snapValue(at.x - drag.start.x, step);
       const dy = ops.snapValue(at.y - drag.start.y, step);
       if (dx === 0 && dy === 0) return base;
-      return ops.translateShape(base, layer, id, dx, dy);
+      return drag.targets.reduce(
+        (m, t) => ops.translateShape(m, t.layer, t.id, dx, dy),
+        base,
+      );
     }
   }
 }
 
 /**
  * The editing state for the Studio: the map, its undo history, the selection, the drag in
- * progress, and the shape being painted. It has no DOM and no rendering; the canvas and panels
- * read it and call into it.
+ * progress, the shape being painted, and the layer and snapping settings. It has no DOM and no
+ * rendering; the canvas and panels read it and call into it.
  *
  * A drag is one undo step. While it runs, `map` shows the drag's draft, and the history is
  * untouched until `endDrag`. Cancelling a drag leaves no step.
  *
  * A painted shape is also one step, made when it is finished. Its points wait in `pending`
  * until then, so Ctrl+Z first removes the last pending point.
+ *
+ * Layer visibility and lock are authoring views, not map data: a hidden layer is only hidden
+ * from `display`, and a locked layer cannot be picked. A shape's own lock is map data, and it
+ * is saved with the map.
  */
 export class Editor {
   private timeline: history.History<SourceMap>;
   private gesture: { readonly drag: Drag; readonly base: SourceMap } | null =
     null;
   private draft: SourceMap | null = null;
+  /** The primary selection: the last shape chosen, and a point on it when one is picked. */
   private sel: Selection | null = null;
+  /** Other shapes in a multi-selection, in the order they were chosen. */
+  private extra: Target[] = [];
   private toolState: Tool = 'select';
   private pending: readonly Pt[] = [];
   private river: number = IMPORT.riverWidthDefault;
+  private snapOn = true;
+  private readonly hidden = new Set<EditableLayer>();
+  private readonly locked = new Set<EditableLayer>();
+  private displayCache: {
+    base: SourceMap;
+    key: string;
+    value: SourceMap;
+  } | null = null;
   private readonly listeners = new Set<() => void>();
 
   constructor(map: SourceMap) {
     this.timeline = history.createHistory(map);
   }
 
-  /** The map to draw: the drag's draft while dragging, otherwise the last committed state. */
+  /** The map to edit and save: the drag's draft while dragging, otherwise the last committed state. */
   get map(): SourceMap {
     return this.draft ?? this.timeline.present;
   }
 
+  /** The map to draw: `map` with the hidden layers emptied. Cached, so it changes only with the map. */
+  get display(): SourceMap {
+    const base = this.map;
+    const key = [...this.hidden].sort().join(',');
+    const cache = this.displayCache;
+    if (cache && cache.base === base && cache.key === key) return cache.value;
+    let value = base;
+    for (const layer of this.hidden) value = ops.replaceLayer(value, layer, []);
+    this.displayCache = { base, key, value };
+    return value;
+  }
+
   get selection(): Selection | null {
     return this.sel;
+  }
+
+  /** Every selected shape, the primary one last. */
+  get selectedShapes(): Target[] {
+    return this.sel ? [...this.extra, toTarget(this.sel)] : [...this.extra];
   }
 
   get tool(): Tool {
@@ -131,6 +182,18 @@ export class Editor {
   /** Width in tiles for the next river. */
   get riverWidth(): number {
     return this.river;
+  }
+
+  get snapping(): boolean {
+    return this.snapOn;
+  }
+
+  get hiddenLayers(): ReadonlySet<EditableLayer> {
+    return this.hidden;
+  }
+
+  get lockedLayers(): ReadonlySet<EditableLayer> {
+    return this.locked;
   }
 
   /** True when the current tool makes a closed shape, which a click on its first point closes. */
@@ -165,25 +228,103 @@ export class Editor {
     this.gesture = null;
     this.draft = null;
     this.sel = null;
+    this.extra = [];
     this.pending = [];
+    this.hidden.clear();
+    this.locked.clear();
     this.emit();
   }
 
+  /** Selects one point or one whole shape, replacing any multi-selection. */
   select(sel: Selection | null): void {
     this.sel = sel;
+    this.extra = [];
     this.settle();
     this.emit();
+  }
+
+  /** Shapes in layers that are shown and not locked, and that pass `keep`. */
+  private matching(keep: (item: EditItem) => boolean): Target[] {
+    const out: Target[] = [];
+    for (const { layer, item } of listItems(this.timeline.present)) {
+      if (this.hidden.has(layer) || this.locked.has(layer)) continue;
+      if (keep(item)) out.push({ layer, id: item.id });
+    }
+    return out;
+  }
+
+  /** How many shapes are shorter than `max` tiles, for the length slider. */
+  shortCount(max: number): number {
+    return this.matching((item) => lengthOf(item) < max).length;
+  }
+
+  /** Selects the shapes fully inside a box. With `additive`, they join the current selection. */
+  selectInRect(rect: Rect, additive: boolean): void {
+    this.choose(
+      this.matching((item) => insideRect(item, rect)),
+      additive,
+    );
+  }
+
+  /** Selects every shape shorter than `max` tiles, replacing the selection. */
+  selectShorterThan(max: number): void {
+    this.choose(
+      this.matching((item) => lengthOf(item) < max),
+      false,
+    );
+  }
+
+  private choose(found: readonly Target[], additive: boolean): void {
+    const base = additive ? this.selectedShapes : [];
+    const kept = base.filter((t) => !found.some((f) => sameTarget(f, t)));
+    this.assignShapes([...kept, ...found]);
+    this.emit();
+  }
+
+  /** Adds a shape to the selection, or takes it out when it is already selected. */
+  toggleShape(target: Target): void {
+    const list = this.selectedShapes;
+    const at = list.findIndex((t) => sameTarget(t, target));
+    this.assignShapes(
+      at >= 0 ? list.filter((_, i) => i !== at) : [...list, target],
+    );
+    this.emit();
+  }
+
+  /** Points the primary selection at the last shape of `list`, and the rest at the others. */
+  private assignShapes(list: readonly Target[]): void {
+    if (list.length === 0) {
+      this.sel = null;
+      this.extra = [];
+    } else {
+      const last = list[list.length - 1]!;
+      this.sel = { layer: last.layer, id: last.id, index: null };
+      this.extra = list.slice(0, -1);
+    }
+    this.settle();
+  }
+
+  /**
+   * Picks what lies under a point, ignoring hidden and locked layers. The primary selection's
+   * handles and anchors are the ones offered first.
+   */
+  pick(at: Pt, tol: number): Hit | null {
+    let map = this.timeline.present;
+    for (const layer of new Set([...this.hidden, ...this.locked])) {
+      map = ops.replaceLayer(map, layer, []);
+    }
+    return hitTest(map, at, tol, this.sel ? toTarget(this.sel) : null);
   }
 
   beginDrag(hit: Hit, at: Pt): void {
     const base = this.timeline.present;
     const target: Target = { layer: hit.layer, id: hit.id };
     let drag: Drag;
-    let index: number | null = null;
     if (hit.kind === 'point') {
       const pos = anchorOf(base, target, hit.index);
       if (!pos) return;
-      index = hit.index;
+      this.extra = [];
+      this.sel = { layer: target.layer, id: target.id, index: hit.index };
       drag = {
         kind: 'point',
         target,
@@ -193,7 +334,8 @@ export class Editor {
     } else if (hit.kind === 'handle') {
       const pos = handleOf(base, target, hit.index, hit.which);
       if (!pos) return;
-      index = hit.index;
+      this.extra = [];
+      this.sel = { layer: target.layer, id: target.id, index: hit.index };
       drag = {
         kind: 'handle',
         target,
@@ -202,24 +344,31 @@ export class Editor {
         offset: offsetBetween(at, pos),
       };
     } else {
-      // Edges and insides both move the whole shape.
-      drag = { kind: 'body', target, start: at };
+      // Edges and insides move the whole shape. Grabbing a shape already in the selection moves
+      // all of them; grabbing any other shape selects it alone first.
+      const group = this.selectedShapes;
+      const targets = group.some((t) => sameTarget(t, target))
+        ? group
+        : [target];
+      if (targets !== group) this.assignShapes([target]);
+      else if (this.sel)
+        this.sel = { layer: this.sel.layer, id: this.sel.id, index: null };
+      drag = { kind: 'body', targets, start: at };
     }
-    this.sel = { layer: target.layer, id: target.id, index };
     this.gesture = { drag, base };
     this.draft = null;
     this.emit();
   }
 
+  /** The grid step for snapping, or 0 when snapping is off. */
+  private get step(): number {
+    return this.snapOn ? EDIT.snapStep : 0;
+  }
+
   dragTo(at: Pt): void {
     if (!this.gesture) return;
     const current = this.draft ?? this.gesture.base;
-    const next = applyDrag(
-      this.gesture.base,
-      this.gesture.drag,
-      at,
-      EDIT.snapStep,
-    );
+    const next = applyDrag(this.gesture.base, this.gesture.drag, at, this.step);
     if (next === current) return;
     this.draft = next;
     this.emit();
@@ -281,6 +430,30 @@ export class Editor {
     this.apply((m) => ops.deletePoint(m, layer, id, index));
   }
 
+  /** Removes every selected shape that is not locked. */
+  deleteSelectedShapes(): void {
+    const present = this.timeline.present;
+    const targets = this.selectedShapes.filter((t) => !isLocked(present, t));
+    if (targets.length === 0) return;
+    this.apply((m) =>
+      targets.reduce((acc, t) => ops.removeItem(acc, t.layer, t.id), m),
+    );
+    this.assignShapes([]);
+    this.emit();
+  }
+
+  /** Locks or unlocks every selected shape. The lock is saved with the map. */
+  setShapesLocked(locked: boolean): void {
+    const targets = this.selectedShapes;
+    if (targets.length === 0) return;
+    this.apply((m) =>
+      targets.reduce(
+        (acc, t) => ops.setShapeLocked(acc, t.layer, t.id, locked),
+        m,
+      ),
+    );
+  }
+
   /** Adds a point on segment `segment`, and selects it if the shape changed. */
   insertOnSegment(
     layer: Selection['layer'],
@@ -291,26 +464,37 @@ export class Editor {
     const before = findItem(this.timeline.present, target)?.points.length ?? 0;
     this.apply((m) => ops.insertPoint(m, layer, id, segment));
     const after = findItem(this.timeline.present, target)?.points.length ?? 0;
+    this.extra = [];
     this.sel = { layer, id, index: after > before ? segment + 1 : null };
     this.settle();
     this.emit();
   }
 
+  /** Turns every selected shape about the centre of the group. */
   rotateSelected(degrees: number): void {
-    const s = this.sel;
-    if (!s) return;
-    const c = centreOf(this.timeline.present, s);
+    const targets = this.selectedShapes;
+    const c = groupCentre(this.timeline.present, targets);
     if (!c) return;
     const radians = (degrees * Math.PI) / 180;
-    this.apply((m) => ops.rotateShape(m, s.layer, s.id, c.x, c.y, radians));
+    this.apply((m) =>
+      targets.reduce(
+        (acc, t) => ops.rotateShape(acc, t.layer, t.id, c.x, c.y, radians),
+        m,
+      ),
+    );
   }
 
+  /** Scales every selected shape about the centre of the group. */
   scaleSelected(factor: number): void {
-    const s = this.sel;
-    if (!s) return;
-    const c = centreOf(this.timeline.present, s);
+    const targets = this.selectedShapes;
+    const c = groupCentre(this.timeline.present, targets);
     if (!c) return;
-    this.apply((m) => ops.scaleShape(m, s.layer, s.id, c.x, c.y, factor));
+    this.apply((m) =>
+      targets.reduce(
+        (acc, t) => ops.scaleShape(acc, t.layer, t.id, c.x, c.y, factor),
+        m,
+      ),
+    );
   }
 
   /** Switches tool. Points pending for the old tool are dropped. */
@@ -327,18 +511,38 @@ export class Editor {
     this.emit();
   }
 
-  /** Adds a point to the shape being painted, snapped to the grid. */
-  addPaintPoint(at: Pt): void {
-    if (this.toolState === 'select') return;
-    this.pending = [...this.pending, ops.snapPoint(at, EDIT.snapStep)];
+  setSnapping(on: boolean): void {
+    if (on === this.snapOn) return;
+    this.snapOn = on;
     this.emit();
   }
 
-  /**
-   * Makes the painted shape from the pending points and selects it. A shape with too few
-   * points is dropped without a step. The tool stays active, so several shapes can be painted in
-   * a row.
-   */
+  /** Shows or hides a layer. Shapes in a hidden layer leave the selection. */
+  toggleLayerVisible(layer: EditableLayer): void {
+    if (this.hidden.has(layer)) {
+      this.hidden.delete(layer);
+    } else {
+      this.hidden.add(layer);
+      this.assignShapes(this.selectedShapes.filter((t) => t.layer !== layer));
+    }
+    this.emit();
+  }
+
+  /** Locks or unlocks a layer for picking. A locked layer can still be shown and hidden. */
+  toggleLayerLocked(layer: EditableLayer): void {
+    if (this.locked.has(layer)) this.locked.delete(layer);
+    else this.locked.add(layer);
+    this.emit();
+  }
+
+  /** Adds a point to the shape being painted, snapped to the grid when snapping is on. */
+  addPaintPoint(at: Pt): void {
+    if (this.toolState === 'select') return;
+    this.pending = [...this.pending, ops.snapPoint(at, this.step)];
+    this.emit();
+  }
+
+  /** Makes the painted shape from the pending points and selects it; too few points make nothing. */
   finishPaint(): void {
     const tool = this.toolState;
     if (tool === 'select') return;
@@ -354,6 +558,7 @@ export class Editor {
     this.pending = [];
     if (built) {
       this.apply((m) => ops.addItem(m, built.layer, built.item));
+      this.extra = [];
       this.sel = { layer: built.layer, id: built.item.id, index: null };
     }
     this.settle();
@@ -374,21 +579,32 @@ export class Editor {
     this.emit();
   }
 
-  /** Keeps the selection valid after an undo, redo or edit. */
+  /** Keeps the selection valid after an undo, redo, edit or delete. */
   private settle(): void {
-    const s = this.sel;
-    if (!s) return;
-    const item = findItem(this.timeline.present, s);
-    if (!item) {
-      this.sel = null;
-      return;
+    const present = this.timeline.present;
+    if (this.sel) {
+      const item = findItem(present, this.sel);
+      if (!item) {
+        this.sel = null;
+      } else if (
+        this.sel.index !== null &&
+        this.sel.index >= item.points.length
+      ) {
+        this.sel = { layer: this.sel.layer, id: this.sel.id, index: null };
+      }
     }
-    if (s.index !== null && s.index >= item.points.length) {
-      this.sel = { layer: s.layer, id: s.id, index: null };
+    this.extra = this.extra.filter((t) => findItem(present, t) !== undefined);
+    if (!this.sel && this.extra.length > 0) {
+      const last = this.extra.pop()!;
+      this.sel = { layer: last.layer, id: last.id, index: null };
     }
   }
 
   private emit(): void {
     for (const listener of this.listeners) listener();
   }
+}
+
+function isLocked(map: SourceMap, target: Target): boolean {
+  return findItem(map, target)?.locked === true;
 }

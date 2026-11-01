@@ -32,6 +32,7 @@ const POLYLINE_LAYERS: ReadonlySet<EditableLayer> = new Set([
 ]);
 
 export function snapValue(value: number, step: number): number {
+  if (!(step > 0)) return value;
   const snapped = Math.round(value / step) * step;
   return Object.is(snapped, -0) ? 0 : snapped;
 }

@@ -8,13 +8,11 @@ export const PARK_LANDUSE = [
   'recreation_ground',
   'village_green',
 ] as const;
-export const RIVER_WATERWAYS = [
-  'river',
-  'canal',
-  'stream',
-  'drain',
-  'ditch',
-] as const;
+/**
+ * Waterways kept as strokes. Streams, drains and ditches are left out: they are narrower than
+ * the game's roads and make the map hard to edit, so they are not part of the game's water.
+ */
+export const RIVER_WATERWAYS = ['river', 'canal'] as const;
 
 /**
  * The Overpass QL for one area. The box is [west, south, east, north] in

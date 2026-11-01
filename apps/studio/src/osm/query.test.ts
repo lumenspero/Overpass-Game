@@ -18,8 +18,10 @@ describe('buildQuery', () => {
     expect(query).toContain('["natural"="coastline"]');
     expect(query).toContain('["highway"~"^(motorway|trunk)$"]');
     expect(query).toContain('["leisure"="park"]');
-    expect(query).toContain(
-      '["waterway"~"^(river|canal|stream|drain|ditch)$"]',
-    );
+    expect(query).toContain('["waterway"~"^(river|canal)$"]');
+  });
+
+  it('does not ask for streams, drains or ditches', () => {
+    expect(query).not.toMatch(/stream|drain|ditch/);
   });
 });

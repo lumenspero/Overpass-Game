@@ -17,9 +17,9 @@ import { MapPanel } from './map/map-panel.ts';
 import { loadRegion } from './osm/region.ts';
 import { Editor, type Selection } from './edit/editor.ts';
 import { attachInteraction } from './edit/interaction.ts';
-import { replaceLayer } from './edit/ops.ts';
+import { replaceLayer, type EditableLayer } from './edit/ops.ts';
 import { PAINT_SPECS, PAINT_TOOLS } from './edit/paint.ts';
-import type { Pt } from './edit/hit.ts';
+import type { Pt, Target } from './edit/hit.ts';
 import { PreviewCanvas } from './preview/preview-canvas.ts';
 import { searchPlaces, type PlaceCandidate } from './search/nominatim.ts';
 import { loadTerrain } from './terrain/load.ts';
@@ -71,9 +71,59 @@ function sameFrame(a: Frame, b: Frame): boolean {
   );
 }
 
+const LAYER_NAMES: readonly EditableLayer[] = [
+  'water',
+  'mountains',
+  'parks',
+  'spawnZones',
+  'motorwayGuide',
+  'starterRoads',
+];
+
+const LAYER_LABELS: Record<EditableLayer, string> = {
+  water: 'Water',
+  mountains: 'Mountains',
+  parks: 'Parks',
+  spawnZones: 'Spawn zones',
+  motorwayGuide: 'Motorway guide',
+  starterRoads: 'Starter roads',
+};
+
+/** One layer in the Layers panel: its name, a show/hide toggle, and a lock toggle. */
+function layerRow(editor: Editor | null, layer: EditableLayer): VNode {
+  const hidden = editor?.hiddenLayers.has(layer) ?? false;
+  const locked = editor?.lockedLayers.has(layer) ?? false;
+  return el(
+    'div',
+    { key: layer, class: 'layer-row' },
+    el('span', null, LAYER_LABELS[layer]),
+    el(
+      'button',
+      {
+        type: 'button',
+        class: hidden ? 'toggle' : 'toggle on',
+        'aria-pressed': hidden ? 'false' : 'true',
+        onClick: () => editor?.toggleLayerVisible(layer),
+      },
+      hidden ? 'Hidden' : 'Shown',
+    ),
+    el(
+      'button',
+      {
+        type: 'button',
+        class: locked ? 'toggle on' : 'toggle',
+        'aria-pressed': locked ? 'true' : 'false',
+        onClick: () => editor?.toggleLayerLocked(layer),
+      },
+      locked ? 'Locked' : 'Unlocked',
+    ),
+  );
+}
+
 const NO_POINTS: readonly Pt[] = [];
 
-function describeSelection(sel: Selection | null): string {
+function describeSelection(sel: Selection | null, count: number): string {
+  if (count > 1) return `${count} shapes selected.`;
   if (!sel) return 'Click a shape to select it.';
   return sel.index === null
     ? `Selected ${sel.id}.`
@@ -112,6 +162,7 @@ export function App(): VNode {
   const preview = useRef<PreviewCanvas | null>(null);
   const editor = useRef<Editor | null>(null);
   const [, setVersion] = useState(0);
+  const [shortMax, setShortMax] = useState(2);
 
   const pickPlace = (id: string): void => {
     const place = latestPlaces.current.find((p) => p.id === id);
@@ -182,7 +233,7 @@ export function App(): VNode {
 
   // Imported features show only while the frame is the one they were imported for.
   // The editor's map is the source, so edits show as they are made.
-  const editorMap = editor.current?.map ?? null;
+  const editorMap = editor.current?.display ?? null;
   const sourceForPreview =
     imported && frame && sameFrame(imported.frame, frame) ? editorMap : null;
   useEffect(() => {
@@ -190,9 +241,11 @@ export function App(): VNode {
   }, [sourceForPreview]);
 
   const selection = editor.current?.selection ?? null;
+  const shapes: Target[] = editor.current?.selectedShapes ?? [];
+  const shapesKey = shapes.map((t) => t.layer + ':' + t.id).join('|');
   useEffect(() => {
-    preview.current?.setEditState(sourceForPreview !== null, selection);
-  }, [sourceForPreview, selection]);
+    preview.current?.setEditState(sourceForPreview !== null, selection, shapes);
+  }, [sourceForPreview, selection, shapesKey]);
 
   // The shape being painted is drawn over the map.
   const tool = editor.current?.tool ?? 'select';
@@ -447,7 +500,7 @@ export function App(): VNode {
             el(
               'p',
               { class: 'frame-status', 'data-testid': 'edit-status' },
-              describeSelection(selection),
+              describeSelection(selection, shapes.length),
             ),
             el(
               'div',
@@ -524,6 +577,43 @@ export function App(): VNode {
                 'Grow 10%',
               ),
             ),
+
+            el(
+              'div',
+
+              { class: 'edit-row' },
+
+              el(
+                'button',
+                {
+                  type: 'button',
+                  disabled: selection === null,
+                  onClick: () => editor.current?.setShapesLocked(true),
+                },
+                'Lock shapes',
+              ),
+
+              el(
+                'button',
+                {
+                  type: 'button',
+                  disabled: selection === null,
+                  onClick: () => editor.current?.setShapesLocked(false),
+                },
+                'Unlock shapes',
+              ),
+            ),
+
+            el(
+              'button',
+              {
+                type: 'button',
+                disabled: selection === null,
+                onClick: () => editor.current?.deleteSelectedShapes(),
+              },
+              'Delete shapes',
+            ),
+
             el(
               'p',
               { class: 'frame-status' },
@@ -596,6 +686,78 @@ export function App(): VNode {
                     ' so far). Double-click or Enter finishes; click the first point to close; Escape cancels.',
                 )
               : null,
+          )
+        : null,
+      imported
+        ? el(
+            'section',
+            { class: 'select-controls' },
+            el('h2', null, 'Select and view'),
+            el(
+              'p',
+              { class: 'frame-status' },
+              'Drag on empty space to box-select the shapes fully inside it. Shift adds to the selection. Wheel zooms; middle-drag pans.',
+            ),
+            el(
+              'label',
+              { for: 'short-max' },
+              'Shorter than ' +
+                shortMax.toFixed(1) +
+                ' tiles: ' +
+                (editor.current?.shortCount(shortMax) ?? 0) +
+                ' shapes',
+            ),
+            el('input', {
+              id: 'short-max',
+              type: 'range',
+              min: 0.5,
+              max: 20,
+              step: 0.5,
+              value: shortMax,
+              onInput: (e: Event) =>
+                setShortMax(
+                  Number((e.currentTarget as HTMLInputElement).value),
+                ),
+            }),
+            el(
+              'div',
+              { class: 'edit-row' },
+              el(
+                'button',
+                {
+                  type: 'button',
+                  disabled: !editor.current,
+                  onClick: () => editor.current?.selectShorterThan(shortMax),
+                },
+                'Select those',
+              ),
+              el(
+                'button',
+                { type: 'button', onClick: () => preview.current?.resetView() },
+                'Reset zoom',
+              ),
+            ),
+          )
+        : null,
+      imported
+        ? el(
+            'section',
+            { class: 'layers' },
+            el('h2', null, 'Layers'),
+            ...LAYER_NAMES.map((layer) => layerRow(editor.current, layer)),
+            el(
+              'label',
+              { class: 'snap-toggle' },
+              el('input', {
+                type: 'checkbox',
+                checked: editor.current?.snapping ?? true,
+                onChange: (e: Event) =>
+                  editor.current?.setSnapping(
+                    (e.currentTarget as HTMLInputElement).checked,
+                  ),
+              }),
+              ' Snap to grid',
+            ),
           )
         : null,
       el('p', { class: 'message', role: 'status' }, message),
