@@ -293,7 +293,7 @@ Done when: you can build a complete map from import to playable export without e
 
 **M9a · Parking lots and building kinds** (sub-milestone; the driving behaviour in M9 depends on it)
 
-- [ ] Destinations are 2×2 buildings; houses stay 1×1
+- [ ] Destinations are 3×3 buildings; houses stay 1×1
 - [ ] Two destination kinds: square (slower demand, starter to mid game) and round (higher demand, mid to late game)
 - [ ] Parking lots: each building sits on a small lot whose inlet joins the road; a double-building lot (later game) has two inlets, either usable
 - [ ] Cars stop in front of the building to finish the trip, then turn round and leave through the lot inlet

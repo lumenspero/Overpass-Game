@@ -2,52 +2,58 @@ import type { Side } from './buildings.ts';
 import type { Grid } from './grid.ts';
 
 /**
- * Destination parking lots (spec: Parking lots and building kinds, M9a). A standard lot is 3
- * tiles across and 2 deep. The destination's 2×2 building sits on one side of it, leaving an
- * open strip of 2 tiles on the other. The inlet is the strip tile that touches the road, so a
- * car drives in from the road through the inlet. Houses have no lot; they keep the entrance tile.
+ * Destination parking lots (spec: Parking lots and building kinds, M9a). A standard lot is 5
+ * tiles long and 3 deep. The road runs along one long edge. The destination's 3×3 building sits
+ * at one end of the lot, and the 2×3 strip at the other end is left open for the parking spaces
+ * and the turn. The inlet is the strip tile on the road edge, at the end farthest from the
+ * building. Houses have no lot; they keep the entrance tile.
  */
 
-/** Lot size across and deep, in tiles, when the road is on the north or south side. */
-export const LOT_ACROSS = 3;
-export const LOT_DEPTH = 2;
+/** The standard lot: along the road, and deep (from the road to the far edge), in tiles. */
+export const LOT_LENGTH = 5;
+export const LOT_DEPTH = 3;
+/** The destination building is square, at the end of the lot away from the strip. */
+export const BUILDING_SIZE = 3;
+/** The open strip at the other end: the tiles left over once the building is placed along the lot. */
+export const STRIP_LENGTH = LOT_LENGTH - BUILDING_SIZE;
 
 export interface Lot {
-  /** The 2×2 building's tiles. */
+  /** The 3×3 building's tiles. */
   footprint: number[];
-  /** All six tiles of the lot: the building's four and the open strip's two. */
+  /** All fifteen tiles of the lot. */
   tiles: number[];
-  /** The open tile that touches the road. Cars drive in here. */
+  /** The open strip's tiles, which hold the parking spaces and the turn. */
+  strip: number[];
+  /** The strip tile on the road edge, at the end farthest from the building. Cars drive in here. */
   inlet: number;
   /** The road tile the inlet joins. */
   road: number;
-  /** The open tile beside the building, where a car stops to finish its trip. */
-  stop: number;
 }
 
 /**
- * A point in the lot's own frame. `u` runs across the lot (0 to 2), and `v` runs from the
- * building side (0 and 1) to the road side (-1). Each side maps this frame onto the map.
+ * A point in the lot's own frame, with the road on the north side. `a` runs along the road
+ * (0 to 4), with 0 at the strip end. `d` runs away from the road (0 is the road edge, 2 the far
+ * edge). The road is at d = -1. Each side maps this frame onto the map.
  */
 interface Frame {
-  u: number;
-  v: number;
+  a: number;
+  d: number;
 }
 
 /**
  * Maps a point in the lot frame to a box offset, where the box's top-left is (0, 0). A north or
- * south road gives a 3×2 box; an east or west road gives a 2×3 box.
+ * south road gives a 5×3 box; an east or west road gives a 3×5 box.
  */
-function toBox(side: Side, { u, v }: Frame): { x: number; y: number } {
+function toBox(side: Side, { a, d }: Frame): { x: number; y: number } {
   switch (side) {
     case 'n':
-      return { x: u, y: v };
+      return { x: a, y: d };
     case 's':
-      return { x: 2 - u, y: 1 - v };
+      return { x: LOT_LENGTH - 1 - a, y: LOT_DEPTH - 1 - d };
     case 'e':
-      return { x: 1 - v, y: u };
+      return { x: LOT_DEPTH - 1 - d, y: a };
     case 'w':
-      return { x: v, y: 2 - u };
+      return { x: d, y: LOT_LENGTH - 1 - a };
   }
 }
 
@@ -58,8 +64,8 @@ function toBox(side: Side, { u, v }: Frame): { x: number; y: number } {
 export function lotAt(grid: Grid, origin: number, side: Side): Lot | null {
   const ox = origin % grid.cols;
   const oy = Math.floor(origin / grid.cols);
-  const tileOf = (f: Frame): number | null => {
-    const b = toBox(side, f);
+  const tileOf = (a: number, d: number): number | null => {
+    const b = toBox(side, { a, d });
     const col = ox + b.x;
     const row = oy + b.y;
     if (col < 0 || row < 0 || col >= grid.cols || row >= grid.rows) return null;
@@ -67,18 +73,19 @@ export function lotAt(grid: Grid, origin: number, side: Side): Lot | null {
   };
   const footprint: number[] = [];
   const tiles: number[] = [];
-  for (let u = 0; u < LOT_ACROSS; u++) {
-    for (let v = 0; v < LOT_DEPTH; v++) {
-      const t = tileOf({ u, v });
+  const strip: number[] = [];
+  for (let a = 0; a < LOT_LENGTH; a++) {
+    for (let d = 0; d < LOT_DEPTH; d++) {
+      const t = tileOf(a, d);
       if (t === null) return null;
       tiles.push(t);
-      if (u < 2) footprint.push(t);
+      if (a < STRIP_LENGTH) strip.push(t);
+      else footprint.push(t);
     }
   }
-  const road = tileOf({ u: 2, v: -1 });
-  if (road === null) return null;
-  const inlet = tileOf({ u: 2, v: 0 });
-  const stop = tileOf({ u: 2, v: 1 });
-  if (inlet === null || stop === null) return null;
-  return { footprint, tiles, inlet, road, stop };
+  // The inlet is on the road edge (d = 0) at the strip end (a = 0), the farthest point from the building.
+  const road = tileOf(0, -1);
+  const inlet = tileOf(0, 0);
+  if (road === null || inlet === null) return null;
+  return { footprint, tiles, strip, inlet, road };
 }

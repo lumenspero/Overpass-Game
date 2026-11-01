@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Side } from '../src/buildings.ts';
 import { createGrid, type Grid } from '../src/grid.ts';
-import { LOT_ACROSS, LOT_DEPTH, lotAt } from '../src/lots.ts';
+import {
+  BUILDING_SIZE,
+  LOT_DEPTH,
+  LOT_LENGTH,
+  lotAt,
+  STRIP_LENGTH,
+} from '../src/lots.ts';
 
 const SIDES: Side[] = ['n', 'e', 's', 'w'];
 
@@ -12,52 +18,72 @@ function touches(grid: Grid, a: number, b: number): boolean {
   return dx + dy === 1;
 }
 
-/** A 9×9 map, with the lot's top-left at the centre so every side has room. */
+/** A 9×9 map, with the lot's top-left at (3, 3) so every side has room for its road. */
 const grid = createGrid(9, 9);
 const origin = 3 * grid.cols + 3;
 
 describe('lotAt', () => {
-  it('is a 3×2 lot (or 2×3 when the road is east or west) with a 2×2 building', () => {
-    expect(LOT_ACROSS).toBe(3);
-    expect(LOT_DEPTH).toBe(2);
+  it('is 5 long and 3 deep, with a 3×3 building and a 2×3 strip', () => {
+    expect(LOT_LENGTH).toBe(5);
+    expect(LOT_DEPTH).toBe(3);
+    expect(BUILDING_SIZE).toBe(3);
+    expect(STRIP_LENGTH).toBe(2);
     for (const side of SIDES) {
       const lot = lotAt(grid, origin, side);
       expect(lot).not.toBeNull();
       if (!lot) continue;
-      expect(lot.tiles).toHaveLength(6);
-      expect(new Set(lot.tiles).size).toBe(6);
-      expect(lot.footprint).toHaveLength(4);
+      expect(lot.tiles).toHaveLength(15);
+      expect(new Set(lot.tiles).size).toBe(15);
+      expect(lot.footprint).toHaveLength(9);
+      expect(lot.strip).toHaveLength(6);
     }
   });
 
-  it('keeps the building inside the lot, and the open strip outside the building', () => {
+  it('splits the lot into the building and the strip, with nothing shared', () => {
     for (const side of SIDES) {
       const lot = lotAt(grid, origin, side);
       if (!lot) throw new Error(`no lot for ${side}`);
-      for (const t of lot.footprint) expect(lot.tiles).toContain(t);
-      const open = lot.tiles.filter((t) => !lot.footprint.includes(t));
-      expect(open).toHaveLength(2);
-      expect(open).toContain(lot.inlet);
-      expect(open).toContain(lot.stop);
+      expect([...lot.footprint, ...lot.strip].sort((a, b) => a - b)).toEqual(
+        [...lot.tiles].sort((a, b) => a - b),
+      );
     }
   });
 
-  it('puts the inlet on the road side of the lot, touching the road', () => {
+  it('puts the inlet in the strip, on the road edge, touching the road', () => {
     for (const side of SIDES) {
       const lot = lotAt(grid, origin, side);
       if (!lot) throw new Error(`no lot for ${side}`);
-      expect(lot.tiles).toContain(lot.inlet);
+      expect(lot.strip).toContain(lot.inlet);
       expect(lot.tiles).not.toContain(lot.road);
       expect(touches(grid, lot.inlet, lot.road)).toBe(true);
     }
   });
 
-  it('puts the stop beside the building, not on the road', () => {
+  it('puts the inlet at the strip end farthest from the building', () => {
     for (const side of SIDES) {
       const lot = lotAt(grid, origin, side);
       if (!lot) throw new Error(`no lot for ${side}`);
-      expect(lot.footprint.some((f) => touches(grid, f, lot.stop))).toBe(true);
-      expect(lot.stop).not.toBe(lot.inlet);
+      // The farthest strip tile from any building tile, by its distance along the lot.
+      const distance = (t: number, buildingTiles: number[]) =>
+        Math.min(
+          ...buildingTiles.map(
+            (b) =>
+              Math.abs((t % grid.cols) - (b % grid.cols)) +
+              Math.abs(Math.floor(t / grid.cols) - Math.floor(b / grid.cols)),
+          ),
+        );
+      const inletDistance = distance(lot.inlet, lot.footprint);
+      for (const s of lot.strip) {
+        expect(distance(s, lot.footprint)).toBeLessThanOrEqual(inletDistance);
+      }
+    }
+  });
+
+  it('keeps the building away from the road, so the strip is between them', () => {
+    for (const side of SIDES) {
+      const lot = lotAt(grid, origin, side);
+      if (!lot) throw new Error(`no lot for ${side}`);
+      expect(lot.footprint.some((f) => touches(grid, f, lot.road))).toBe(false);
     }
   });
 

@@ -184,20 +184,22 @@ _Planned for M14 with the spawn system. Not built yet._
 _Planned for M9a. Not built yet. Where this conflicts with the Buildings, Cars and routing, and Demand entries above, this section replaces them once M9a lands._
 
 - **Houses:** 1×1 square, as now. Houses start and end trips.
-- **Destinations:** 2×2 tiles. Two kinds:
+- **Destinations:** 3×3 tiles. Two kinds:
   - **Square:** slower demand, from the starter game to the mid game.
   - **Round:** higher demand, from the mid game to the late game.
     Each kind has its own demand interval, to be tuned. Square is always the slower of the two. `approximated`
-- **Lot:** each destination sits on a standard lot, 3 tiles across and 2 deep. Its 2×2 building is shifted to one side, leaving an open strip of 2 tiles on the other. The inlet is the strip tile that touches the road, and it is the only connection. Cars drive from the road through the inlet into the lot. Houses have no lot; they keep the entrance tile.
+- **Lot:** each destination sits on a standard lot, 5 tiles long and 3 deep. The road runs along one long edge. The 3×3 building sits at one end of the lot, and the 2×3 strip at the other end is left open for the parking spaces and the turn. The inlet is the strip tile on the road edge, at the end farthest from the building, and it is the only connection. Cars drive from the road through the inlet into the lot. Houses have no lot; they keep the entrance tile. `approximated`
 - **Double lot:** a later-game lot has two inlets and room for two buildings. It starts with one building placed. The other space is an empty square outline inside the lot, drawn in the lot's colours, until a second building is added to it. A car may use either inlet.
-- **Parking:** a car drives into the lot and stops in front of its building, where it finishes the trip. It stops at a set spot in the lot.
-- **Leaving:** after finishing, the car turns round in the lot and drives out through an inlet. The turn is a visible manoeuvre, not an instant change of direction.
+- **Parking:** the 2×3 open strip holds the parking spaces, which are diagonal. A car drives in through the inlet and parks in a free space, where it finishes the trip.
+- **Leaving:** after finishing, the car turns in the lot and drives out through the inlet on the opposite lane to the one it came in on. The turn is a visible manoeuvre, not an instant change of direction.
 - **Waiting:** a car that finds the lot's spot taken waits in the lot, not on the road. `approximated`
 
 **Open for M9a:**
 
 - Demand interval for each kind, and the weeks each kind appears.
-- The turnaround path, and whether a lot needs a minimum size to turn in.
+- Parking spaces: how many, and where in the 2×3 strip.
+- The turn: where the car turns in the strip between the inlet and its space.
+- Whether a lot's diagonal space is one per destination, or one per building in a double lot.
 - The week double lots appear.
 - How and when the second building is added to a double lot: what triggers it, what it costs, and which kind it can be.
 - Map format and Studio placement for 2×2 footprints and lot inlets.
