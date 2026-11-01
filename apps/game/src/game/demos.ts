@@ -17,8 +17,7 @@ import {
  * isolation. Pick one from the debug panel; "Test map" returns to the normal map.
  */
 
-export type DemoId =
-  'bridge' | 'tunnel' | 'motorway' | 'roundabout' | 'light' | 'destination';
+export type DemoId = 'bridge' | 'tunnel' | 'motorway' | 'roundabout' | 'light';
 
 export interface Demo {
   id: DemoId;
@@ -51,11 +50,6 @@ export const DEMOS: readonly Demo[] = [
     id: 'light',
     title: 'Traffic light',
     hint: 'Demo · Traffic light (L): press L, then click the crossing.',
-  },
-  {
-    id: 'destination',
-    title: 'Destination upgrade',
-    hint: 'Demo · Destination upgrade (U): press U, then click the destination. It has 3 pins waiting.',
   },
 ];
 
@@ -154,11 +148,6 @@ export function buildDemo(id: DemoId): SimState {
     building(sim, 'destination', 0, 11, 6, 'w');
     building(sim, 'house', 1, 7, 2, 's');
     building(sim, 'destination', 1, 7, 10, 'n');
-  } else {
-    road(sim, line([3, 5], [8, 5]));
-    building(sim, 'house', 0, 2, 5, 'e');
-    const dest = building(sim, 'destination', 0, 9, 5, 'w');
-    sim.demand[dest].pins = 3;
   }
   sim.stock[id] = 1;
   return sim;

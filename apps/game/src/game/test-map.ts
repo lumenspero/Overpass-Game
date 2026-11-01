@@ -13,6 +13,23 @@ export const TEST_MAP: CompiledMap = parseCompiledMap(testMapJson);
 export const TEST_MAP_COLS = TEST_MAP.cols;
 export const TEST_MAP_ROWS = TEST_MAP.rows;
 
+let activeMap: CompiledMap | null = null;
+
+/** Sets the map the game plays, or null for the built-in test map. Called once, at start-up. */
+export function setActiveMap(map: CompiledMap | null): void {
+  activeMap = map;
+}
+
+/** The map being played: the one set at start-up, otherwise the test map. */
+export function playedMap(): CompiledMap {
+  return activeMap ?? TEST_MAP;
+}
+
+/** True only for the built-in test map, the one map with hand-placed buildings. */
+export function isTestMap(): boolean {
+  return activeMap === null;
+}
+
 export interface TestBuilding {
   kind: 'house' | 'destination';
   color: number;
@@ -40,20 +57,20 @@ export const TEST_BUILDINGS: TestBuilding[] = [
  * kept so callers read the same as before; the districts always come from the map file.
  */
 export function buildTestDistricts(): number[] {
-  return TEST_MAP.districts.slice();
+  return playedMap().districts.slice();
 }
 
 /** A fresh grid for the test map, built from the compiled file. */
 export function buildTestGrid(): Grid {
-  return toSimMap(TEST_MAP).grid;
+  return toSimMap(playedMap()).grid;
 }
 
-/** The test map's rules, passed to the sim (spec: Destination upgrades, growth and rule hooks). */
+/** The test map's rules, passed to the sim (spec: Destination growth and rule hooks). */
 export function testMapRules(): MapRule[] {
-  return toSimMap(TEST_MAP).rules;
+  return toSimMap(playedMap()).rules;
 }
 
 /** The test map's motorway guide: clipped lines in grid units, for the guide overlay. */
 export function testMapGuide(): { x: number; y: number }[][] {
-  return TEST_MAP.motorwayGuide;
+  return playedMap().motorwayGuide;
 }

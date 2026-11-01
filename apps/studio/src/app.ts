@@ -17,7 +17,7 @@ import {
 } from './geo/frame.ts';
 import type { Metres } from './geo/mercator.ts';
 import { convertFeatures } from './import/convert.ts';
-import { buildSourceMap } from './import/source-map.ts';
+import { buildSourceMap, slugify } from './import/source-map.ts';
 import { MapPanel } from './map/map-panel.ts';
 import { loadRegion } from './osm/region.ts';
 import { Editor, type Selection } from './edit/editor.ts';
@@ -395,9 +395,63 @@ export function App(): VNode {
     }
   }
 
+  /** Writes the open map to maps/. Play then opens the game on it in a new tab. */
+  async function exportOpenMap(play: boolean): Promise<void> {
+    const ed = editor.current;
+    if (!ed) return;
+    // Opened before the request: a tab opened after an await can be blocked as a popup.
+    const tab = play ? window.open('', '_blank') : null;
+    setMessage(play ? 'Exporting and opening the game…' : 'Exporting…');
+    try {
+      const res = await fetch('/api/export-map', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(ed.display),
+      });
+      let body: { error?: string; file?: string; playUrl?: string };
+      try {
+        body = await res.json();
+      } catch {
+        throw new Error(
+          'Export needs the Studio dev server running (pnpm dev:studio).',
+        );
+      }
+      if (!res.ok || !body.playUrl || !body.file) {
+        throw new Error(body.error ?? 'Export failed.');
+      }
+      // Hidden layers are left out of the export, so say so.
+      const left =
+        ed.hiddenLayers.size > 0 ? ' Hidden layers were left out.' : '';
+      if (!play) {
+        setMessage(`Exported ${body.file}.${left}`);
+      } else if (tab) {
+        tab.location.href = body.playUrl;
+        setMessage(`Exported ${body.file} and opened the game.${left}`);
+      } else {
+        setMessage(
+          `Exported ${body.file}.${left} Your browser blocked the new tab: open ${body.playUrl}`,
+        );
+      }
+    } catch (err) {
+      tab?.close();
+      setMessage(err instanceof Error ? err.message : 'Export failed.');
+    }
+  }
+
   async function onImport(): Promise<void> {
     const current = latestFrame.current;
     if (!current || !isInsideContinentalUS(current)) return;
+    // A draft is keyed by the place's slug, so a fresh import would replace it. Ask first.
+    const name = placeName ?? 'Imported map';
+    if (
+      drafts.some((d) => d.id === slugify(name)) &&
+      !window.confirm(
+        `A draft of ${name} already exists. Importing again replaces it. Continue?`,
+      )
+    ) {
+      setMessage('Import cancelled. The existing draft is kept.');
+      return;
+    }
     setImporting(true);
     setMessage('Fetching OpenStreetMap data…');
     try {
@@ -561,6 +615,24 @@ export function App(): VNode {
           'button',
           { type: 'button', disabled: !importable, onClick: onImport },
           importing ? 'Importing…' : 'Import OpenStreetMap data',
+        ),
+        el(
+          'button',
+          {
+            type: 'button',
+            disabled: !imported,
+            onClick: () => exportOpenMap(false),
+          },
+          'Export to maps/',
+        ),
+        el(
+          'button',
+          {
+            type: 'button',
+            disabled: !imported,
+            onClick: () => exportOpenMap(true),
+          },
+          'Play this map',
         ),
         el(
           'label',

@@ -153,6 +153,7 @@ export const CompiledMapSchema = z
     outlines: z.object({
       water: z.array(OutlinePathSchema),
       mountains: z.array(OutlinePathSchema),
+      parks: z.array(OutlinePathSchema),
     }),
     /** Guide lines in grid units, already clipped to the grid (drawn smooth, not stepped). */
     motorwayGuide: z.array(z.array(Vec2).min(2)),

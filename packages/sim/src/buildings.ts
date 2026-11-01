@@ -28,8 +28,6 @@ export interface Demand {
   cooldown: number;
   /** Ticks left before this destination ends the game. 0 when it is not overflowing. */
   overflow: number;
-  /** Destination upgrades placed here. */
-  upgrades: number;
   /** Expansions this destination has grown through. */
   growth: number;
 }
@@ -111,7 +109,6 @@ export function placeBuilding(
       pins: 0,
       cooldown: tuning.DEMAND_INTERVAL_TICKS,
       overflow: 0,
-      upgrades: 0,
       growth: 0,
     };
   }

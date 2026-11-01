@@ -2,10 +2,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   createSim,
   generateDemand,
-  growDestinations,
   placeBuilding,
-  placeDestinationUpgrade,
   resetTuning,
+  step,
   tuning,
   WEEK_TICKS,
   type SimState,
@@ -43,45 +42,21 @@ function pinOnNextTick(sim: SimState, destId: number): number {
   return demand.cooldown;
 }
 
-describe('destination upgrades', () => {
-  it('raise the pin rate, so the next pin comes sooner', () => {
+describe('destination growth', () => {
+  it('raises every destination once a week, in every week', () => {
     const { sim, destId } = town();
-    sim.stock.destination = 1;
-    expect(pinOnNextTick(sim, destId)).toBe(tuning.DEMAND_INTERVAL_TICKS);
-    placeDestinationUpgrade(sim, destId);
-    const expected = Math.round(
-      tuning.DEMAND_INTERVAL_TICKS / (1 + tuning.DEMAND_UPGRADE_STEP),
-    );
-    expect(pinOnNextTick(sim, destId)).toBe(expected);
-  });
-
-  it('refuse a house, a full destination, and an empty stock', () => {
-    const { sim, destId, houseId } = town();
-    expect(placeDestinationUpgrade(sim, houseId)).toEqual({
-      ok: false,
-      reason: 'not-a-destination',
-    });
-    sim.stock.destination = 0;
-    expect(placeDestinationUpgrade(sim, destId)).toEqual({
-      ok: false,
-      reason: 'no-stock',
-    });
-    sim.stock.destination = 10;
-    for (let k = 0; k < tuning.DESTINATION_MAX_UPGRADES; k++) {
-      expect(placeDestinationUpgrade(sim, destId)).toEqual({ ok: true });
-    }
-    expect(placeDestinationUpgrade(sim, destId)).toEqual({
-      ok: false,
-      reason: 'max-upgrades',
-    });
-  });
-});
-
-describe('growth', () => {
-  it('raises every destination when a district opens', () => {
-    const { sim, destId } = town();
-    growDestinations(sim);
+    sim.tick = WEEK_TICKS - 1;
+    step(sim);
     expect(sim.demand[destId].growth).toBe(1);
+    sim.tick = 2 * WEEK_TICKS - 1;
+    step(sim);
+    expect(sim.demand[destId].growth).toBe(2);
+  });
+
+  it('makes the next pin come sooner as demand grows', () => {
+    const { sim, destId } = town();
+    expect(pinOnNextTick(sim, destId)).toBe(tuning.DEMAND_INTERVAL_TICKS);
+    sim.demand[destId].growth = 1;
     const expected = Math.round(
       tuning.DEMAND_INTERVAL_TICKS / (1 + tuning.DEMAND_GROWTH_STEP),
     );

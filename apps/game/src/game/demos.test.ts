@@ -49,12 +49,4 @@ describe('the scripted demos', () => {
       expect(roadLinks(sim.roads, sim.links, at(7, 6)).length).toBe(4);
     }
   });
-
-  it('the destination demo starts with pins waiting to be served', () => {
-    const sim = buildDemo('destination');
-    const dest = sim.buildings.find((b) => b.kind === 'destination');
-    if (!dest) throw new Error('no destination');
-    expect(sim.demand[dest.id].pins).toBe(3);
-    expect(connected(sim)).toBe(true);
-  });
 });

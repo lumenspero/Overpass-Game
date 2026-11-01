@@ -79,13 +79,9 @@ export function updateOverflow(state: SimState): void {
   }
 }
 
-/** How much faster than the base rate a destination draws pins: upgrades and growth add to it. */
+/** How much faster than the base rate a destination draws pins: weekly growth adds to it. */
 export function demandRate(demand: Demand): number {
-  return (
-    1 +
-    demand.upgrades * tuning.DEMAND_UPGRADE_STEP +
-    demand.growth * tuning.DEMAND_GROWTH_STEP
-  );
+  return 1 + demand.growth * tuning.DEMAND_GROWTH_STEP;
 }
 
 /** Ticks between one pin and the next at this destination's rate. */
@@ -96,35 +92,10 @@ function cooldownFor(demand: Demand): number {
   );
 }
 
-/** Every destination grows by one step, as a new district opens. */
+/** Every destination grows by one step. Called once a week. */
 export function growDestinations(state: SimState): void {
   for (const b of state.buildings) {
     const demand = state.demand[b.id];
     if (b.kind === 'destination' && demand) demand.growth += 1;
   }
-}
-
-export type DestinationReason =
-  'not-a-destination' | 'max-upgrades' | 'no-stock';
-
-export type DestinationResult =
-  { ok: true } | { ok: false; reason: DestinationReason };
-
-/** Places a destination upgrade on a destination building, taking one from stock. */
-export function placeDestinationUpgrade(
-  state: SimState,
-  buildingId: number,
-): DestinationResult {
-  const building = state.buildings[buildingId];
-  const demand = state.demand[buildingId];
-  if (!building || building.kind !== 'destination' || !demand) {
-    return { ok: false, reason: 'not-a-destination' };
-  }
-  if (demand.upgrades >= tuning.DESTINATION_MAX_UPGRADES) {
-    return { ok: false, reason: 'max-upgrades' };
-  }
-  if (state.stock.destination < 1) return { ok: false, reason: 'no-stock' };
-  demand.upgrades += 1;
-  state.stock.destination -= 1;
-  return { ok: true };
 }

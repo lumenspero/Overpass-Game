@@ -163,12 +163,9 @@ Elevated links for faster travel between two points on the ground network. `appr
 - **Timing:** a car plans its route when its trip starts, using the queues it sees then. A car already driving re-plans only when a road is added or removed, and then uses the same queues, leaving out its own. It does not re-plan just because a queue has formed, so cars don't turn back for every jam.
 - **Determinism:** routes depend only on the sim state at the moment of planning, so runs stay repeatable.
 
-### Destination upgrades, growth and rule hooks
+### Destination growth and rule hooks
 
-- **Destination upgrade:** an upgrade is placed on a destination building and takes one from stock, as the other upgrades do. Each one raises that destination's demand by `DEMAND_UPGRADE_STEP` (default 0.5), so it draws more cars for the same road. `approximated`
-- **Growth:** each time a new district opens (`EXPANSION_WEEK_1`, `_2`, `_3`), every destination gains `DEMAND_GROWTH_STEP` (default 0.25) demand. Growth happens only at expansions, not each week. `approximated`
+- **Growth:** every week, every destination gains `DEMAND_GROWTH_STEP` (default 0.25) demand, so demand rises as the game goes on. It is automatic: the player has no choice in it, and destinations are not upgraded by hand. `approximated`
 - **Rule hooks:** a map's rules are a list passed to the sim when it starts, each with a week it applies from. The first rule kind is `unlockColour`: a building colour is unused until its week. The sim reads the list at each week boundary, so a map changes by data, not code. `approximated`
-- **Keys:** U places a destination upgrade, on a destination building.
-- **Refusals:** a destination upgrade refuses a building that is not a destination (`not-a-destination`), one that already has the maximum upgrades (`max-upgrades`, default 3), and one with no stock (`no-stock`).
 
 _Still to write: car movement and queuing, trips, spawning, demand, scoring, clock and expansion, upgrades, bridges and tunnels, roundabouts and lights, congestion, unlocks, audio events. Each arrives with its milestone._

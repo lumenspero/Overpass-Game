@@ -31,7 +31,6 @@ describe('overflowRings', () => {
         pins: 9,
         cooldown: 0,
         overflow: OVERFLOW_TICKS,
-        upgrades: 0,
         growth: 0,
       },
     };
@@ -48,7 +47,6 @@ describe('overflowRings', () => {
         pins: 9,
         cooldown: 0,
         overflow: OVERFLOW_TICKS / 2,
-        upgrades: 0,
         growth: 0,
       },
     };
@@ -57,7 +55,7 @@ describe('overflowRings', () => {
 
   it('draws nothing for a destination that is not overflowing', () => {
     const demand: Record<number, Demand> = {
-      1: { pins: 2, cooldown: 0, overflow: 0, upgrades: 0, growth: 0 },
+      1: { pins: 2, cooldown: 0, overflow: 0, growth: 0 },
     };
     expect(overflowRings([dest], demand, grid)).toEqual([]);
   });
@@ -68,7 +66,6 @@ describe('overflowRings', () => {
         pins: 9,
         cooldown: 0,
         overflow: OVERFLOW_TICKS,
-        upgrades: 0,
         growth: 0,
       },
     };

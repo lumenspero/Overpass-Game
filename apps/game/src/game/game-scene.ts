@@ -1,4 +1,5 @@
 import { greenIsHorizontal, ROUNDABOUT_RING_TILES } from '@overpass-game/sim';
+import type { CompiledMap, OutlinePath } from '@overpass-game/map-schema';
 import { activeDemo, buildDemo, DEMOS, setActiveDemo } from './demos.ts';
 import Phaser from 'phaser';
 import {
@@ -79,7 +80,6 @@ import {
   CROSSING_MESSAGE_MS,
   controlMessage,
   crossingHint,
-  destinationMessage,
   crossingMessage,
   motorwayMessage,
 } from '../view/crossing-message.ts';
@@ -100,13 +100,16 @@ import {
   testMapGuide,
   testMapRules,
   TEST_BUILDINGS,
+  isTestMap,
+  playedMap,
 } from './test-map.ts';
 
 /** Roundabout ring and the two light colours. */
 const CONTROL_OUTLINE_COLOUR = 0x3a4150;
+/** Speed of arrow-key panning, in screen pixels per second. */
+const PAN_KEY_PX_PER_SEC = 600;
 const LIGHT_GREEN_COLOUR = 0x5cb85c;
 const LIGHT_RED_COLOUR = 0xd9534f;
-const DESTINATION_UPGRADE_COLOUR = 0xf2c14e;
 
 const TERRAIN_COLOR: Partial<Record<TerrainKind, number>> = {
   [Terrain.Water]: PALETTE.water,
@@ -150,6 +153,8 @@ export class GameScene extends Phaser.Scene {
   private ended = false;
   private roadsDirty = true;
   private overlayGfx!: Phaser.GameObjects.Graphics;
+  /** Tile grid for building. Shown while a tool is picked, so placement lines up with tiles. */
+  private gridGfx!: Phaser.GameObjects.Graphics;
   private debugText!: Phaser.GameObjects.Text;
   private offerPanel!: OfferPanel;
   private debugOn = false;
@@ -160,6 +165,7 @@ export class GameScene extends Phaser.Scene {
   /** How many districts were open when the map was last drawn. -1 forces a first draw. */
   private openCount = -1;
   private panel: TuningPanel | null = null;
+  private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null = null;
 
   constructor() {
     super('game');
@@ -202,8 +208,12 @@ export class GameScene extends Phaser.Scene {
     this.previewGfx.setAlpha(0.4);
     this.ringGfx = this.add.graphics();
     this.overlayGfx = this.add.graphics().setVisible(false);
+    this.gridGfx = this.add.graphics();
+    this.drawBuildGrid(this.gridGfx, grid);
+    this.gridGfx.setVisible(false);
     this.layer.add([
       terrainGfx,
+      this.gridGfx,
       this.guideGfx,
       this.lockGfx,
       this.roadGfx,
@@ -215,11 +225,12 @@ export class GameScene extends Phaser.Scene {
       this.ringGfx,
       this.overlayGfx,
     ]);
-    this.drawTerrain(terrainGfx, grid);
+    this.drawTerrain(terrainGfx, grid, demo ? null : playedMap().outlines);
     this.drawGuide(demo ? null : testMapGuide());
     this.guideGfx.setVisible(this.settings.motorwayGuide);
-    // Demo maps bring their own buildings; only the normal test map places these.
-    if (!demo) this.placeTestBuildings();
+    // Demo maps bring their own buildings. Only the test map places the hand-listed ones;
+    // Studio maps have none until the spawn field (M14).
+    if (!demo && isTestMap()) this.placeTestBuildings();
     this.drawBuildings();
 
     // Screen-space text, not in the scaled layer, so it stays readable at any zoom.
@@ -279,10 +290,14 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-M', this.onMotorwayKey);
     this.input.keyboard?.on('keydown-O', this.onRoundaboutKey);
     this.input.keyboard?.on('keydown-L', this.onLightKey);
-    this.input.keyboard?.on('keydown-U', this.onDestinationKey);
     this.input.keyboard?.on('keydown-F', this.onRoadKey);
     this.input.keyboard?.on('keydown-G', this.onGuideKey);
     this.input.keyboard?.on('keydown', this.onKey);
+    this.cursors = this.input.keyboard?.createCursorKeys() ?? null;
+    // Holding Space and dragging with the left button pans. Capture stops the page from scrolling.
+    this.input.keyboard?.addCapture('SPACE');
+    this.input.keyboard?.on('keydown-SPACE', this.onSpaceDown);
+    this.input.keyboard?.on('keyup-SPACE', this.onSpaceUp);
     this.scale.on('resize', this.onResize);
     this.events.once('shutdown', this.teardown);
     this.applyTransform();
@@ -294,6 +309,9 @@ export class GameScene extends Phaser.Scene {
 
     // Timers fire here, not in an event, so a held finger can start an erase stroke.
     this.dispatch(updateTimers(this.mapper, time));
+    this.panWithArrows(delta);
+    // Debug mode draws its own grid, so this one hides then.
+    this.gridGfx.setVisible(!this.debugOn && this.mapper.tool !== 'select');
 
     if (this.roadsDirty) {
       this.drawRoads();
@@ -336,9 +354,7 @@ export class GameScene extends Phaser.Scene {
           ? motorwayMessage(report.result)
           : report.kind === 'control'
             ? controlMessage(report.control, report.result)
-            : report.kind === 'destination'
-              ? destinationMessage(report.result)
-              : crossingMessage(report.kind, report.result),
+            : crossingMessage(report.kind, report.result),
       );
     }
     if (now >= this.crossingUntil) {
@@ -349,8 +365,7 @@ export class GameScene extends Phaser.Scene {
         tool === 'tunnel' ||
         tool === 'motorway' ||
         tool === 'roundabout' ||
-        tool === 'light' ||
-        tool === 'destination'
+        tool === 'light'
       ) {
         this.setCrossingLine(crossingHint(tool, this.sim.stock[tool]));
       } else if (tool === 'draw') {
@@ -436,7 +451,6 @@ export class GameScene extends Phaser.Scene {
   private onMotorwayKey = (): void => this.pickCrossing('motorway');
   private onRoundaboutKey = (): void => this.pickCrossing('roundabout');
   private onLightKey = (): void => this.pickCrossing('light');
-  private onDestinationKey = (): void => this.pickCrossing('destination');
   /** G shows or hides the motorway guide. */
   private onGuideKey = (): void => {
     this.settings = toggleGuide(this.settings);
@@ -448,8 +462,7 @@ export class GameScene extends Phaser.Scene {
   };
 
   private pickCrossing(
-    kind:
-      'bridge' | 'tunnel' | 'motorway' | 'roundabout' | 'light' | 'destination',
+    kind: 'bridge' | 'tunnel' | 'motorway' | 'roundabout' | 'light',
   ): void {
     setTool(this.mapper, this.mapper.tool === kind ? 'select' : kind);
   }
@@ -531,12 +544,50 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private drawTerrain(gfx: Phaser.GameObjects.Graphics, grid: Grid): void {
+  /**
+   * Draws the ground. Parks, mountains and water come from their smooth outlines, so they
+   * look like the Studio. The tiles still decide play. Demo maps have no outlines and use tiles.
+   */
+  private drawTerrain(
+    gfx: Phaser.GameObjects.Graphics,
+    grid: Grid,
+    outlines: CompiledMap['outlines'] | null,
+  ): void {
     gfx.fillStyle(PALETTE.land, 1);
     gfx.fillRect(0, 0, this.mapSize.width, this.mapSize.height);
-    for (const t of terrainTiles(grid)) {
-      gfx.fillStyle(TERRAIN_COLOR[t.kind] ?? PALETTE.land, 1);
-      gfx.fillRect(t.x, t.y, TILE_SIZE, TILE_SIZE);
+    if (outlines === null) {
+      for (const t of terrainTiles(grid)) {
+        gfx.fillStyle(TERRAIN_COLOR[t.kind] ?? PALETTE.land, 1);
+        gfx.fillRect(t.x, t.y, TILE_SIZE, TILE_SIZE);
+      }
+      return;
+    }
+    // The compiler paints parks, then mountains, then water on top. Draw in the same order.
+    this.drawOutlines(gfx, outlines.parks, PALETTE.park);
+    this.drawOutlines(gfx, outlines.mountains, PALETTE.mountain);
+    this.drawOutlines(gfx, outlines.water, PALETTE.water);
+  }
+
+  /** Closed outlines are filled; open ones are strokes as wide as the outline says, in grid units. */
+  private drawOutlines(
+    gfx: Phaser.GameObjects.Graphics,
+    paths: OutlinePath[],
+    colour: number,
+  ): void {
+    for (const path of paths) {
+      gfx.beginPath();
+      path.points.forEach((p, i) => {
+        if (i === 0) gfx.moveTo(p.x * TILE_SIZE, p.y * TILE_SIZE);
+        else gfx.lineTo(p.x * TILE_SIZE, p.y * TILE_SIZE);
+      });
+      if (path.closed) {
+        gfx.closePath();
+        gfx.fillStyle(colour, 1);
+        gfx.fillPath();
+      } else {
+        gfx.lineStyle((path.width ?? 0) * TILE_SIZE, colour, 1);
+        gfx.strokePath();
+      }
     }
   }
 
@@ -692,21 +743,6 @@ export class GameScene extends Phaser.Scene {
     gfx.clear();
     const { cols } = this.sim.grid;
     const horizontal = greenIsHorizontal(this.sim);
-    // Destination upgrades: gold pips above each upgraded destination.
-    for (const b of this.sim.buildings) {
-      const d = this.sim.demand[b.id];
-      if (b.kind !== 'destination' || !d) continue;
-      const bx = ((b.tile % cols) + 0.5) * TILE_SIZE;
-      const by = (Math.floor(b.tile / cols) + 0.5) * TILE_SIZE;
-      gfx.fillStyle(DESTINATION_UPGRADE_COLOUR, 1);
-      for (let k = 0; k < d.upgrades; k++) {
-        gfx.fillCircle(
-          bx - TILE_SIZE * 0.25 + k * TILE_SIZE * 0.25,
-          by - TILE_SIZE * 0.42,
-          2.5,
-        );
-      }
-    }
     for (const [key, kind] of Object.entries(this.sim.controls)) {
       const tile = Number(key);
       const cx = ((tile % cols) + 0.5) * TILE_SIZE;
@@ -788,6 +824,26 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Keys 1 to 4 pick a speed, when the key matches one of the speed options. */
+  /** Arrow keys pan the view while they are held. */
+  private panWithArrows(delta: number): void {
+    const c = this.cursors;
+    if (!c) return;
+    const step = (PAN_KEY_PX_PER_SEC * delta) / 1000;
+    const dx = (c.left.isDown ? 1 : 0) - (c.right.isDown ? 1 : 0);
+    const dy = (c.up.isDown ? 1 : 0) - (c.down.isDown ? 1 : 0);
+    if (dx !== 0 || dy !== 0) {
+      panCamera(this.view, this.mapSize, dx * step, dy * step);
+    }
+  }
+
+  private onSpaceDown = (): void => {
+    this.mapper.panHeld = true;
+  };
+
+  private onSpaceUp = (): void => {
+    this.mapper.panHeld = false;
+  };
+
   private onKey = (e: KeyboardEvent): void => {
     const speed = SPEED_OPTIONS.find((s) => String(s) === e.key);
     if (speed !== undefined) this.setGameSpeed(speed);
@@ -845,6 +901,17 @@ export class GameScene extends Phaser.Scene {
     }
   };
 
+  /** Tile grid lines, drawn once. */
+  private drawBuildGrid(gfx: Phaser.GameObjects.Graphics, grid: Grid): void {
+    gfx.lineStyle(1, DEBUG_PALETTE.grid, 0.6);
+    for (let c = 0; c <= grid.cols; c++) {
+      gfx.lineBetween(c * TILE_SIZE, 0, c * TILE_SIZE, grid.rows * TILE_SIZE);
+    }
+    for (let r = 0; r <= grid.rows; r++) {
+      gfx.lineBetween(0, r * TILE_SIZE, grid.cols * TILE_SIZE, r * TILE_SIZE);
+    }
+  }
+
   /** Grid, graph edges and nodes, all read from the sim's own road graph. */
   private drawOverlay(): void {
     const gfx = this.overlayGfx;
@@ -874,10 +941,11 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown-O', this.onRoundaboutKey);
     this.input.keyboard?.off('keydown-L', this.onLightKey);
     this.input.keyboard?.off('keydown-G', this.onGuideKey);
-    this.input.keyboard?.off('keydown-U', this.onDestinationKey);
     this.input.keyboard?.off('keydown-F', this.onRoadKey);
     this.offerPanel.destroy();
     this.input.keyboard?.off('keydown', this.onKey);
+    this.input.keyboard?.off('keydown-SPACE', this.onSpaceDown);
+    this.input.keyboard?.off('keyup-SPACE', this.onSpaceUp);
     this.panel?.destroy();
     this.panel = null;
     this.scale.off('resize', this.onResize);

@@ -337,6 +337,7 @@ export function compileMap(src: SourceMap): CompiledMap {
     outlines: {
       water: src.layers.water.map(outlineOf),
       mountains: src.layers.mountains.map(outlineOf),
+      parks: src.layers.parks.map(outlineOf),
     },
     motorwayGuide: src.layers.motorwayGuide.flatMap((l) =>
       clipPolyline(l.points, cols, rows),

@@ -11,7 +11,6 @@ export const UPGRADE_LABELS: Record<UpgradeKind, string> = {
   motorway: 'Motorway',
   roundabout: 'Roundabout',
   light: 'Traffic light',
-  destination: 'Destination upgrade',
 };
 
 export interface OfferView {

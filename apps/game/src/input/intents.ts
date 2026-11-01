@@ -24,8 +24,7 @@ export type StrokeMode =
   | 'tunnel'
   | 'motorway'
   | 'roundabout'
-  | 'light'
-  | 'destination';
+  | 'light';
 /** The road tool is 'draw'. 'select' lays nothing: it only picks and nudges motorways. */
 export type Tool =
   | 'select'
@@ -35,8 +34,7 @@ export type Tool =
   | 'tunnel'
   | 'motorway'
   | 'roundabout'
-  | 'light'
-  | 'destination';
+  | 'light';
 
 export interface Vec2 {
   x: number;
@@ -83,10 +81,12 @@ export interface IntentMapper {
   tool: Tool;
   pointers: Map<number, TrackedPointer>;
   mode: Mode;
+  /** Space is held: a left drag pans instead of drawing. */
+  panHeld: boolean;
 }
 
 export function createIntentMapper(tool: Tool = 'draw'): IntentMapper {
-  return { tool, pointers: new Map(), mode: { kind: 'idle' } };
+  return { tool, pointers: new Map(), mode: { kind: 'idle' }, panHeld: false };
 }
 
 export function setTool(mapper: IntentMapper, tool: Tool): void {
@@ -102,8 +102,7 @@ function strokeMode(mapper: IntentMapper, wanted: StrokeMode): StrokeMode {
       mapper.tool === 'tunnel' ||
       mapper.tool === 'motorway' ||
       mapper.tool === 'roundabout' ||
-      mapper.tool === 'light' ||
-      mapper.tool === 'destination')
+      mapper.tool === 'light')
   ) {
     return mapper.tool;
   }
@@ -155,7 +154,10 @@ export function pointerDown(mapper: IntentMapper, p: PointerSample): Intent[] {
 
   // Mouse and pen: only one active pointer drives a stroke.
   if (mode.kind !== 'idle') return out;
-  if (p.kind === 'mouse' && p.button === 1) {
+  if (
+    p.kind === 'mouse' &&
+    (p.button === 1 || (p.button === 0 && mapper.panHeld))
+  ) {
     mapper.mode = { kind: 'mouse-pan', id: p.id };
     return out;
   }

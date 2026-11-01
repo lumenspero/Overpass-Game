@@ -6,7 +6,6 @@ import type { Building, Demand, Home } from './buildings.ts';
 import { type Car, onRoadsChanged } from './cars.ts';
 import { tuning } from './config.ts';
 import { generateDemand, growDestinations, updateOverflow } from './demand.ts';
-import { isExpansionWeek } from './expansion.ts';
 import type { MapRule } from './rules.ts';
 import { isOpenTile } from './expansion.ts';
 import { buildRoadGraph, type RoadGraph, updateRoadGraph } from './graph.ts';
@@ -71,7 +70,7 @@ export interface SimState {
   nextMotorwayId: number;
   /** Roundabouts and traffic lights on junction tiles, by tile (spec: Roundabouts and lights). */
   controls: Record<number, ControlKind>;
-  /** The map's rules, from its data (spec: Destination upgrades, growth and rule hooks). */
+  /** The map's rules, from its data (spec: Destination growth and rule hooks). */
   rules: MapRule[];
 }
 
@@ -214,7 +213,7 @@ export function step(state: SimState): void {
   state.tick += 1;
   if (state.tick % tuning.WEEK_TICKS === 0) {
     grantWeeklyReward(state);
-    if (isExpansionWeek(state.tick)) growDestinations(state);
+    growDestinations(state);
   }
   generateDemand(state);
   updateOverflow(state);
