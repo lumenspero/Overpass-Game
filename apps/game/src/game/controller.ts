@@ -11,6 +11,8 @@ import {
   motorwayCurve,
   motorwaysTouching,
   placeControl,
+  dropControlsAt,
+  restoreControl,
   type ControlKind,
   type ControlResult,
   nudgeMotorway,
@@ -56,7 +58,10 @@ type Change =
       crossing?: CrossingTileRecord | null;
       /** Motorways whose ramp this erase took out. Restored on rollback. */
       motorways?: Motorway[];
+      /** The roundabout or light on the tile, taken by this erase. Restored on rollback. */
+      control?: ControlKind;
     }
+  | { kind: 'control'; index: number; control: ControlKind }
   | { kind: 'link'; a: number; b: number }
   | { kind: 'motorway'; motorway: Motorway };
 
@@ -110,10 +115,19 @@ function indexOf(sim: SimState, t: TileXY): number | null {
 function touchTile(ctl: Controller, stroke: Stroke, t: TileXY): boolean {
   const i = indexOf(ctl.sim, t);
   if (stroke.mode === 'erase') {
-    if (i === null || ctl.sim.roads[i] !== 1) return false;
+    if (i === null) return false;
+    const control = ctl.sim.controls[i];
+    if (ctl.sim.roads[i] !== 1) {
+      // A roundabout or light can stand on a tile with no road under it. Erasing takes it back.
+      if (control === undefined) return false;
+      dropControlsAt(ctl.sim, [i]);
+      stroke.changes.push({ kind: 'control', index: i, control });
+      return true;
+    }
     const partners = [...linkPartners(ctl.sim.links, i)];
     const motorways = motorwaysTouching(ctl.sim.motorways, i);
     const crossing = releaseCrossingTile(ctl.sim, i);
+    // removeRoads also takes any control on the tile, so the record keeps it for undo.
     removeRoads(ctl.sim, [i]);
     stroke.changes.push({
       kind: 'tile',
@@ -122,6 +136,7 @@ function touchTile(ctl: Controller, stroke: Stroke, t: TileXY): boolean {
       partners,
       crossing,
       motorways,
+      control,
     });
     return true;
   }
@@ -355,6 +370,8 @@ function rollback(ctl: Controller, stroke: Stroke): boolean {
       unlinkTiles(ctl.sim, c.a, c.b);
     } else if (c.kind === 'motorway') {
       restoreMotorway(ctl.sim, c.motorway);
+    } else if (c.kind === 'control') {
+      restoreControl(ctl.sim, c.index, c.control);
     } else if (c.wasRoad === 0) {
       removeRoads(ctl.sim, [c.index]);
     } else {
@@ -362,6 +379,7 @@ function rollback(ctl: Controller, stroke: Stroke): boolean {
       for (const p of c.partners) linkTiles(ctl.sim, c.index, p);
       if (c.crossing) restoreCrossingTile(ctl.sim, c.index, c.crossing);
       for (const m of c.motorways ?? []) restoreMotorway(ctl.sim, m);
+      if (c.control) restoreControl(ctl.sim, c.index, c.control);
     }
   }
   return stroke.changes.length > 0;

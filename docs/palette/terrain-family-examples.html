@@ -1,0 +1,3001 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="claude:viewport-fit-sides" content="cover" />
+    <title>Terrain Family Examples</title>
+    <style>
+      :root {
+        --bg: #f5f4f0;
+        --fg: #1d2330;
+        --muted: #5b6372;
+        --card-rule: rgba(0, 0, 0, 0.12);
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --bg: #15181f;
+          --fg: #e8ecf2;
+          --muted: #98a0b0;
+          --card-rule: rgba(255, 255, 255, 0.14);
+          color-scheme: dark;
+        }
+      }
+      :root[data-theme='dark'] {
+        --bg: #15181f;
+        --fg: #e8ecf2;
+        --muted: #98a0b0;
+        --card-rule: rgba(255, 255, 255, 0.14);
+        color-scheme: dark;
+      }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          14px/1.5 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        margin: 0;
+        padding-left: max(16px, env(safe-area-inset-left, 0px));
+        padding-right: max(16px, env(safe-area-inset-right, 0px));
+        padding-block: 24px 48px;
+      }
+      main {
+        max-width: 1040px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 24px;
+        margin: 0 0 4px;
+        letter-spacing: -0.01em;
+        text-wrap: balance;
+      }
+      .lede {
+        color: var(--muted);
+        margin: 0 0 24px;
+        max-width: 65ch;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 0 0 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      section {
+        margin-bottom: 24px;
+      }
+      .pair {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .card {
+        margin: 0;
+        border-radius: 12px;
+        padding: 10px;
+        box-shadow: inset 0 0 0 1px var(--card-rule);
+        min-width: 0;
+      }
+      .card.light {
+        color: #000000;
+      }
+      .card.dark {
+        color: #f2f2f2;
+      }
+      figcaption {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin: 8px 2px 6px;
+        opacity: 0.7;
+      }
+      .key {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 4px 10px;
+        font-size: 11px;
+      }
+      .key li {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      .key i {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        flex: none;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+      }
+      .key code {
+        font-size: 10px;
+        opacity: 0.75;
+      }
+      @media (max-width: 640px) {
+        .pair {
+          grid-template-columns: 1fr;
+        }
+        .key {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Terrain Family Examples</h1>
+      <p class="lede">
+        One sample scene for each terrain family, in light and dark. Every
+        colour comes from the palette in the code: ground, shadow, mountain and
+        park with their outlines, water with its outline, the road and motorway,
+        the buildings, and the labels.
+      </p>
+
+      <section class="family">
+        <h2>Red</h2>
+        <div class="pair">
+          <figure class="card light" style="background: #f4efe4">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="light example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#efccc8" />
+              <circle cx="40" cy="150" r="34" fill="#f2d4d8" />
+              <circle cx="290" cy="170" r="40" fill="#edcfc0" />
+              <circle cx="190" cy="20" r="30" fill="#f1cec6" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#d5a6a0"
+                stroke="#7c453e"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#d44434"
+                stroke="#67241c"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#d37368" />
+              <rect x="151" y="98" width="20" height="20" fill="#d37368" />
+              <rect x="179" y="92" width="20" height="20" fill="#d37368" />
+              <rect x="207" y="100" width="20" height="20" fill="#d37368" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#b26056"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#926f6a"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#757685"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Light</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #efccc8"></i>ground <code>#efccc8</code>
+              </li>
+              <li>
+                <i style="background: #d37368"></i>shadow <code>#d37368</code>
+              </li>
+              <li>
+                <i style="background: #d44434"></i>mountain <code>#d44434</code>
+              </li>
+              <li>
+                <i style="background: #67241c"></i>mountain edge
+                <code>#67241c</code>
+              </li>
+              <li>
+                <i style="background: #d5a6a0"></i>park <code>#d5a6a0</code>
+              </li>
+              <li>
+                <i style="background: #7c453e"></i>park edge
+                <code>#7c453e</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water edge
+                <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #b26056"></i>label <code>#b26056</code>
+              </li>
+            </ul>
+          </figure>
+          <figure class="card dark" style="background: #1d222b">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="dark example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#a1453a" />
+              <circle cx="40" cy="150" r="34" fill="#a73c4b" />
+              <circle cx="290" cy="170" r="40" fill="#9d5a39" />
+              <circle cx="190" cy="20" r="30" fill="#a64c36" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#7c453e"
+                stroke="#d5a6a0"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#67241c"
+                stroke="#d44434"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#f2f2f2"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#6b7486"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#7a2c24" />
+              <rect x="151" y="98" width="20" height="20" fill="#7a2c24" />
+              <rect x="179" y="92" width="20" height="20" fill="#7a2c24" />
+              <rect x="207" y="100" width="20" height="20" fill="#7a2c24" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#d7aca6"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#d0aea9"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#bdb2c0"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Dark</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #a1453a"></i>ground <code>#a1453a</code>
+              </li>
+              <li>
+                <i style="background: #7a2c24"></i>shadow <code>#7a2c24</code>
+              </li>
+              <li>
+                <i style="background: #67241c"></i>mountain <code>#67241c</code>
+              </li>
+              <li>
+                <i style="background: #d44434"></i>mountain edge
+                <code>#d44434</code>
+              </li>
+              <li>
+                <i style="background: #7c453e"></i>park <code>#7c453e</code>
+              </li>
+              <li>
+                <i style="background: #d5a6a0"></i>park edge
+                <code>#d5a6a0</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water edge
+                <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #d7aca6"></i>label <code>#d7aca6</code>
+              </li>
+            </ul>
+          </figure>
+        </div>
+      </section>
+      <section class="family">
+        <h2>Orange</h2>
+        <div class="pair">
+          <figure class="card light" style="background: #f4efe4">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="light example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#f0d4c2" />
+              <circle cx="40" cy="150" r="34" fill="#f3d4ce" />
+              <circle cx="290" cy="170" r="40" fill="#eedbba" />
+              <circle cx="190" cy="20" r="30" fill="#f2d9c0" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#d6b29b"
+                stroke="#7d553b"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#da6f2a"
+                stroke="#693919"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#d79061" />
+              <rect x="151" y="98" width="20" height="20" fill="#d79061" />
+              <rect x="179" y="92" width="20" height="20" fill="#d79061" />
+              <rect x="207" y="100" width="20" height="20" fill="#d79061" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#a66e4a"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#907665"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#787a86"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Light</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #f0d4c2"></i>ground <code>#f0d4c2</code>
+              </li>
+              <li>
+                <i style="background: #d79061"></i>shadow <code>#d79061</code>
+              </li>
+              <li>
+                <i style="background: #da6f2a"></i>mountain <code>#da6f2a</code>
+              </li>
+              <li>
+                <i style="background: #693919"></i>mountain edge
+                <code>#693919</code>
+              </li>
+              <li>
+                <i style="background: #d6b29b"></i>park <code>#d6b29b</code>
+              </li>
+              <li>
+                <i style="background: #7d553b"></i>park edge
+                <code>#7d553b</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water edge
+                <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #a66e4a"></i>label <code>#a66e4a</code>
+              </li>
+            </ul>
+          </figure>
+          <figure class="card dark" style="background: #1d222b">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="dark example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#a46135" />
+              <circle cx="40" cy="150" r="34" fill="#a94a37" />
+              <circle cx="290" cy="170" r="40" fill="#a07834" />
+              <circle cx="190" cy="20" r="30" fill="#a86c30" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#7d553b"
+                stroke="#d6b29b"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#693919"
+                stroke="#da6f2a"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#f2f2f2"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#6b7486"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#7d451f" />
+              <rect x="151" y="98" width="20" height="20" fill="#7d451f" />
+              <rect x="179" y="92" width="20" height="20" fill="#7d451f" />
+              <rect x="207" y="100" width="20" height="20" fill="#7d451f" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#e0c7b7"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#dbc9bc"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#cfcad1"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Dark</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #a46135"></i>ground <code>#a46135</code>
+              </li>
+              <li>
+                <i style="background: #7d451f"></i>shadow <code>#7d451f</code>
+              </li>
+              <li>
+                <i style="background: #693919"></i>mountain <code>#693919</code>
+              </li>
+              <li>
+                <i style="background: #da6f2a"></i>mountain edge
+                <code>#da6f2a</code>
+              </li>
+              <li>
+                <i style="background: #7d553b"></i>park <code>#7d553b</code>
+              </li>
+              <li>
+                <i style="background: #d6b29b"></i>park edge
+                <code>#d6b29b</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water edge
+                <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #e0c7b7"></i>label <code>#e0c7b7</code>
+              </li>
+            </ul>
+          </figure>
+        </div>
+      </section>
+      <section class="family">
+        <h2>Yellow</h2>
+        <div class="pair">
+          <figure class="card light" style="background: #f4efe4">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="light example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#f3ecc4" />
+              <circle cx="40" cy="150" r="34" fill="#f5e8d1" />
+              <circle cx="290" cy="170" r="40" fill="#ebf1bc" />
+              <circle cx="190" cy="20" r="30" fill="#f4f3c2" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#dad19b"
+                stroke="#817839"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#e2c626"
+                stroke="#6d6117"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#ddcc5f" />
+              <rect x="151" y="98" width="20" height="20" fill="#ddcc5f" />
+              <rect x="179" y="92" width="20" height="20" fill="#ddcc5f" />
+              <rect x="207" y="100" width="20" height="20" fill="#ddcc5f" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#95873f"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#8f8862"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#818890"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Light</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #f3ecc4"></i>ground <code>#f3ecc4</code>
+              </li>
+              <li>
+                <i style="background: #ddcc5f"></i>shadow <code>#ddcc5f</code>
+              </li>
+              <li>
+                <i style="background: #e2c626"></i>mountain <code>#e2c626</code>
+              </li>
+              <li>
+                <i style="background: #6d6117"></i>mountain edge
+                <code>#6d6117</code>
+              </li>
+              <li>
+                <i style="background: #dad19b"></i>park <code>#dad19b</code>
+              </li>
+              <li>
+                <i style="background: #817839"></i>park edge
+                <code>#817839</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water edge
+                <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #95873f"></i>label <code>#95873f</code>
+              </li>
+            </ul>
+          </figure>
+          <figure class="card dark" style="background: #1d222b">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="dark example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#aa9a31" />
+              <circle cx="40" cy="150" r="34" fill="#b08233" />
+              <circle cx="290" cy="170" r="40" fill="#9aa630" />
+              <circle cx="190" cy="20" r="30" fill="#afab2c" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#817839"
+                stroke="#dad19b"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#6d6117"
+                stroke="#e2c626"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#f2f2f2"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#6b7486"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#82751c" />
+              <rect x="151" y="98" width="20" height="20" fill="#82751c" />
+              <rect x="179" y="92" width="20" height="20" fill="#82751c" />
+              <rect x="207" y="100" width="20" height="20" fill="#82751c" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#564c12"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#524d2a"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#4a4d4a"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Dark</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #aa9a31"></i>ground <code>#aa9a31</code>
+              </li>
+              <li>
+                <i style="background: #82751c"></i>shadow <code>#82751c</code>
+              </li>
+              <li>
+                <i style="background: #6d6117"></i>mountain <code>#6d6117</code>
+              </li>
+              <li>
+                <i style="background: #e2c626"></i>mountain edge
+                <code>#e2c626</code>
+              </li>
+              <li>
+                <i style="background: #817839"></i>park <code>#817839</code>
+              </li>
+              <li>
+                <i style="background: #dad19b"></i>park edge
+                <code>#dad19b</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water edge
+                <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #564c12"></i>label <code>#564c12</code>
+              </li>
+            </ul>
+          </figure>
+        </div>
+      </section>
+      <section class="family">
+        <h2>Green</h2>
+        <div class="pair">
+          <figure class="card light" style="background: #f4efe4">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="light example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#c4e3bf" />
+              <circle cx="40" cy="150" r="34" fill="#d5e8c9" />
+              <circle cx="290" cy="170" r="40" fill="#b8e0bc" />
+              <circle cx="190" cy="20" r="30" fill="#bee6bc" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#a2c79c"
+                stroke="#496e44"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#51bb40"
+                stroke="#2a5a23"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#78c06d" />
+              <rect x="151" y="98" width="20" height="20" fill="#78c06d" />
+              <rect x="179" y="92" width="20" height="20" fill="#78c06d" />
+              <rect x="207" y="100" width="20" height="20" fill="#78c06d" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#54884c"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#688365"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#707e87"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Light</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #c4e3bf"></i>ground <code>#c4e3bf</code>
+              </li>
+              <li>
+                <i style="background: #78c06d"></i>shadow <code>#78c06d</code>
+              </li>
+              <li>
+                <i style="background: #51bb40"></i>mountain <code>#51bb40</code>
+              </li>
+              <li>
+                <i style="background: #2a5a23"></i>mountain edge
+                <code>#2a5a23</code>
+              </li>
+              <li>
+                <i style="background: #a2c79c"></i>park <code>#a2c79c</code>
+              </li>
+              <li>
+                <i style="background: #496e44"></i>park edge
+                <code>#496e44</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water edge
+                <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #54884c"></i>label <code>#54884c</code>
+              </li>
+            </ul>
+          </figure>
+          <figure class="card dark" style="background: #1d222b">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="dark example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#4e8c45" />
+              <circle cx="40" cy="150" r="34" fill="#639148" />
+              <circle cx="290" cy="170" r="40" fill="#43894a" />
+              <circle cx="190" cy="20" r="30" fill="#439141" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#496e44"
+                stroke="#a2c79c"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#2a5a23"
+                stroke="#51bb40"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#f2f2f2"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#6b7486"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#35692d" />
+              <rect x="151" y="98" width="20" height="20" fill="#35692d" />
+              <rect x="179" y="92" width="20" height="20" fill="#35692d" />
+              <rect x="207" y="100" width="20" height="20" fill="#35692d" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#1d3c18"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#283926"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#2d3738"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Dark</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #4e8c45"></i>ground <code>#4e8c45</code>
+              </li>
+              <li>
+                <i style="background: #35692d"></i>shadow <code>#35692d</code>
+              </li>
+              <li>
+                <i style="background: #2a5a23"></i>mountain <code>#2a5a23</code>
+              </li>
+              <li>
+                <i style="background: #51bb40"></i>mountain edge
+                <code>#51bb40</code>
+              </li>
+              <li>
+                <i style="background: #496e44"></i>park <code>#496e44</code>
+              </li>
+              <li>
+                <i style="background: #a2c79c"></i>park edge
+                <code>#a2c79c</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water edge
+                <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #1d3c18"></i>label <code>#1d3c18</code>
+              </li>
+            </ul>
+          </figure>
+        </div>
+      </section>
+      <section class="family">
+        <h2>Blue</h2>
+        <div class="pair">
+          <figure class="card light" style="background: #f4efe4">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="light example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#c2d5eb" />
+              <circle cx="40" cy="150" r="34" fill="#cde4ee" />
+              <circle cx="290" cy="170" r="40" fill="#bac5e8" />
+              <circle cx="190" cy="20" r="30" fill="#c0d0ed" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#9db4d0"
+                stroke="#405976"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#347bcd"
+                stroke="#1f3e62"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#6897cd" />
+              <rect x="151" y="98" width="20" height="20" fill="#6897cd" />
+              <rect x="179" y="92" width="20" height="20" fill="#6897cd" />
+              <rect x="207" y="100" width="20" height="20" fill="#6897cd" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#5379a7"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#68788d"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#6c778b"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Light</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #c2d5eb"></i>ground <code>#c2d5eb</code>
+              </li>
+              <li>
+                <i style="background: #6897cd"></i>shadow <code>#6897cd</code>
+              </li>
+              <li>
+                <i style="background: #347bcd"></i>mountain <code>#347bcd</code>
+              </li>
+              <li>
+                <i style="background: #1f3e62"></i>mountain edge
+                <code>#1f3e62</code>
+              </li>
+              <li>
+                <i style="background: #9db4d0"></i>park <code>#9db4d0</code>
+              </li>
+              <li>
+                <i style="background: #405976"></i>park edge
+                <code>#405976</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water edge
+                <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #5379a7"></i>label <code>#5379a7</code>
+              </li>
+            </ul>
+          </figure>
+          <figure class="card dark" style="background: #1d222b">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="dark example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#3e6899" />
+              <circle cx="40" cy="150" r="34" fill="#40829e" />
+              <circle cx="290" cy="170" r="40" fill="#3c5195" />
+              <circle cx="190" cy="20" r="30" fill="#395e9d" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#405976"
+                stroke="#9db4d0"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#1f3e62"
+                stroke="#347bcd"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#f2f2f2"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#6b7486"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#274b74" />
+              <rect x="151" y="98" width="20" height="20" fill="#274b74" />
+              <rect x="179" y="92" width="20" height="20" fill="#274b74" />
+              <rect x="207" y="100" width="20" height="20" fill="#274b74" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#aabdd4"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#adbdce"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#abbdd8"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Dark</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #3e6899"></i>ground <code>#3e6899</code>
+              </li>
+              <li>
+                <i style="background: #274b74"></i>shadow <code>#274b74</code>
+              </li>
+              <li>
+                <i style="background: #1f3e62"></i>mountain <code>#1f3e62</code>
+              </li>
+              <li>
+                <i style="background: #347bcd"></i>mountain edge
+                <code>#347bcd</code>
+              </li>
+              <li>
+                <i style="background: #405976"></i>park <code>#405976</code>
+              </li>
+              <li>
+                <i style="background: #9db4d0"></i>park edge
+                <code>#9db4d0</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water edge
+                <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #aabdd4"></i>label <code>#aabdd4</code>
+              </li>
+            </ul>
+          </figure>
+        </div>
+      </section>
+      <section class="family">
+        <h2>Indigo</h2>
+        <div class="pair">
+          <figure class="card light" style="background: #f4efe4">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="light example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#c6c6e7" />
+              <circle cx="40" cy="150" r="34" fill="#d1d7eb" />
+              <circle cx="290" cy="170" r="40" fill="#c7bfe3" />
+              <circle cx="190" cy="20" r="30" fill="#c8c4e9" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#a2a2cb"
+                stroke="#464671"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#4141c1"
+                stroke="#24245d"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#7272c3" />
+              <rect x="151" y="98" width="20" height="20" fill="#7272c3" />
+              <rect x="179" y="92" width="20" height="20" fill="#7272c3" />
+              <rect x="207" y="100" width="20" height="20" fill="#7272c3" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#6969ae"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#6d6d8b"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#686f83"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Light</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #c6c6e7"></i>ground <code>#c6c6e7</code>
+              </li>
+              <li>
+                <i style="background: #7272c3"></i>shadow <code>#7272c3</code>
+              </li>
+              <li>
+                <i style="background: #4141c1"></i>mountain <code>#4141c1</code>
+              </li>
+              <li>
+                <i style="background: #24245d"></i>mountain edge
+                <code>#24245d</code>
+              </li>
+              <li>
+                <i style="background: #a2a2cb"></i>park <code>#a2a2cb</code>
+              </li>
+              <li>
+                <i style="background: #464671"></i>park edge
+                <code>#464671</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water edge
+                <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #6969ae"></i>label <code>#6969ae</code>
+              </li>
+            </ul>
+          </figure>
+          <figure class="card dark" style="background: #1d222b">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="dark example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#474790" />
+              <circle cx="40" cy="150" r="34" fill="#495b95" />
+              <circle cx="290" cy="170" r="40" fill="#56458c" />
+              <circle cx="190" cy="20" r="30" fill="#4a4294" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#464671"
+                stroke="#a2a2cb"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#24245d"
+                stroke="#4141c1"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#f2f2f2"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#6b7486"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#2e2e6c" />
+              <rect x="151" y="98" width="20" height="20" fill="#2e2e6c" />
+              <rect x="179" y="92" width="20" height="20" fill="#2e2e6c" />
+              <rect x="207" y="100" width="20" height="20" fill="#2e2e6c" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#9999c5"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#9a9abc"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#8f9cc7"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Dark</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #474790"></i>ground <code>#474790</code>
+              </li>
+              <li>
+                <i style="background: #2e2e6c"></i>shadow <code>#2e2e6c</code>
+              </li>
+              <li>
+                <i style="background: #24245d"></i>mountain <code>#24245d</code>
+              </li>
+              <li>
+                <i style="background: #4141c1"></i>mountain edge
+                <code>#4141c1</code>
+              </li>
+              <li>
+                <i style="background: #464671"></i>park <code>#464671</code>
+              </li>
+              <li>
+                <i style="background: #a2a2cb"></i>park edge
+                <code>#a2a2cb</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water edge
+                <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #9999c5"></i>label <code>#9999c5</code>
+              </li>
+            </ul>
+          </figure>
+        </div>
+      </section>
+      <section class="family">
+        <h2>Violet</h2>
+        <div class="pair">
+          <figure class="card light" style="background: #f4efe4">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="light example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#e0c9e8" />
+              <circle cx="40" cy="150" r="34" fill="#e1d4ed" />
+              <circle cx="290" cy="170" r="40" fill="#e4c2e5" />
+              <circle cx="190" cy="20" r="30" fill="#e5c8ea" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#c2a4cc"
+                stroke="#674772"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#a043c1"
+                stroke="#4f255e"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#b074c4" />
+              <rect x="151" y="98" width="20" height="20" fill="#b074c4" />
+              <rect x="179" y="92" width="20" height="20" fill="#b074c4" />
+              <rect x="207" y="100" width="20" height="20" fill="#b074c4" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#9660a9"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#846d8b"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#717489"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Light</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #e0c9e8"></i>ground <code>#e0c9e8</code>
+              </li>
+              <li>
+                <i style="background: #b074c4"></i>shadow <code>#b074c4</code>
+              </li>
+              <li>
+                <i style="background: #a043c1"></i>mountain <code>#a043c1</code>
+              </li>
+              <li>
+                <i style="background: #4f255e"></i>mountain edge
+                <code>#4f255e</code>
+              </li>
+              <li>
+                <i style="background: #c2a4cc"></i>park <code>#c2a4cc</code>
+              </li>
+              <li>
+                <i style="background: #674772"></i>park edge
+                <code>#674772</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water edge
+                <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #9660a9"></i>label <code>#9660a9</code>
+              </li>
+            </ul>
+          </figure>
+          <figure class="card dark" style="background: #1d222b">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="dark example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#7f4891" />
+              <circle cx="40" cy="150" r="34" fill="#714a96" />
+              <circle cx="290" cy="170" r="40" fill="#8d468e" />
+              <circle cx="190" cy="20" r="30" fill="#894396" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#674772"
+                stroke="#c2a4cc"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#4f255e"
+                stroke="#a043c1"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#f2f2f2"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#6b7486"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#5e2f6d" />
+              <rect x="151" y="98" width="20" height="20" fill="#5e2f6d" />
+              <rect x="179" y="92" width="20" height="20" fill="#5e2f6d" />
+              <rect x="207" y="100" width="20" height="20" fill="#5e2f6d" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#c3a7cd"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#bfaac6"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#b0add1"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Dark</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #7f4891"></i>ground <code>#7f4891</code>
+              </li>
+              <li>
+                <i style="background: #5e2f6d"></i>shadow <code>#5e2f6d</code>
+              </li>
+              <li>
+                <i style="background: #4f255e"></i>mountain <code>#4f255e</code>
+              </li>
+              <li>
+                <i style="background: #a043c1"></i>mountain edge
+                <code>#a043c1</code>
+              </li>
+              <li>
+                <i style="background: #674772"></i>park <code>#674772</code>
+              </li>
+              <li>
+                <i style="background: #c2a4cc"></i>park edge
+                <code>#c2a4cc</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water edge
+                <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #c3a7cd"></i>label <code>#c3a7cd</code>
+              </li>
+            </ul>
+          </figure>
+        </div>
+      </section>
+      <section class="family">
+        <h2>White</h2>
+        <div class="pair">
+          <figure class="card light" style="background: #f4efe4">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="light example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#efeeeb" />
+              <circle cx="40" cy="150" r="34" fill="#f6f5f4" />
+              <circle cx="290" cy="170" r="40" fill="#ebeae5" />
+              <circle cx="190" cy="20" r="30" fill="#f0efea" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#ceccc5"
+                stroke="#6c675d"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#a69a76"
+                stroke="#564c38"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#b5aea1" />
+              <rect x="151" y="98" width="20" height="20" fill="#b5aea1" />
+              <rect x="179" y="92" width="20" height="20" fill="#b5aea1" />
+              <rect x="207" y="100" width="20" height="20" fill="#b5aea1" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#908976"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#8c8984"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#818a99"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Light</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #efeeeb"></i>ground <code>#efeeeb</code>
+              </li>
+              <li>
+                <i style="background: #b5aea1"></i>shadow <code>#b5aea1</code>
+              </li>
+              <li>
+                <i style="background: #a69a76"></i>mountain <code>#a69a76</code>
+              </li>
+              <li>
+                <i style="background: #564c38"></i>mountain edge
+                <code>#564c38</code>
+              </li>
+              <li>
+                <i style="background: #ceccc5"></i>park <code>#ceccc5</code>
+              </li>
+              <li>
+                <i style="background: #6c675d"></i>park edge
+                <code>#6c675d</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water edge
+                <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #908976"></i>label <code>#908976</code>
+              </li>
+            </ul>
+          </figure>
+          <figure class="card dark" style="background: #1d222b">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="dark example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#837b6a" />
+              <circle cx="40" cy="150" r="34" fill="#87796e" />
+              <circle cx="290" cy="170" r="40" fill="#807d68" />
+              <circle cx="190" cy="20" r="30" fill="#888065" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#6c675d"
+                stroke="#ceccc5"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#564c38"
+                stroke="#a69a76"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#f2f2f2"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#6b7486"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#60594b" />
+              <rect x="151" y="98" width="20" height="20" fill="#60594b" />
+              <rect x="179" y="92" width="20" height="20" fill="#60594b" />
+              <rect x="207" y="100" width="20" height="20" fill="#60594b" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#373328"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#35332f"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#303339"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Dark</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #837b6a"></i>ground <code>#837b6a</code>
+              </li>
+              <li>
+                <i style="background: #60594b"></i>shadow <code>#60594b</code>
+              </li>
+              <li>
+                <i style="background: #564c38"></i>mountain <code>#564c38</code>
+              </li>
+              <li>
+                <i style="background: #a69a76"></i>mountain edge
+                <code>#a69a76</code>
+              </li>
+              <li>
+                <i style="background: #6c675d"></i>park <code>#6c675d</code>
+              </li>
+              <li>
+                <i style="background: #ceccc5"></i>park edge
+                <code>#ceccc5</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water edge
+                <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #373328"></i>label <code>#373328</code>
+              </li>
+            </ul>
+          </figure>
+        </div>
+      </section>
+      <section class="family">
+        <h2>Black</h2>
+        <div class="pair">
+          <figure class="card light" style="background: #f4efe4">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="light example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#999ca3" />
+              <circle cx="40" cy="150" r="34" fill="#a1a6aa" />
+              <circle cx="290" cy="170" r="40" fill="#94959e" />
+              <circle cx="190" cy="20" r="30" fill="#9499a8" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#82858b"
+                stroke="#414345"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#50596d"
+                stroke="#292d36"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#9aa7b8"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#e8e4d8"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#6c7078" />
+              <rect x="151" y="98" width="20" height="20" fill="#6c7078" />
+              <rect x="179" y="92" width="20" height="20" fill="#6c7078" />
+              <rect x="207" y="100" width="20" height="20" fill="#6c7078" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#4a4e59"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#4d4e52"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#494e5a"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Light</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #999ca3"></i>ground <code>#999ca3</code>
+              </li>
+              <li>
+                <i style="background: #6c7078"></i>shadow <code>#6c7078</code>
+              </li>
+              <li>
+                <i style="background: #50596d"></i>mountain <code>#50596d</code>
+              </li>
+              <li>
+                <i style="background: #292d36"></i>mountain edge
+                <code>#292d36</code>
+              </li>
+              <li>
+                <i style="background: #82858b"></i>park <code>#82858b</code>
+              </li>
+              <li>
+                <i style="background: #414345"></i>park edge
+                <code>#414345</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water edge
+                <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #4a4e59"></i>label <code>#4a4e59</code>
+              </li>
+            </ul>
+          </figure>
+          <figure class="card dark" style="background: #1d222b">
+            <svg
+              viewBox="0 0 320 200"
+              role="img"
+              aria-label="dark example"
+              style="
+                width: 100%;
+                height: auto;
+                display: block;
+                border-radius: 10px;
+              "
+            >
+              <rect width="320" height="200" fill="#4c4e52" />
+              <circle cx="40" cy="150" r="34" fill="#4f5356" />
+              <circle cx="290" cy="170" r="40" fill="#494a50" />
+              <circle cx="190" cy="20" r="30" fill="#484b56" />
+              <ellipse
+                cx="262"
+                cy="70"
+                rx="36"
+                ry="26"
+                fill="#414345"
+                stroke="#82858b"
+                stroke-width="2"
+              />
+              <path
+                d="M14,84 C18,40 46,14 80,16 C112,18 124,52 118,84 C100,98 40,98 14,84 Z"
+                fill="#292d36"
+                stroke="#50596d"
+                stroke-width="2"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#bac8e3"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,178 C80,160 150,198 230,172 S300,160 320,170"
+                fill="none"
+                stroke="#96abd4"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#f2f2f2"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <path
+                d="M120,8 C180,20 240,6 320,22"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#6b7486"
+                stroke-width="11"
+                stroke-linecap="round"
+              />
+              <path
+                d="M0,138 C90,132 150,142 320,128"
+                fill="none"
+                stroke="#4a5262"
+                stroke-width="7"
+                stroke-linecap="round"
+              />
+              <rect x="123" y="94" width="20" height="20" fill="#36383c" />
+              <rect x="151" y="98" width="20" height="20" fill="#36383c" />
+              <rect x="179" y="92" width="20" height="20" fill="#36383c" />
+              <rect x="207" y="100" width="20" height="20" fill="#36383c" />
+              <rect x="118" y="92" width="20" height="20" fill="#b8334a" />
+              <rect x="118" y="88" width="20" height="20" fill="#e8475c" />
+              <rect x="146" y="96" width="20" height="20" fill="#d9742a" />
+              <rect x="146" y="92" width="20" height="20" fill="#f7a53c" />
+              <rect x="174" y="90" width="20" height="20" fill="#2f4ea8" />
+              <rect x="174" y="86" width="20" height="20" fill="#4a6fd8" />
+              <rect x="202" y="98" width="20" height="20" fill="#3a9bc0" />
+              <rect x="202" y="94" width="20" height="20" fill="#5fc7e6" />
+              <text
+                x="66"
+                y="114"
+                text-anchor="middle"
+                fill="#999ba1"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                MOUNTAIN
+              </text>
+              <text
+                x="262"
+                y="110"
+                text-anchor="middle"
+                fill="#9a9c9e"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                PARK
+              </text>
+              <text
+                x="36"
+                y="158"
+                text-anchor="start"
+                fill="#8e9cb4"
+                font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+                font-size="10"
+                font-weight="600"
+                letter-spacing="1.5"
+              >
+                RIVER
+              </text>
+            </svg>
+            <figcaption>Dark</figcaption>
+            <ul class="key">
+              <li>
+                <i style="background: #4c4e52"></i>ground <code>#4c4e52</code>
+              </li>
+              <li>
+                <i style="background: #36383c"></i>shadow <code>#36383c</code>
+              </li>
+              <li>
+                <i style="background: #292d36"></i>mountain <code>#292d36</code>
+              </li>
+              <li>
+                <i style="background: #50596d"></i>mountain edge
+                <code>#50596d</code>
+              </li>
+              <li>
+                <i style="background: #414345"></i>park <code>#414345</code>
+              </li>
+              <li>
+                <i style="background: #82858b"></i>park edge
+                <code>#82858b</code>
+              </li>
+              <li>
+                <i style="background: #96abd4"></i>water <code>#96abd4</code>
+              </li>
+              <li>
+                <i style="background: #bac8e3"></i>water edge
+                <code>#bac8e3</code>
+              </li>
+              <li>
+                <i style="background: #999ba1"></i>label <code>#999ba1</code>
+              </li>
+            </ul>
+          </figure>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

@@ -16,9 +16,42 @@ import { TUNING_RANGES } from './tuning-ranges.ts';
  * and colours apply to a new run, so use Restart after changing them.
  */
 
+/** Every action a hotkey does, so the panel's buttons can do the same thing. */
+export type HotkeyAction =
+  | 'erase'
+  | 'road'
+  | 'bridge'
+  | 'tunnel'
+  | 'motorway'
+  | 'roundabout'
+  | 'light'
+  | 'guide'
+  | 'theme'
+  | 'restart';
+
+/** The hotkeys, in the order the panel lists them. */
+export const HOTKEYS: readonly {
+  key: string;
+  action: HotkeyAction;
+  label: string;
+}[] = [
+  { key: 'E', action: 'erase', label: 'Erase tool (press again for select)' },
+  { key: 'F', action: 'road', label: 'Road draw (press again for select)' },
+  { key: 'B', action: 'bridge', label: 'Bridge placement' },
+  { key: 'T', action: 'tunnel', label: 'Tunnel placement' },
+  { key: 'M', action: 'motorway', label: 'Motorway placement' },
+  { key: 'O', action: 'roundabout', label: 'Roundabout placement' },
+  { key: 'L', action: 'light', label: 'Traffic light placement' },
+  { key: 'G', action: 'guide', label: 'Motorway guide on/off' },
+  { key: 'N', action: 'theme', label: 'Light / dark mode' },
+  { key: 'R', action: 'restart', label: 'Restart (only once the run is over)' },
+];
+
 export interface TuningPanelOptions {
   /** Called when a speed button is pressed. */
   onSpeed: (speed: Speed) => void;
+  /** Called when a hotkey's button is pressed. Does the same as the key. */
+  onHotkey: (action: HotkeyAction) => void;
   /** Called when Restart is pressed. */
   onRestart: () => void;
   /** Starts a scripted demo, or the normal test map for null, then restarts. */
@@ -70,6 +103,25 @@ function demoRow(onDemo: (id: DemoId | null) => void): HTMLDivElement {
     row.appendChild(button(demo.title, () => onDemo(demo.id)));
   }
   row.appendChild(button('Test map', () => onDemo(null)));
+  return row;
+}
+
+/** One button per hotkey, labelled with the key, so the keys are listed where they can be found. */
+function hotkeyRow(onHotkey: (action: HotkeyAction) => void): HTMLDivElement {
+  const row = document.createElement('div');
+  row.style.marginTop = '6px';
+  const label = document.createElement('div');
+  label.textContent = 'Hotkeys (buttons do the same as the keys)';
+  row.appendChild(label);
+  for (const hotkey of HOTKEYS) {
+    const b = button(`${hotkey.key} · ${hotkey.label}`, () =>
+      onHotkey(hotkey.action),
+    );
+    b.style.display = 'block';
+    b.style.width = '100%';
+    b.style.textAlign = 'left';
+    row.appendChild(b);
+  }
   return row;
 }
 
@@ -177,6 +229,7 @@ export function createTuningPanel(options: TuningPanelOptions): TuningPanel {
 
   root.append(grantRow(options.onGrant));
   root.append(demoRow(options.onDemo));
+  root.append(hotkeyRow(options.onHotkey));
   return {
     setSpeed,
     refresh,

@@ -24,7 +24,10 @@ import { type CurvePoint, motorwayCurve } from '@overpass-game/sim';
 import {
   BUILDING_COLORS,
   DEBUG_PALETTE,
-  PALETTE,
+  STANDARD_BUILDING_PALETTE,
+  labelColour,
+  resolvePalette,
+  type MapPalette,
   ROAD_WIDTH_TILES,
   TILE_SIZE,
 } from '@overpass-game/render-style';
@@ -63,7 +66,11 @@ import {
   terrainTiles,
   ENTRANCE_WIDTH,
 } from '../view/geometry.ts';
-import { createTuningPanel, type TuningPanel } from '../debug/tuning-panel.ts';
+import {
+  createTuningPanel,
+  type HotkeyAction,
+  type TuningPanel,
+} from '../debug/tuning-panel.ts';
 import { createOfferPanel, type OfferPanel } from '../ui/offer-panel.ts';
 import { previewRoads } from '../view/crossing-preview.ts';
 import { motorwayPreview, motorwayParts } from '../view/motorway-view.ts';
@@ -73,6 +80,7 @@ import {
   DEFAULT_SETTINGS,
   type GameSettings,
   toggleGuide,
+  toggleTheme,
 } from './settings.ts';
 import { lockedTileRects } from '../view/districts.ts';
 import { endLines, hudLine, OVERFLOW_RING_COLOR } from '../view/hud.ts';
@@ -111,11 +119,25 @@ const PAN_KEY_PX_PER_SEC = 600;
 const LIGHT_GREEN_COLOUR = 0x5cb85c;
 const LIGHT_RED_COLOUR = 0xd9534f;
 
-const TERRAIN_COLOR: Partial<Record<TerrainKind, number>> = {
-  [Terrain.Water]: PALETTE.water,
-  [Terrain.Mountain]: PALETTE.mountain,
-  [Terrain.Park]: PALETTE.park,
-};
+/** Stroke width of thin region and pavement borders, in pixels. */
+const BORDER_PX = 2;
+
+/** A 24-bit colour as the `#rrggbb` text Phaser's text objects take. */
+function hexString(colour: number): string {
+  return `#${colour.toString(16).padStart(6, '0')}`;
+}
+/** Motorway contrast stroke, wider than the motorway itself, in pixels. */
+const MOTORWAY_CONTRAST_PX = 4;
+/** Building depth: how far the shaded side shows below the face, in pixels. */
+const BUILDING_DEPTH_PX = 4;
+/** Cast shadow offset and opacity under buildings. */
+const SHADOW_DX = 4;
+const SHADOW_DY = 5;
+const SHADOW_ALPHA = 0.55;
+/** Shaded side colour for each standard building face colour. */
+const SIDE_BY_FACE = new Map(
+  STANDARD_BUILDING_PALETTE.map((style) => [style.face, style.side]),
+);
 
 /**
  * The M2 view. It draws sim state and forwards input. It holds no game rules:
@@ -138,6 +160,16 @@ export class GameScene extends Phaser.Scene {
   private buildingGfx!: Phaser.GameObjects.Graphics;
   private motorwayGfx!: Phaser.GameObjects.Graphics;
   private guideGfx!: Phaser.GameObjects.Graphics;
+  private terrainGfx!: Phaser.GameObjects.Graphics;
+  /** The palette for this map in the current mode. */
+  private pal!: MapPalette;
+  private paletteId = 'default';
+  private waterId = 'shared';
+  private terrainOutlines: CompiledMap['outlines'] | null = null;
+  /** The map's named labels, and the text objects drawn for them. */
+  private mapLabels: CompiledMap['labels'] = [];
+  private labelTexts: Phaser.GameObjects.Text[] = [];
+  private guideLines: { x: number; y: number }[][] | null = null;
   private settings: GameSettings = DEFAULT_SETTINGS;
   private controlGfx!: Phaser.GameObjects.Graphics;
   private carGfx!: Phaser.GameObjects.Graphics;
@@ -196,6 +228,7 @@ export class GameScene extends Phaser.Scene {
 
     this.layer = this.add.container(0, 0);
     const terrainGfx = this.add.graphics();
+    this.terrainGfx = terrainGfx;
     this.guideGfx = this.add.graphics();
     this.lockGfx = this.add.graphics();
     // Roads sit under buildings, so a road that meets a building tucks in beneath its body.
@@ -225,8 +258,20 @@ export class GameScene extends Phaser.Scene {
       this.ringGfx,
       this.overlayGfx,
     ]);
-    this.drawTerrain(terrainGfx, grid, demo ? null : playedMap().outlines);
-    this.drawGuide(demo ? null : testMapGuide());
+    this.paletteId = demo ? 'default' : playedMap().palette;
+    this.waterId = demo ? 'shared' : playedMap().waterPalette;
+    this.pal = resolvePalette(
+      this.paletteId,
+      this.settings.theme,
+      this.waterId,
+    );
+    this.cameras.main.setBackgroundColor(this.pal.background);
+    this.terrainOutlines = demo ? null : playedMap().outlines;
+    this.mapLabels = demo ? [] : playedMap().labels;
+    this.guideLines = demo ? null : testMapGuide();
+    this.drawTerrain(terrainGfx, grid, this.terrainOutlines);
+    this.drawLabels();
+    this.drawGuide(this.guideLines);
     this.guideGfx.setVisible(this.settings.motorwayGuide);
     // Demo maps bring their own buildings. Only the test map places the hand-listed ones;
     // Studio maps have none until the spawn field (M14).
@@ -292,6 +337,7 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-L', this.onLightKey);
     this.input.keyboard?.on('keydown-F', this.onRoadKey);
     this.input.keyboard?.on('keydown-G', this.onGuideKey);
+    this.input.keyboard?.on('keydown-N', this.onThemeKey);
     this.input.keyboard?.on('keydown', this.onKey);
     this.cursors = this.input.keyboard?.createCursorKeys() ?? null;
     // Holding Space and dragging with the left button pans. Capture stops the page from scrolling.
@@ -457,6 +503,43 @@ export class GameScene extends Phaser.Scene {
     this.guideGfx.setVisible(this.settings.motorwayGuide);
   };
 
+  /** N switches light and dark mode. The ground, guide and buildings redraw in place. */
+  private onThemeKey = (): void => {
+    this.settings = toggleTheme(this.settings);
+    this.pal = resolvePalette(
+      this.paletteId,
+      this.settings.theme,
+      this.waterId,
+    );
+    this.cameras.main.setBackgroundColor(this.pal.background);
+    this.drawTerrain(this.terrainGfx, this.sim.grid, this.terrainOutlines);
+    this.drawLabels();
+    this.drawGuide(this.guideLines);
+    this.drawBuildings();
+    this.roadsDirty = true;
+  };
+
+  /**
+   * The map's park, mountain and water names. Each sits over the ground and under the roads, in
+   * the label colour for its kind in the current mode. Redrawn on a theme change, for the colour.
+   */
+  private drawLabels(): void {
+    for (const text of this.labelTexts) text.destroy();
+    this.labelTexts = [];
+    for (const label of this.mapLabels) {
+      const text = this.add
+        .text(label.x * TILE_SIZE, label.y * TILE_SIZE, label.text, {
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: `${label.size * TILE_SIZE}px`,
+          color: hexString(labelColour(this.pal, label.kind)),
+        })
+        .setOrigin(0.5)
+        .setResolution(2);
+      this.layer.addAt(text, this.layer.getIndex(this.roadGfx));
+      this.labelTexts.push(text);
+    }
+  }
+
   private onRoadKey = (): void => {
     setTool(this.mapper, this.mapper.tool === 'draw' ? 'select' : 'draw');
   };
@@ -531,7 +614,7 @@ export class GameScene extends Phaser.Scene {
     if (!lines) return;
     gfx.lineStyle(
       TILE_SIZE * GUIDE_STYLE.widthTiles,
-      PALETTE.motorway,
+      this.pal.guide,
       GUIDE_STYLE.alpha,
     );
     for (const line of guideWorldLines(lines)) {
@@ -547,39 +630,73 @@ export class GameScene extends Phaser.Scene {
   /**
    * Draws the ground. Parks, mountains and water come from their smooth outlines, so they
    * look like the Studio. The tiles still decide play. Demo maps have no outlines and use tiles.
+   * Each region has its primary colour and a thin border in the opposite mode's colour.
    */
   private drawTerrain(
     gfx: Phaser.GameObjects.Graphics,
     grid: Grid,
     outlines: CompiledMap['outlines'] | null,
   ): void {
-    gfx.fillStyle(PALETTE.land, 1);
+    gfx.clear();
+    gfx.fillStyle(this.pal.land, 1);
     gfx.fillRect(0, 0, this.mapSize.width, this.mapSize.height);
     if (outlines === null) {
       for (const t of terrainTiles(grid)) {
-        gfx.fillStyle(TERRAIN_COLOR[t.kind] ?? PALETTE.land, 1);
+        gfx.fillStyle(this.terrainColour(t.kind), 1);
         gfx.fillRect(t.x, t.y, TILE_SIZE, TILE_SIZE);
       }
       return;
     }
     // The compiler paints parks, then mountains, then water on top. Draw in the same order.
-    this.drawOutlines(gfx, outlines.parks, PALETTE.park);
-    this.drawOutlines(gfx, outlines.mountains, PALETTE.mountain);
-    this.drawOutlines(gfx, outlines.water, PALETTE.water);
+    this.drawOutlines(gfx, outlines.parks, this.pal.park, this.pal.parkEdge);
+    this.drawOutlines(
+      gfx,
+      outlines.mountains,
+      this.pal.mountain,
+      this.pal.mountainEdge,
+    );
+    this.drawOutlines(gfx, outlines.water, this.pal.water, this.pal.waterEdge);
   }
 
-  /** Closed outlines are filled; open ones are strokes as wide as the outline says, in grid units. */
+  /** The colour a tile of this terrain kind draws in the current palette. */
+  private terrainColour(kind: TerrainKind): number {
+    if (kind === Terrain.Water) return this.pal.water;
+    if (kind === Terrain.Mountain) return this.pal.mountain;
+    if (kind === Terrain.Park) return this.pal.park;
+    return this.pal.land;
+  }
+
+  /**
+   * Closed outlines are filled with a thin border; open ones are strokes as wide as the
+   * outline says, in grid units, with the same border on each side.
+   */
   private drawOutlines(
     gfx: Phaser.GameObjects.Graphics,
     paths: OutlinePath[],
     colour: number,
+    edge: number,
   ): void {
-    for (const path of paths) {
+    const trace = (path: OutlinePath): void => {
       gfx.beginPath();
       path.points.forEach((p, i) => {
         if (i === 0) gfx.moveTo(p.x * TILE_SIZE, p.y * TILE_SIZE);
         else gfx.lineTo(p.x * TILE_SIZE, p.y * TILE_SIZE);
       });
+    };
+    // Borders first, for every piece, then the fills on top. Overlapping pieces (a river and its
+    // riverbank, say) then read as one body: only the outer edge of the union shows a border.
+    for (const path of paths) {
+      trace(path);
+      if (path.closed) {
+        gfx.closePath();
+        gfx.lineStyle(BORDER_PX, edge, 1);
+      } else {
+        gfx.lineStyle((path.width ?? 0) * TILE_SIZE + BORDER_PX * 2, edge, 1);
+      }
+      gfx.strokePath();
+    }
+    for (const path of paths) {
+      trace(path);
       if (path.closed) {
         gfx.closePath();
         gfx.fillStyle(colour, 1);
@@ -612,15 +729,29 @@ export class GameScene extends Phaser.Scene {
     const visible = this.sim.buildings.filter((b) =>
       isOpenTile(this.sim, b.tile),
     );
-    for (const s of buildingShapes(visible, this.sim.grid, BUILDING_COLORS)) {
+    const shapes = buildingShapes(visible, this.sim.grid, BUILDING_COLORS);
+    // Shadows first, so every building's shadow falls under its neighbours.
+    gfx.fillStyle(this.pal.shadow, SHADOW_ALPHA);
+    for (const s of shapes) {
       if (s.kind === 'square') {
+        gfx.fillRect(s.x + SHADOW_DX, s.y + SHADOW_DY, s.size, s.size);
+      } else if (s.kind === 'circle') {
+        gfx.fillCircle(s.x + SHADOW_DX, s.y + SHADOW_DY, s.r);
+      }
+    }
+    for (const s of shapes) {
+      if (s.kind === 'square') {
+        gfx.fillStyle(SIDE_BY_FACE.get(s.color) ?? s.color, 1);
+        gfx.fillRect(s.x, s.y + BUILDING_DEPTH_PX, s.size, s.size);
         gfx.fillStyle(s.color, 1);
         gfx.fillRect(s.x, s.y, s.size, s.size);
       } else if (s.kind === 'circle') {
+        gfx.fillStyle(SIDE_BY_FACE.get(s.color) ?? s.color, 1);
+        gfx.fillCircle(s.x, s.y + BUILDING_DEPTH_PX, s.r);
         gfx.fillStyle(s.color, 1);
         gfx.fillCircle(s.x, s.y, s.r);
       } else {
-        gfx.lineStyle(ENTRANCE_WIDTH, PALETTE.road, 1);
+        gfx.lineStyle(ENTRANCE_WIDTH, this.pal.road, 1);
         gfx.lineBetween(s.x1, s.y1, s.x2, s.y2);
       }
     }
@@ -629,7 +760,6 @@ export class GameScene extends Phaser.Scene {
   private drawRoads(): void {
     const gfx = this.roadGfx;
     gfx.clear();
-    gfx.fillStyle(PALETTE.road, 1);
     const visible = this.sim.buildings.filter((b) =>
       isOpenTile(this.sim, b.tile),
     );
@@ -637,11 +767,25 @@ export class GameScene extends Phaser.Scene {
       ...roadShapes(this.sim.grid, this.sim.roads, this.sim.links),
       ...entranceStubShapes(visible, this.sim.grid, this.sim.roads),
     ];
+    // Kerb first, a little wider, then the pavement on top, so each road has a thin outline.
+    this.paintRoadShapes(gfx, shapes, this.pal.kerb, BORDER_PX);
+    this.paintRoadShapes(gfx, shapes, this.pal.road, 0);
+  }
+
+  /** Paints road shapes in one colour, each grown outwards by `grow` pixels. */
+  private paintRoadShapes(
+    gfx: Phaser.GameObjects.Graphics,
+    shapes: ReturnType<typeof roadShapes>,
+    colour: number,
+    grow: number,
+  ): void {
+    gfx.fillStyle(colour, 1);
     for (const s of shapes) {
-      if (s.kind === 'circle') gfx.fillCircle(s.x, s.y, s.r);
-      else if (s.kind === 'rect') gfx.fillRect(s.x, s.y, s.w, s.h);
+      if (s.kind === 'circle') gfx.fillCircle(s.x, s.y, s.r + grow);
+      else if (s.kind === 'rect')
+        gfx.fillRect(s.x - grow, s.y - grow, s.w + grow * 2, s.h + grow * 2);
       else {
-        gfx.lineStyle(s.w, PALETTE.road, 1);
+        gfx.lineStyle(s.w + grow * 2, colour, 1);
         gfx.lineBetween(s.x1, s.y1, s.x2, s.y2);
       }
     }
@@ -682,9 +826,15 @@ export class GameScene extends Phaser.Scene {
         0x000000,
         0.2,
       );
-      line(px(parts.start), width, PALETTE.road, 1);
-      line(px(parts.end), width, PALETTE.road, 1);
-      line(px(parts.middle), width, PALETTE.motorway, 1);
+      line(px(parts.start), width, this.pal.road, 1);
+      line(px(parts.end), width, this.pal.road, 1);
+      line(
+        px(parts.middle),
+        width + MOTORWAY_CONTRAST_PX,
+        this.pal.motorwayContrast,
+        1,
+      );
+      line(px(parts.middle), width, this.pal.motorway, 1);
       if (this.controller.selected === m.id) {
         gfx.fillStyle(0xffffff, 1);
         for (const h of m.handles)
@@ -694,7 +844,7 @@ export class GameScene extends Phaser.Scene {
     const s = this.controller.stroke;
     if (s && s.mode === 'motorway') {
       const preview = motorwayPreview(this.sim.grid, s.drag);
-      if (preview) line(px(preview), width, PALETTE.motorway, 0.4);
+      if (preview) line(px(preview), width, this.pal.motorway, 0.4);
     }
   }
 
@@ -709,12 +859,12 @@ export class GameScene extends Phaser.Scene {
     )
       return;
     const preview = previewRoads(this.sim.grid, s.path);
-    gfx.fillStyle(PALETTE.road, 1);
+    gfx.fillStyle(this.pal.road, 1);
     for (const sh of roadShapes(this.sim.grid, preview.roads, preview.links)) {
       if (sh.kind === 'circle') gfx.fillCircle(sh.x, sh.y, sh.r);
       else if (sh.kind === 'rect') gfx.fillRect(sh.x, sh.y, sh.w, sh.h);
       else {
-        gfx.lineStyle(sh.w, PALETTE.road, 1);
+        gfx.lineStyle(sh.w, this.pal.road, 1);
         gfx.lineBetween(sh.x1, sh.y1, sh.x2, sh.y2);
       }
     }
@@ -753,12 +903,12 @@ export class GameScene extends Phaser.Scene {
         const band = TILE_SIZE * 0.28;
         gfx.lineStyle(band + 3, CONTROL_OUTLINE_COLOUR, 1);
         gfx.strokeCircle(cx, cy, mid);
-        gfx.lineStyle(band, PALETTE.road, 1);
+        gfx.lineStyle(band, this.pal.road, 1);
         gfx.strokeCircle(cx, cy, mid);
         // Hollow centre: the tile's own ground shows through, so the roads under it don't.
-        const ground =
-          TERRAIN_COLOR[this.sim.grid.terrain[tile] as TerrainKind] ??
-          PALETTE.land;
+        const ground = this.terrainColour(
+          this.sim.grid.terrain[tile] as TerrainKind,
+        );
         gfx.fillStyle(ground, 1);
         gfx.fillCircle(cx, cy, mid - band / 2);
         continue;
@@ -893,6 +1043,7 @@ export class GameScene extends Phaser.Scene {
         onGrant: (kind) => {
           this.sim.stock[kind] += 1;
         },
+        onHotkey: (action) => this.runHotkey(action),
       });
       this.panel.setSpeed(this.clock.speed);
     } else {
@@ -900,6 +1051,42 @@ export class GameScene extends Phaser.Scene {
       this.panel = null;
     }
   };
+
+  /** Runs the same handler as the hotkey for an action, so the panel's buttons match the keys. */
+  private runHotkey(action: HotkeyAction): void {
+    switch (action) {
+      case 'erase':
+        this.toggleTool();
+        return;
+      case 'road':
+        this.onRoadKey();
+        return;
+      case 'bridge':
+        this.onBridgeKey();
+        return;
+      case 'tunnel':
+        this.onTunnelKey();
+        return;
+      case 'motorway':
+        this.onMotorwayKey();
+        return;
+      case 'roundabout':
+        this.onRoundaboutKey();
+        return;
+      case 'light':
+        this.onLightKey();
+        return;
+      case 'guide':
+        this.onGuideKey();
+        return;
+      case 'theme':
+        this.onThemeKey();
+        return;
+      case 'restart':
+        this.restartIfOver();
+        return;
+    }
+  }
 
   /** Tile grid lines, drawn once. */
   private drawBuildGrid(gfx: Phaser.GameObjects.Graphics, grid: Grid): void {
@@ -941,6 +1128,7 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown-O', this.onRoundaboutKey);
     this.input.keyboard?.off('keydown-L', this.onLightKey);
     this.input.keyboard?.off('keydown-G', this.onGuideKey);
+    this.input.keyboard?.off('keydown-N', this.onThemeKey);
     this.input.keyboard?.off('keydown-F', this.onRoadKey);
     this.offerPanel.destroy();
     this.input.keyboard?.off('keydown', this.onKey);

@@ -1,7 +1,8 @@
-import type { Polyline, Shape } from '@overpass-game/map-schema';
+import type { MapLabel, Polyline, Shape } from '@overpass-game/map-schema';
 import { IMPORT, METRES_PER_TILE } from '../config.ts';
 import type { Frame } from '../geo/frame.ts';
 import type { LonLat } from '../geo/mercator.ts';
+import { LABEL_SIZE } from '../edit/labels.ts';
 import { PARK_LANDUSE, RIVER_WATERWAYS } from '../osm/query.ts';
 import {
   lineLength,
@@ -30,6 +31,26 @@ export interface ImportedLayers {
   readonly water: Shape[];
   readonly parks: Shape[];
   readonly motorwayGuide: Polyline[];
+  /** Names from OSM, placed on the park, water and peak features that were kept. */
+  readonly labels: MapLabel[];
+}
+
+/** The OSM name of a feature, tidied for a label, or undefined when it has none. */
+function nameOf(tags: Record<string, unknown>): string | undefined {
+  const name = (tagOf(tags, 'name') ?? '').replace(/\s+/g, ' ').trim();
+  return name === '' ? undefined : name.slice(0, 40);
+}
+
+/** The average of a list of points: a simple, always-inside-enough place for a label. */
+function meanOf(points: readonly { x: number; y: number }[]): {
+  x: number;
+  y: number;
+} {
+  const n = points.length || 1;
+  return {
+    x: points.reduce((s, p) => s + p.x, 0) / n,
+    y: points.reduce((s, p) => s + p.y, 0) / n,
+  };
 }
 
 function tagOf(tags: Record<string, unknown>, key: string): string | undefined {
@@ -161,6 +182,26 @@ export function convertFeatures(
   const parks: Shape[] = [];
   const motorwayGuide: Polyline[] = [];
   const coastLines: LonLat[][] = [];
+  const labels: MapLabel[] = [];
+
+  /** A label for a feature's OSM name, when it has one and sits inside the frame. */
+  const addLabel = (
+    kind: MapLabel['kind'],
+    featureId: string,
+    text: string | undefined,
+    at: { x: number; y: number } | undefined,
+  ): void => {
+    if (!text || !at) return;
+    if (at.x < 0 || at.y < 0 || at.x > frame.cols || at.y > frame.rows) return;
+    labels.push({
+      id: `label-${featureId}`,
+      kind,
+      text,
+      x: at.x,
+      y: at.y,
+      size: LABEL_SIZE.default,
+    });
+  };
 
   const closedShape = (id: string, ring: LonLat[]): Shape | null => {
     const points: GridPoint[] = simplifyRing(
@@ -202,13 +243,34 @@ export function convertFeatures(
       /[^A-Za-z0-9_/-]/g,
       '-',
     );
+    // A feature gets one label, from the first of its parts that is kept.
+    let labelled = false;
+
+    if (geometry.type === 'Point') {
+      if (tagOf(tags, 'natural') === 'peak') {
+        const at = asLonLat(geometry.coordinates);
+        addLabel('mountain', id, nameOf(tags), at ? project(at) : undefined);
+      }
+      return;
+    }
 
     if (geometry.type === 'Polygon' || geometry.type === 'MultiPolygon') {
-      const target = isWater(tags) ? water : isPark(tags) ? parks : null;
+      const isWaterArea = isWater(tags);
+      const target = isWaterArea ? water : isPark(tags) ? parks : null;
       if (!target) return;
       outerRings(geometry.type, geometry.coordinates).forEach((ring, i) => {
         const shape = closedShape(`${id}-${i}`, ring);
-        if (shape) target.push(shape);
+        if (!shape) return;
+        target.push(shape);
+        if (!labelled) {
+          labelled = true;
+          addLabel(
+            isWaterArea ? 'water' : 'park',
+            id,
+            nameOf(tags),
+            meanOf(shape.points),
+          );
+        }
       });
       return;
     }
@@ -226,12 +288,23 @@ export function convertFeatures(
     ) {
       lineList.forEach((line, i) => {
         const latitude = line[0]?.[1] ?? 0;
+        const gridLine = line.map(project);
         const shape = strokeShape(
           `${id}-${i}`,
-          line.map(project),
+          gridLine,
           riverWidthTiles(tags, latitude),
         );
-        if (shape) water.push(shape);
+        if (!shape) return;
+        water.push(shape);
+        if (!labelled) {
+          labelled = true;
+          addLabel(
+            'water',
+            id,
+            nameOf(tags),
+            gridLine[Math.floor(gridLine.length / 2)],
+          );
+        }
       });
     } else if (highway === 'motorway' || highway === 'trunk') {
       lineList.forEach((line, i) => {
@@ -254,5 +327,5 @@ export function convertFeatures(
     if (shape) water.push(shape);
   });
 
-  return { water, parks, motorwayGuide };
+  return { water, parks, motorwayGuide, labels };
 }

@@ -1,4 +1,4 @@
-import type { SourceMap } from '@overpass-game/map-schema';
+import type { MapLabel, SourceMap } from '@overpass-game/map-schema';
 
 /**
  * Immutable edits to a source map. Each operation returns the same map object when nothing
@@ -6,7 +6,8 @@ import type { SourceMap } from '@overpass-game/map-schema';
  * empty step. Handles are offsets from their point, so moving a point carries its handles.
  */
 
-export type EditableLayer = keyof SourceMap['layers'];
+/// Shape layers only. Labels are points and get their own editing tool.
+export type EditableLayer = Exclude<keyof SourceMap['layers'], 'labels'>;
 type Layers = SourceMap['layers'];
 type Item = Layers[EditableLayer][number];
 
@@ -340,6 +341,110 @@ export function nextId(map: SourceMap, prefix: string): string {
     const candidate = `${prefix}-${n}`;
     if (!taken.has(candidate)) return candidate;
   }
+}
+
+/** Sets the base palette family the preview and the game draw the map with. */
+export function setPalette(map: SourceMap, paletteId: string): SourceMap {
+  if (map.palette === paletteId) return map;
+  return { ...map, palette: paletteId };
+}
+
+/** Sets the water choice: the shared ramp, or a family's hue for the water. */
+export function setWaterPalette(map: SourceMap, waterId: string): SourceMap {
+  if (map.waterPalette === waterId) return map;
+  return { ...map, waterPalette: waterId };
+}
+
+/** Removes every label. Undo brings them back, so a bulk prune is safe to try. */
+export function clearLabels(map: SourceMap): SourceMap {
+  if (map.layers.labels.length === 0) return map;
+  return { ...map, layers: { ...map.layers, labels: [] } };
+}
+
+/** Appends a label. An id already in use anywhere in the map is refused. */
+export function addLabel(map: SourceMap, label: MapLabel): SourceMap {
+  if (allIds(map).has(label.id)) return map;
+  return {
+    ...map,
+    layers: { ...map.layers, labels: [...map.layers.labels, label] },
+  };
+}
+
+/** Replaces one label with an edited copy. Returns the same map when the label is missing or unchanged. */
+function updateLabel(
+  map: SourceMap,
+  id: string,
+  change: (label: MapLabel) => MapLabel,
+): SourceMap {
+  const list = map.layers.labels;
+  const at = list.findIndex((l) => l.id === id);
+  if (at < 0) return map;
+  const current = list[at]!;
+  const next = change(current);
+  if (next === current) return map;
+  const copy = list.slice();
+  copy[at] = next;
+  return { ...map, layers: { ...map.layers, labels: copy } };
+}
+
+/** Moves a label. Its position is in grid units, the same as shape points. */
+export function moveLabel(
+  map: SourceMap,
+  id: string,
+  x: number,
+  y: number,
+): SourceMap {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return map;
+  return updateLabel(map, id, (l) =>
+    l.x === x && l.y === y ? l : { ...l, x, y },
+  );
+}
+
+export interface LabelPatch {
+  readonly text?: string;
+  readonly kind?: MapLabel['kind'];
+  readonly size?: number;
+}
+
+/** Limits from the map schema, so an edit can never write a label the compiler would reject. */
+export const LABEL_TEXT_MAX = 40;
+export const LABEL_SIZE_MIN = 0.5;
+export const LABEL_SIZE_MAX = 10;
+
+/**
+ * Changes a label's text, kind or size. Text is trimmed and cut to the schema's length; blank
+ * text and a non-finite size are refused, leaving the label as it was.
+ */
+export function setLabel(
+  map: SourceMap,
+  id: string,
+  patch: LabelPatch,
+): SourceMap {
+  return updateLabel(map, id, (l) => {
+    const text =
+      patch.text === undefined
+        ? l.text
+        : patch.text.trim().slice(0, LABEL_TEXT_MAX);
+    if (text.length === 0) return l;
+    const size =
+      patch.size === undefined
+        ? l.size
+        : Number.isFinite(patch.size)
+          ? Math.min(LABEL_SIZE_MAX, Math.max(LABEL_SIZE_MIN, patch.size))
+          : NaN;
+    if (Number.isNaN(size)) return l;
+    const kind = patch.kind ?? l.kind;
+    if (text === l.text && size === l.size && kind === l.kind) return l;
+    return { ...l, text, size, kind };
+  });
+}
+
+/** Removes a label. */
+export function removeLabel(map: SourceMap, id: string): SourceMap {
+  const list = map.layers.labels;
+  const kept = list.filter((l) => l.id !== id);
+  if (kept.length === list.length) return map;
+  return { ...map, layers: { ...map.layers, labels: kept } };
 }
 
 /** Replaces every item in a layer, for example when the mountain slider rebuilds the mountains. */

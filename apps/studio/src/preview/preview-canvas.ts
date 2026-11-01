@@ -1,15 +1,23 @@
 import {
   DEBUG_PALETTE,
   GUIDE_STYLE,
+  labelColour,
   PALETTE,
+  type MapPalette,
 } from '@overpass-game/render-style';
 import { sampleSpline } from '@overpass-game/map-compiler';
-import type { Polyline, Shape, SourceMap } from '@overpass-game/map-schema';
+import type {
+  MapLabel,
+  Polyline,
+  Shape,
+  SourceMap,
+} from '@overpass-game/map-schema';
 import { EDIT } from '../config.ts';
 import type { Frame } from '../geo/frame.ts';
 import type { Selection } from '../edit/editor.ts';
 import { pixelToSource } from '../edit/coords.ts';
 import { listItems, type Pt, type Target } from '../edit/hit.ts';
+import { labelBox } from '../edit/labels.ts';
 import { PAINT_SPECS, type PaintTool } from '../edit/paint.ts';
 import type { Rect } from '../edit/select.ts';
 import { previewLayout } from './layout.ts';
@@ -44,6 +52,9 @@ export class PreviewCanvas {
   private shapes: readonly Target[] = [];
   private marquee: Rect | null = null;
   private view = { zoom: 1, panX: 0, panY: 0 };
+  // The palette the map is drawn with: the map's family, in light or dark mode.
+  private palette: MapPalette = PALETTE;
+  private selectedLabel: string | null = null;
   private pending: {
     tool: PaintTool;
     points: readonly Pt[];
@@ -81,6 +92,18 @@ export class PreviewCanvas {
     this.editable = editable;
     this.selection = selection;
     this.shapes = shapes;
+    this.draw();
+  }
+
+  /** Draws the map in this palette: the base family in light or dark mode. */
+  setPalette(palette: MapPalette): void {
+    this.palette = palette;
+    this.draw();
+  }
+
+  /** The label being edited, outlined with its corner grip. Null shows no label as selected. */
+  setLabelSelection(id: string | null): void {
+    this.selectedLabel = id;
     this.draw();
   }
 
@@ -196,7 +219,7 @@ export class PreviewCanvas {
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = hex(PALETTE.background);
+    ctx.fillStyle = hex(this.palette.background);
     ctx.fillRect(0, 0, width, height);
 
     const frame = this.frame;
@@ -223,7 +246,7 @@ export class PreviewCanvas {
       dpr * matrix.f,
     );
 
-    ctx.fillStyle = hex(PALETTE.land);
+    ctx.fillStyle = hex(this.palette.land);
     ctx.fillRect(x0, y0, frame.cols, frame.rows);
 
     if (this.source) {
@@ -249,12 +272,13 @@ export class PreviewCanvas {
     }
     ctx.stroke();
 
-    ctx.strokeStyle = this.inside ? hex(PALETTE.road) : OUTSIDE_COLOUR;
+    ctx.strokeStyle = this.inside ? hex(this.palette.road) : OUTSIDE_COLOUR;
     ctx.lineWidth = 2 / scale;
     ctx.strokeRect(x0, y0, frame.cols, frame.rows);
 
     if (this.editable && this.source) {
       this.drawEditOverlay(this.source, frame, scale);
+      this.drawLabelOverlay(this.source, frame, scale);
     }
     this.drawPending(frame, scale);
     if (this.marquee) {
@@ -311,22 +335,84 @@ export class PreviewCanvas {
       }
     };
 
+    const pal = this.palette;
     for (const shape of source.layers.parks)
-      drawShape(shape, hex(PALETTE.park), hex(PALETTE.park));
+      drawShape(shape, hex(pal.park), hex(pal.park));
     for (const shape of source.layers.mountains)
-      drawShape(shape, hex(PALETTE.mountain), hex(PALETTE.mountain));
+      drawShape(shape, hex(pal.mountain), hex(pal.mountain));
     for (const shape of source.layers.water)
-      drawShape(shape, hex(PALETTE.water), hex(PALETTE.water));
+      drawShape(shape, hex(pal.water), hex(pal.water));
 
     const drawGuide = (line: Polyline): void => {
       trace(line.points, false);
-      ctx.strokeStyle = hex(PALETTE.motorway);
+      ctx.strokeStyle = hex(pal.motorway);
       ctx.globalAlpha = GUIDE_STYLE.alpha;
       ctx.lineWidth = Math.max(GUIDE_STYLE.widthTiles, 1 / scale);
       ctx.stroke();
       ctx.globalAlpha = 1;
     };
     for (const line of source.layers.motorwayGuide) drawGuide(line);
+
+    for (const label of source.layers.labels) this.drawLabel(label, frame);
+  }
+
+  /**
+   * One text label, centred on its position. The preview's transform flips the y axis, so the
+   * text is turned back over to read upright.
+   */
+  private drawLabel(label: MapLabel, frame: Frame): void {
+    const { ctx } = this;
+    ctx.save();
+    ctx.translate(label.x - frame.cols / 2, frame.rows / 2 - label.y);
+    ctx.scale(1, -1);
+    ctx.font = `${label.size}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = hex(labelColour(this.palette, label.kind));
+    ctx.fillText(label.text, 0, 0);
+    ctx.restore();
+  }
+
+  /**
+   * Edit outlines for every label, a bold one for the selected label, and a corner grip on the
+   * selected label that resizes it. Boxes match the editor's picking, so the grip is where it is hit.
+   */
+  private drawLabelOverlay(
+    source: SourceMap,
+    frame: Frame,
+    scale: number,
+  ): void {
+    const { ctx } = this;
+    const px = (n: number): number => n / scale;
+    for (const label of source.layers.labels) {
+      const box = labelBox(label);
+      const selected = label.id === this.selectedLabel;
+      // Source y runs south; the preview's local y runs north, so the box's top edge is y1.
+      const u0 = box.x0 - frame.cols / 2;
+      const u1 = box.x1 - frame.cols / 2;
+      const v0 = frame.rows / 2 - box.y1;
+      const v1 = frame.rows / 2 - box.y0;
+      ctx.beginPath();
+      ctx.rect(u0, v0, u1 - u0, v1 - v0);
+      ctx.setLineDash([px(4), px(3)]);
+      ctx.strokeStyle = selected ? SELECTED_COLOUR : OUTLINE_COLOUR;
+      ctx.globalAlpha = selected ? 1 : 0.5;
+      ctx.lineWidth = px(selected ? 1.5 : 1);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+
+      // Every label shows its corner grip, so it is clear what can be resized. The selected one is gold.
+      // The grip sits at the source's bottom-right corner, which is local (u1, v0).
+      const size = px(EDIT.anchorPx);
+      ctx.beginPath();
+      ctx.rect(u1 - size / 2, v0 - size / 2, size, size);
+      ctx.fillStyle = selected ? SELECTED_COLOUR : OUTLINE_COLOUR;
+      ctx.fill();
+      ctx.strokeStyle = ANCHOR_EDGE_COLOUR;
+      ctx.lineWidth = px(1);
+      ctx.stroke();
+    }
   }
 
   /**
@@ -354,7 +440,7 @@ export class PreviewCanvas {
     };
     if (PAINT_SPECS[p.tool].form === 'stroke') {
       trace();
-      ctx.strokeStyle = hex(PALETTE.water);
+      ctx.strokeStyle = hex(this.palette.water);
       ctx.globalAlpha = 0.5;
       ctx.lineWidth = p.riverWidth;
       ctx.lineCap = 'round';

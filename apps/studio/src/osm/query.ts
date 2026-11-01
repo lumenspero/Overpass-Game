@@ -34,6 +34,7 @@ export function buildQuery([west, south, east, north]: BBox): string {
   relation["leisure"="park"]${box};
   way["landuse"~"^(${parks})$"]${box};
   relation["landuse"~"^(${parks})$"]${box};
+  node["natural"="peak"]${box};
 );
 out geom;`;
 }

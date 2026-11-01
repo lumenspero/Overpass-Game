@@ -21,7 +21,7 @@ describe('buildSourceMap', () => {
   const map = buildSourceMap({
     name: 'Tulsa',
     frame,
-    layers: { water: [], parks: [], motorwayGuide: [] },
+    layers: { water: [], parks: [], motorwayGuide: [], labels: [] },
     queryHash: 'abcd1234',
     fetchedAt: '2026-10-31T12:00:00.000Z',
   });
@@ -52,7 +52,7 @@ describe('buildSourceMap', () => {
     const withMountains = buildSourceMap({
       name: 'Tulsa',
       frame,
-      layers: { water: [], parks: [], motorwayGuide: [] },
+      layers: { water: [], parks: [], motorwayGuide: [], labels: [] },
       mountains: [shape],
       queryHash: 'abcd1234',
       fetchedAt: '2026-10-31T12:00:00.000Z',

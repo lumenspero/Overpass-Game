@@ -345,8 +345,10 @@ export function compileMap(src: SourceMap): CompiledMap {
     starterRoads: src.layers.starterRoads.flatMap((l) =>
       tilePaths(l.points, cols, rows),
     ),
+    labels: src.layers.labels,
     rules: src.rules,
     palette: src.palette,
+    waterPalette: src.waterPalette,
     attribution: src.attribution,
   };
   return { ...body, contentHash: contentHash(JSON.stringify(body)) };

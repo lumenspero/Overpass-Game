@@ -92,6 +92,17 @@ export const DistrictRegionSchema = z.object({
 const TerrainCode = z.int().min(0).max(Terrain.OutOfBounds);
 
 /** Hand-edited source map. Only the Map Studio reads and writes these (`*.map-src.json`). */
+/** A text label on a park, mountain or water region. Position and size are in grid units. */
+export const MapLabelSchema = z.object({
+  id: z.string().min(1),
+  kind: z.enum(['park', 'mountain', 'water']),
+  text: z.string().trim().min(1).max(40),
+  x: z.number().finite(),
+  y: z.number().finite(),
+  size: z.number().positive().max(10),
+});
+export type MapLabel = z.infer<typeof MapLabelSchema>;
+
 export const SourceMapSchema = z.object({
   schemaVersion: z.literal(MAP_SCHEMA_VERSION),
   id: z.string().regex(/^[a-z0-9-]+$/, 'use lower-case letters, digits and -'),
@@ -117,9 +128,12 @@ export const SourceMapSchema = z.object({
     spawnZones: z.array(SpawnZoneSchema),
     motorwayGuide: z.array(PolylineSchema),
     starterRoads: z.array(PolylineSchema),
+    labels: z.array(MapLabelSchema).default([]),
   }),
   rules: z.array(MapRuleSchema),
   palette: z.string().min(1),
+  // The water choice. Maps made before water had its own choice draw the shared ramp.
+  waterPalette: z.string().min(1).default('shared'),
   attribution: z.string().min(1),
   osmImport: z
     .object({ fetchedAt: z.string().min(1), queryHash: z.string().min(1) })
@@ -158,8 +172,10 @@ export const CompiledMapSchema = z
     /** Guide lines in grid units, already clipped to the grid (drawn smooth, not stepped). */
     motorwayGuide: z.array(z.array(Vec2).min(2)),
     starterRoads: z.array(TilePathSchema),
+    labels: z.array(MapLabelSchema).default([]),
     rules: z.array(MapRuleSchema),
     palette: z.string().min(1),
+    waterPalette: z.string().min(1).default('shared'),
     attribution: z.string().min(1),
     contentHash: z.string().regex(HASH),
   })

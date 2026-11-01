@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Terrain and Water Palette</title>
+    <style>
+      /* Layout: a light sheet with the ramp on top, then one row per terrain family, each showing light and dark side by side. */
+      :root {
+        --bg: #f5f4f0;
+        --fg: #1d2330;
+        --muted: #5b6372;
+        --rule: #d9d6cc;
+        --card-rule: rgba(0, 0, 0, 0.12);
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --bg: #15181f;
+          --fg: #e8ecf2;
+          --muted: #98a0b0;
+          --rule: #2a3040;
+          --card-rule: rgba(255, 255, 255, 0.12);
+          color-scheme: dark;
+        }
+      }
+      :root[data-theme='dark'] {
+        --bg: #15181f;
+        --fg: #e8ecf2;
+        --muted: #98a0b0;
+        --rule: #2a3040;
+        --card-rule: rgba(255, 255, 255, 0.12);
+        color-scheme: dark;
+      }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          14px/1.5 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        margin: 0;
+        padding-left: max(16px, env(safe-area-inset-left, 0px));
+        padding-right: max(16px, env(safe-area-inset-right, 0px));
+        padding-block: 24px 48px;
+      }
+      main {
+        max-width: 1040px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 24px;
+        margin: 0 0 4px;
+        letter-spacing: -0.01em;
+        text-wrap: balance;
+      }
+      .lede {
+        color: var(--muted);
+        margin: 0 0 24px;
+        max-width: 65ch;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 0 0 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      h3 {
+        font-size: 13px;
+        margin: 0 0 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      section {
+        margin-bottom: 28px;
+      }
+      .ramp {
+        display: grid;
+        grid-template-columns: repeat(9, minmax(0, 1fr));
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+      .step {
+        height: 84px;
+        border-radius: 8px;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: inset 0 0 0 1px var(--card-rule);
+        min-width: 0;
+      }
+      .step span {
+        font-size: 12px;
+        color: #1d2330;
+        opacity: 0.7;
+      }
+      .step code {
+        font-size: 10px;
+        color: #1d2330;
+        word-break: break-all;
+      }
+      .ramp-dark .step span,
+      .ramp-dark .step code {
+        color: #111;
+      }
+      .pair {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .card {
+        border-radius: 12px;
+        padding: 12px;
+        box-shadow: inset 0 0 0 1px var(--card-rule);
+        min-width: 0;
+      }
+      .scene {
+        position: relative;
+        height: 170px;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .scene > div {
+        position: absolute;
+      }
+      .shadowband {
+        left: 8%;
+        right: 4%;
+        bottom: 8%;
+        height: 18%;
+        border-radius: 50px;
+        opacity: 0.9;
+      }
+      .mtn {
+        left: 8%;
+        top: 12%;
+        width: 42%;
+        height: 46%;
+        border-radius: 46% 54% 40% 60% / 60% 40% 60% 40%;
+      }
+      .park {
+        right: 8%;
+        top: 10%;
+        width: 26%;
+        height: 30%;
+        border-radius: 18px;
+      }
+      .water {
+        left: 12%;
+        right: 12%;
+        bottom: 22%;
+        height: 16%;
+        border-radius: 999px;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        margin-top: 10px;
+        font-size: 11px;
+      }
+      .chips span {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      .chips i {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        box-shadow: inset 0 0 0 1px var(--card-rule);
+        flex: none;
+      }
+      .accents {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 8px;
+      }
+      .acc {
+        border-radius: 10px;
+        padding: 10px;
+        font-size: 12px;
+        box-shadow: inset 0 0 0 1px var(--card-rule);
+      }
+      .note {
+        color: var(--muted);
+        font-size: 12px;
+        max-width: 70ch;
+      }
+      @media (max-width: 640px) {
+        .pair {
+          grid-template-columns: 1fr;
+        }
+        .ramp {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Terrain and Water Palette</h1>
+      <p class="lede">
+        Each terrain family shows its ground, shadow, mountain, park and water
+        in light mode (left) and dark mode (right). The thin ring on each
+        mountain, park and water shape uses the colour from the opposite mode.
+      </p>
+
+      <section>
+        <h2>Water ramp (shared)</h2>
+        <h3>Light mode, greenish-blue to light purple</h3>
+        <div class="ramp">
+          <div class="step" style="background: #afded3">
+            <span>0</span><code>#afded3</code>
+          </div>
+          <div class="step" style="background: #b2e0df">
+            <span>1</span><code>#b2e0df</code>
+          </div>
+          <div class="step" style="background: #b5d8e1">
+            <span>2</span><code>#b5d8e1</code>
+          </div>
+          <div class="step" style="background: #b7cfe2">
+            <span>3</span><code>#b7cfe2</code>
+          </div>
+          <div class="step" style="background: #bac8e3">
+            <span>4</span><code>#bac8e3</code>
+          </div>
+          <div class="step" style="background: #bdc1e4">
+            <span>5</span><code>#bdc1e4</code>
+          </div>
+          <div class="step" style="background: #c4c0e5">
+            <span>6</span><code>#c4c0e5</code>
+          </div>
+          <div class="step" style="background: #cfc2e6">
+            <span>7</span><code>#cfc2e6</code>
+          </div>
+          <div class="step" style="background: #d9c5e7">
+            <span>8</span><code>#d9c5e7</code>
+          </div>
+        </div>
+        <h3>Dark mode, each step lower in brightness</h3>
+        <div class="ramp ramp-dark">
+          <div class="step" style="background: #8bd0bf">
+            <span>0</span><code>#8bd0bf</code>
+          </div>
+          <div class="step" style="background: #8ed1cf">
+            <span>1</span><code>#8ed1cf</code>
+          </div>
+          <div class="step" style="background: #91c4d2">
+            <span>2</span><code>#91c4d2</code>
+          </div>
+          <div class="step" style="background: #93b7d3">
+            <span>3</span><code>#93b7d3</code>
+          </div>
+          <div class="step" style="background: #96abd4">
+            <span>4</span><code>#96abd4</code>
+          </div>
+          <div class="step" style="background: #999fd5">
+            <span>5</span><code>#999fd5</code>
+          </div>
+          <div class="step" style="background: #a39bd6">
+            <span>6</span><code>#a39bd6</code>
+          </div>
+          <div class="step" style="background: #b29ed7">
+            <span>7</span><code>#b29ed7</code>
+          </div>
+          <div class="step" style="background: #c1a1d9">
+            <span>8</span><code>#c1a1d9</code>
+          </div>
+        </div>
+        <p class="note">
+          Main water is step 4. Its ring is the main water colour from the
+          opposite mode.
+        </p>
+      </section>
+
+      <section>
+        <h2>Terrain families (pick one per map)</h2>
+
+        <section class="family">
+          <h2>Red</h2>
+          <div class="pair">
+            <div class="card light" style="background: #efccc8; color: #1d2330">
+              <div class="scene">
+                <div class="shadowband" style="background: #d37368"></div>
+                <div
+                  class="mtn"
+                  style="background: #d44434; box-shadow: 0 0 0 2px #67241c"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #d5a6a0; box-shadow: 0 0 0 2px #7c453e"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #bac8e3; box-shadow: 0 0 0 2px #96abd4"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #efccc8"></i>ground #efccc8</span>
+                <span><i style="background: #d37368"></i>shadow #d37368</span>
+                <span><i style="background: #d44434"></i>mountain #d44434</span>
+                <span><i style="background: #d5a6a0"></i>park #d5a6a0</span>
+                <span><i style="background: #bac8e3"></i>water #bac8e3</span>
+              </div>
+            </div>
+            <div class="card dark" style="background: #a1453a; color: #e8ecf2">
+              <div class="scene">
+                <div class="shadowband" style="background: #7a2c24"></div>
+                <div
+                  class="mtn"
+                  style="background: #67241c; box-shadow: 0 0 0 2px #d44434"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #7c453e; box-shadow: 0 0 0 2px #d5a6a0"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #96abd4; box-shadow: 0 0 0 2px #bac8e3"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #a1453a"></i>ground #a1453a</span>
+                <span><i style="background: #7a2c24"></i>shadow #7a2c24</span>
+                <span><i style="background: #67241c"></i>mountain #67241c</span>
+                <span><i style="background: #7c453e"></i>park #7c453e</span>
+                <span><i style="background: #96abd4"></i>water #96abd4</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>Orange</h2>
+          <div class="pair">
+            <div class="card light" style="background: #f0d4c2; color: #1d2330">
+              <div class="scene">
+                <div class="shadowband" style="background: #d79061"></div>
+                <div
+                  class="mtn"
+                  style="background: #da6f2a; box-shadow: 0 0 0 2px #693919"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #d6b29b; box-shadow: 0 0 0 2px #7d553b"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #bac8e3; box-shadow: 0 0 0 2px #96abd4"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #f0d4c2"></i>ground #f0d4c2</span>
+                <span><i style="background: #d79061"></i>shadow #d79061</span>
+                <span><i style="background: #da6f2a"></i>mountain #da6f2a</span>
+                <span><i style="background: #d6b29b"></i>park #d6b29b</span>
+                <span><i style="background: #bac8e3"></i>water #bac8e3</span>
+              </div>
+            </div>
+            <div class="card dark" style="background: #a46135; color: #e8ecf2">
+              <div class="scene">
+                <div class="shadowband" style="background: #7d451f"></div>
+                <div
+                  class="mtn"
+                  style="background: #693919; box-shadow: 0 0 0 2px #da6f2a"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #7d553b; box-shadow: 0 0 0 2px #d6b29b"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #96abd4; box-shadow: 0 0 0 2px #bac8e3"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #a46135"></i>ground #a46135</span>
+                <span><i style="background: #7d451f"></i>shadow #7d451f</span>
+                <span><i style="background: #693919"></i>mountain #693919</span>
+                <span><i style="background: #7d553b"></i>park #7d553b</span>
+                <span><i style="background: #96abd4"></i>water #96abd4</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>Yellow</h2>
+          <div class="pair">
+            <div class="card light" style="background: #f3ecc4; color: #1d2330">
+              <div class="scene">
+                <div class="shadowband" style="background: #ddcc5f"></div>
+                <div
+                  class="mtn"
+                  style="background: #e2c626; box-shadow: 0 0 0 2px #6d6117"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #dad19b; box-shadow: 0 0 0 2px #817839"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #bac8e3; box-shadow: 0 0 0 2px #96abd4"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #f3ecc4"></i>ground #f3ecc4</span>
+                <span><i style="background: #ddcc5f"></i>shadow #ddcc5f</span>
+                <span><i style="background: #e2c626"></i>mountain #e2c626</span>
+                <span><i style="background: #dad19b"></i>park #dad19b</span>
+                <span><i style="background: #bac8e3"></i>water #bac8e3</span>
+              </div>
+            </div>
+            <div class="card dark" style="background: #aa9a31; color: #e8ecf2">
+              <div class="scene">
+                <div class="shadowband" style="background: #82751c"></div>
+                <div
+                  class="mtn"
+                  style="background: #6d6117; box-shadow: 0 0 0 2px #e2c626"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #817839; box-shadow: 0 0 0 2px #dad19b"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #96abd4; box-shadow: 0 0 0 2px #bac8e3"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #aa9a31"></i>ground #aa9a31</span>
+                <span><i style="background: #82751c"></i>shadow #82751c</span>
+                <span><i style="background: #6d6117"></i>mountain #6d6117</span>
+                <span><i style="background: #817839"></i>park #817839</span>
+                <span><i style="background: #96abd4"></i>water #96abd4</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>Green</h2>
+          <div class="pair">
+            <div class="card light" style="background: #c4e3bf; color: #1d2330">
+              <div class="scene">
+                <div class="shadowband" style="background: #78c06d"></div>
+                <div
+                  class="mtn"
+                  style="background: #51bb40; box-shadow: 0 0 0 2px #2a5a23"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #a2c79c; box-shadow: 0 0 0 2px #496e44"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #bac8e3; box-shadow: 0 0 0 2px #96abd4"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #c4e3bf"></i>ground #c4e3bf</span>
+                <span><i style="background: #78c06d"></i>shadow #78c06d</span>
+                <span><i style="background: #51bb40"></i>mountain #51bb40</span>
+                <span><i style="background: #a2c79c"></i>park #a2c79c</span>
+                <span><i style="background: #bac8e3"></i>water #bac8e3</span>
+              </div>
+            </div>
+            <div class="card dark" style="background: #4e8c45; color: #e8ecf2">
+              <div class="scene">
+                <div class="shadowband" style="background: #35692d"></div>
+                <div
+                  class="mtn"
+                  style="background: #2a5a23; box-shadow: 0 0 0 2px #51bb40"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #496e44; box-shadow: 0 0 0 2px #a2c79c"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #96abd4; box-shadow: 0 0 0 2px #bac8e3"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #4e8c45"></i>ground #4e8c45</span>
+                <span><i style="background: #35692d"></i>shadow #35692d</span>
+                <span><i style="background: #2a5a23"></i>mountain #2a5a23</span>
+                <span><i style="background: #496e44"></i>park #496e44</span>
+                <span><i style="background: #96abd4"></i>water #96abd4</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>Blue</h2>
+          <div class="pair">
+            <div class="card light" style="background: #c2d5eb; color: #1d2330">
+              <div class="scene">
+                <div class="shadowband" style="background: #6897cd"></div>
+                <div
+                  class="mtn"
+                  style="background: #347bcd; box-shadow: 0 0 0 2px #1f3e62"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #9db4d0; box-shadow: 0 0 0 2px #405976"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #bac8e3; box-shadow: 0 0 0 2px #96abd4"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #c2d5eb"></i>ground #c2d5eb</span>
+                <span><i style="background: #6897cd"></i>shadow #6897cd</span>
+                <span><i style="background: #347bcd"></i>mountain #347bcd</span>
+                <span><i style="background: #9db4d0"></i>park #9db4d0</span>
+                <span><i style="background: #bac8e3"></i>water #bac8e3</span>
+              </div>
+            </div>
+            <div class="card dark" style="background: #3e6899; color: #e8ecf2">
+              <div class="scene">
+                <div class="shadowband" style="background: #274b74"></div>
+                <div
+                  class="mtn"
+                  style="background: #1f3e62; box-shadow: 0 0 0 2px #347bcd"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #405976; box-shadow: 0 0 0 2px #9db4d0"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #96abd4; box-shadow: 0 0 0 2px #bac8e3"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #3e6899"></i>ground #3e6899</span>
+                <span><i style="background: #274b74"></i>shadow #274b74</span>
+                <span><i style="background: #1f3e62"></i>mountain #1f3e62</span>
+                <span><i style="background: #405976"></i>park #405976</span>
+                <span><i style="background: #96abd4"></i>water #96abd4</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>Indigo</h2>
+          <div class="pair">
+            <div class="card light" style="background: #c6c6e7; color: #1d2330">
+              <div class="scene">
+                <div class="shadowband" style="background: #7272c3"></div>
+                <div
+                  class="mtn"
+                  style="background: #4141c1; box-shadow: 0 0 0 2px #24245d"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #a2a2cb; box-shadow: 0 0 0 2px #464671"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #bac8e3; box-shadow: 0 0 0 2px #96abd4"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #c6c6e7"></i>ground #c6c6e7</span>
+                <span><i style="background: #7272c3"></i>shadow #7272c3</span>
+                <span><i style="background: #4141c1"></i>mountain #4141c1</span>
+                <span><i style="background: #a2a2cb"></i>park #a2a2cb</span>
+                <span><i style="background: #bac8e3"></i>water #bac8e3</span>
+              </div>
+            </div>
+            <div class="card dark" style="background: #474790; color: #e8ecf2">
+              <div class="scene">
+                <div class="shadowband" style="background: #2e2e6c"></div>
+                <div
+                  class="mtn"
+                  style="background: #24245d; box-shadow: 0 0 0 2px #4141c1"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #464671; box-shadow: 0 0 0 2px #a2a2cb"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #96abd4; box-shadow: 0 0 0 2px #bac8e3"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #474790"></i>ground #474790</span>
+                <span><i style="background: #2e2e6c"></i>shadow #2e2e6c</span>
+                <span><i style="background: #24245d"></i>mountain #24245d</span>
+                <span><i style="background: #464671"></i>park #464671</span>
+                <span><i style="background: #96abd4"></i>water #96abd4</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>Violet</h2>
+          <div class="pair">
+            <div class="card light" style="background: #e0c9e8; color: #1d2330">
+              <div class="scene">
+                <div class="shadowband" style="background: #b074c4"></div>
+                <div
+                  class="mtn"
+                  style="background: #a043c1; box-shadow: 0 0 0 2px #4f255e"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #c2a4cc; box-shadow: 0 0 0 2px #674772"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #bac8e3; box-shadow: 0 0 0 2px #96abd4"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #e0c9e8"></i>ground #e0c9e8</span>
+                <span><i style="background: #b074c4"></i>shadow #b074c4</span>
+                <span><i style="background: #a043c1"></i>mountain #a043c1</span>
+                <span><i style="background: #c2a4cc"></i>park #c2a4cc</span>
+                <span><i style="background: #bac8e3"></i>water #bac8e3</span>
+              </div>
+            </div>
+            <div class="card dark" style="background: #7f4891; color: #e8ecf2">
+              <div class="scene">
+                <div class="shadowband" style="background: #5e2f6d"></div>
+                <div
+                  class="mtn"
+                  style="background: #4f255e; box-shadow: 0 0 0 2px #a043c1"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #674772; box-shadow: 0 0 0 2px #c2a4cc"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #96abd4; box-shadow: 0 0 0 2px #bac8e3"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #7f4891"></i>ground #7f4891</span>
+                <span><i style="background: #5e2f6d"></i>shadow #5e2f6d</span>
+                <span><i style="background: #4f255e"></i>mountain #4f255e</span>
+                <span><i style="background: #674772"></i>park #674772</span>
+                <span><i style="background: #96abd4"></i>water #96abd4</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>White</h2>
+          <div class="pair">
+            <div class="card light" style="background: #efeeeb; color: #1d2330">
+              <div class="scene">
+                <div class="shadowband" style="background: #b5aea1"></div>
+                <div
+                  class="mtn"
+                  style="background: #a69a76; box-shadow: 0 0 0 2px #564c38"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #ceccc5; box-shadow: 0 0 0 2px #6c675d"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #bac8e3; box-shadow: 0 0 0 2px #96abd4"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #efeeeb"></i>ground #efeeeb</span>
+                <span><i style="background: #b5aea1"></i>shadow #b5aea1</span>
+                <span><i style="background: #a69a76"></i>mountain #a69a76</span>
+                <span><i style="background: #ceccc5"></i>park #ceccc5</span>
+                <span><i style="background: #bac8e3"></i>water #bac8e3</span>
+              </div>
+            </div>
+            <div class="card dark" style="background: #837b6a; color: #e8ecf2">
+              <div class="scene">
+                <div class="shadowband" style="background: #60594b"></div>
+                <div
+                  class="mtn"
+                  style="background: #564c38; box-shadow: 0 0 0 2px #a69a76"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #6c675d; box-shadow: 0 0 0 2px #ceccc5"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #96abd4; box-shadow: 0 0 0 2px #bac8e3"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #837b6a"></i>ground #837b6a</span>
+                <span><i style="background: #60594b"></i>shadow #60594b</span>
+                <span><i style="background: #564c38"></i>mountain #564c38</span>
+                <span><i style="background: #6c675d"></i>park #6c675d</span>
+                <span><i style="background: #96abd4"></i>water #96abd4</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>Black</h2>
+          <div class="pair">
+            <div class="card light" style="background: #999ca3; color: #1d2330">
+              <div class="scene">
+                <div class="shadowband" style="background: #6c7078"></div>
+                <div
+                  class="mtn"
+                  style="background: #50596d; box-shadow: 0 0 0 2px #292d36"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #82858b; box-shadow: 0 0 0 2px #414345"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #bac8e3; box-shadow: 0 0 0 2px #96abd4"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #999ca3"></i>ground #999ca3</span>
+                <span><i style="background: #6c7078"></i>shadow #6c7078</span>
+                <span><i style="background: #50596d"></i>mountain #50596d</span>
+                <span><i style="background: #82858b"></i>park #82858b</span>
+                <span><i style="background: #bac8e3"></i>water #bac8e3</span>
+              </div>
+            </div>
+            <div class="card dark" style="background: #4c4e52; color: #e8ecf2">
+              <div class="scene">
+                <div class="shadowband" style="background: #36383c"></div>
+                <div
+                  class="mtn"
+                  style="background: #292d36; box-shadow: 0 0 0 2px #50596d"
+                ></div>
+                <div
+                  class="park"
+                  style="background: #414345; box-shadow: 0 0 0 2px #82858b"
+                ></div>
+                <div
+                  class="water"
+                  style="background: #96abd4; box-shadow: 0 0 0 2px #bac8e3"
+                ></div>
+              </div>
+              <div class="chips">
+                <span><i style="background: #4c4e52"></i>ground #4c4e52</span>
+                <span><i style="background: #36383c"></i>shadow #36383c</span>
+                <span><i style="background: #292d36"></i>mountain #292d36</span>
+                <span><i style="background: #414345"></i>park #414345</span>
+                <span><i style="background: #96abd4"></i>water #96abd4</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section>
+        <h2>Approved accents (shared)</h2>
+        <div class="accents">
+          <div class="acc" style="background: #e8e4d8; color: #1d2330">
+            Road light #e8e4d8<br />Kerb light #e8e4d8<br />Motorway #9aa7b8<br />Contrast
+            #9aa7b8<br />Badge #9aa7b8
+          </div>
+          <div class="acc" style="background: #4a5262; color: #f2f2f2">
+            Road dark #4a5262<br />Kerb dark #6b7486<br />Motorway #4a5262<br />Contrast
+            #f2f2f2<br />Badge #f2b84b
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

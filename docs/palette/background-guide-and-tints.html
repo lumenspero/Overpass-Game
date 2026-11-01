@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Background, Guide and Tints</title>
+    <style>
+      :root {
+        --bg: #f5f4f0;
+        --fg: #1d2330;
+        --muted: #5b6372;
+        --card-rule: rgba(0, 0, 0, 0.12);
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --bg: #15181f;
+          --fg: #e8ecf2;
+          --muted: #98a0b0;
+          --card-rule: rgba(255, 255, 255, 0.12);
+          color-scheme: dark;
+        }
+      }
+      :root[data-theme='dark'] {
+        --bg: #15181f;
+        --fg: #e8ecf2;
+        --muted: #98a0b0;
+        --card-rule: rgba(255, 255, 255, 0.12);
+        color-scheme: dark;
+      }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          14px/1.5 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        margin: 0;
+        padding-left: max(16px, env(safe-area-inset-left, 0px));
+        padding-right: max(16px, env(safe-area-inset-right, 0px));
+        padding-block: 24px 48px;
+      }
+      main {
+        max-width: 1040px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 24px;
+        margin: 0 0 4px;
+        letter-spacing: -0.01em;
+        text-wrap: balance;
+      }
+      .lede {
+        color: var(--muted);
+        margin: 0 0 24px;
+        max-width: 65ch;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 0 0 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      h3 {
+        font-size: 12px;
+        margin: 0 0 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      section {
+        margin-bottom: 24px;
+      }
+      .bgpair {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .bgcard {
+        border-radius: 12px;
+        padding: 14px;
+        box-shadow: inset 0 0 0 1px var(--card-rule);
+        min-width: 0;
+      }
+      .bgcard .scene {
+        height: 120px;
+        border-radius: 8px;
+        position: relative;
+        overflow: hidden;
+      }
+      .bgcard .scene .guideline {
+        position: absolute;
+        left: 6%;
+        right: 6%;
+        top: 46%;
+        height: 6px;
+        border-radius: 6px;
+      }
+      .bgcard .scene .road {
+        position: absolute;
+        left: 6%;
+        right: 30%;
+        top: 62%;
+        height: 10px;
+        border-radius: 6px;
+      }
+      .bgcard .lbl {
+        font-size: 12px;
+        margin: 8px 0 0;
+      }
+      .pair {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .block {
+        border-radius: 12px;
+        padding: 12px;
+        box-shadow: inset 0 0 0 1px var(--card-rule);
+        min-width: 0;
+      }
+      .block.light {
+        background: #f5f4f0;
+        color: #1d2330;
+      }
+      .block.dark {
+        background: #15181f;
+        color: #e8ecf2;
+      }
+      .block.light h3 {
+        color: #5b6372;
+      }
+      .block.dark h3 {
+        color: #98a0b0;
+      }
+      .strip {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+        gap: 6px;
+      }
+      .sw {
+        height: 64px;
+        border-radius: 8px;
+        padding: 6px;
+        display: flex;
+        align-items: flex-end;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+        min-width: 0;
+      }
+      .sw code {
+        font-size: 10px;
+        background: rgba(255, 255, 255, 0.7);
+        color: #1d2330;
+        padding: 1px 4px;
+        border-radius: 4px;
+        word-break: break-all;
+      }
+      .lbl {
+        font-size: 11px;
+        margin: 6px 0 0;
+        opacity: 0.7;
+      }
+      @media (max-width: 640px) {
+        .pair,
+        .bgpair {
+          grid-template-columns: 1fr;
+        }
+        .strip {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Background, Guide and Tints</h1>
+      <p class="lede">
+        The second review sheet. It shows the background and guide placeholders,
+        and the three land tints each terrain family uses for zone variety.
+        Tints sit close to their ground so zones read as one terrain.
+      </p>
+
+      <section>
+        <h2>Background and guide (placeholders)</h2>
+        <div class="bgpair">
+          <div class="bgcard" style="background: #f4efe4; color: #1d2330">
+            <div class="scene" style="background: #f4efe4">
+              <div
+                class="guideline"
+                style="background: #9aa7b8; opacity: 0.3"
+              ></div>
+              <div
+                class="road"
+                style="background: #fdfbf6; box-shadow: 0 0 0 2px #cfc6b4"
+              ></div>
+            </div>
+            <p class="lbl">
+              Light background #f4efe4 · guide #9aa7b8 at 30% alpha
+            </p>
+          </div>
+          <div class="bgcard" style="background: #1d222b; color: #e8ecf2">
+            <div class="scene" style="background: #1d222b">
+              <div
+                class="guideline"
+                style="background: #8a93a6; opacity: 0.3"
+              ></div>
+              <div
+                class="road"
+                style="background: #4a5262; box-shadow: 0 0 0 2px #6b7486"
+              ></div>
+            </div>
+            <p class="lbl">
+              Dark background #1d222b · guide #8a93a6 at 30% alpha
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Land tints by terrain family</h2>
+
+        <section class="family">
+          <h2>Red</h2>
+          <div class="pair">
+            <div class="block light">
+              <h3>Light</h3>
+              <div class="strip">
+                <div class="sw" style="background: #efccc8">
+                  <code>#efccc8</code>
+                </div>
+                <div class="sw" style="background: #f2d4d8">
+                  <code>#f2d4d8</code>
+                </div>
+                <div class="sw" style="background: #edcfc0">
+                  <code>#edcfc0</code>
+                </div>
+                <div class="sw" style="background: #f1cec6">
+                  <code>#f1cec6</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+            <div class="block dark">
+              <h3>Dark</h3>
+              <div class="strip">
+                <div class="sw" style="background: #a1453a">
+                  <code>#a1453a</code>
+                </div>
+                <div class="sw" style="background: #a73c4b">
+                  <code>#a73c4b</code>
+                </div>
+                <div class="sw" style="background: #9d5a39">
+                  <code>#9d5a39</code>
+                </div>
+                <div class="sw" style="background: #a64c36">
+                  <code>#a64c36</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>Orange</h2>
+          <div class="pair">
+            <div class="block light">
+              <h3>Light</h3>
+              <div class="strip">
+                <div class="sw" style="background: #f0d4c2">
+                  <code>#f0d4c2</code>
+                </div>
+                <div class="sw" style="background: #f3d4ce">
+                  <code>#f3d4ce</code>
+                </div>
+                <div class="sw" style="background: #eedbba">
+                  <code>#eedbba</code>
+                </div>
+                <div class="sw" style="background: #f2d9c0">
+                  <code>#f2d9c0</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+            <div class="block dark">
+              <h3>Dark</h3>
+              <div class="strip">
+                <div class="sw" style="background: #a46135">
+                  <code>#a46135</code>
+                </div>
+                <div class="sw" style="background: #a94a37">
+                  <code>#a94a37</code>
+                </div>
+                <div class="sw" style="background: #a07834">
+                  <code>#a07834</code>
+                </div>
+                <div class="sw" style="background: #a86c30">
+                  <code>#a86c30</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>Yellow</h2>
+          <div class="pair">
+            <div class="block light">
+              <h3>Light</h3>
+              <div class="strip">
+                <div class="sw" style="background: #f3ecc4">
+                  <code>#f3ecc4</code>
+                </div>
+                <div class="sw" style="background: #f5e8d1">
+                  <code>#f5e8d1</code>
+                </div>
+                <div class="sw" style="background: #ebf1bc">
+                  <code>#ebf1bc</code>
+                </div>
+                <div class="sw" style="background: #f4f3c2">
+                  <code>#f4f3c2</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+            <div class="block dark">
+              <h3>Dark</h3>
+              <div class="strip">
+                <div class="sw" style="background: #aa9a31">
+                  <code>#aa9a31</code>
+                </div>
+                <div class="sw" style="background: #b08233">
+                  <code>#b08233</code>
+                </div>
+                <div class="sw" style="background: #9aa630">
+                  <code>#9aa630</code>
+                </div>
+                <div class="sw" style="background: #afab2c">
+                  <code>#afab2c</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>Green</h2>
+          <div class="pair">
+            <div class="block light">
+              <h3>Light</h3>
+              <div class="strip">
+                <div class="sw" style="background: #c4e3bf">
+                  <code>#c4e3bf</code>
+                </div>
+                <div class="sw" style="background: #d5e8c9">
+                  <code>#d5e8c9</code>
+                </div>
+                <div class="sw" style="background: #b8e0bc">
+                  <code>#b8e0bc</code>
+                </div>
+                <div class="sw" style="background: #bee6bc">
+                  <code>#bee6bc</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+            <div class="block dark">
+              <h3>Dark</h3>
+              <div class="strip">
+                <div class="sw" style="background: #4e8c45">
+                  <code>#4e8c45</code>
+                </div>
+                <div class="sw" style="background: #639148">
+                  <code>#639148</code>
+                </div>
+                <div class="sw" style="background: #43894a">
+                  <code>#43894a</code>
+                </div>
+                <div class="sw" style="background: #439141">
+                  <code>#439141</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>Blue</h2>
+          <div class="pair">
+            <div class="block light">
+              <h3>Light</h3>
+              <div class="strip">
+                <div class="sw" style="background: #c2d5eb">
+                  <code>#c2d5eb</code>
+                </div>
+                <div class="sw" style="background: #cde4ee">
+                  <code>#cde4ee</code>
+                </div>
+                <div class="sw" style="background: #bac5e8">
+                  <code>#bac5e8</code>
+                </div>
+                <div class="sw" style="background: #c0d0ed">
+                  <code>#c0d0ed</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+            <div class="block dark">
+              <h3>Dark</h3>
+              <div class="strip">
+                <div class="sw" style="background: #3e6899">
+                  <code>#3e6899</code>
+                </div>
+                <div class="sw" style="background: #40829e">
+                  <code>#40829e</code>
+                </div>
+                <div class="sw" style="background: #3c5195">
+                  <code>#3c5195</code>
+                </div>
+                <div class="sw" style="background: #395e9d">
+                  <code>#395e9d</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>Indigo</h2>
+          <div class="pair">
+            <div class="block light">
+              <h3>Light</h3>
+              <div class="strip">
+                <div class="sw" style="background: #c6c6e7">
+                  <code>#c6c6e7</code>
+                </div>
+                <div class="sw" style="background: #d1d7eb">
+                  <code>#d1d7eb</code>
+                </div>
+                <div class="sw" style="background: #c7bfe3">
+                  <code>#c7bfe3</code>
+                </div>
+                <div class="sw" style="background: #c8c4e9">
+                  <code>#c8c4e9</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+            <div class="block dark">
+              <h3>Dark</h3>
+              <div class="strip">
+                <div class="sw" style="background: #474790">
+                  <code>#474790</code>
+                </div>
+                <div class="sw" style="background: #495b95">
+                  <code>#495b95</code>
+                </div>
+                <div class="sw" style="background: #56458c">
+                  <code>#56458c</code>
+                </div>
+                <div class="sw" style="background: #4a4294">
+                  <code>#4a4294</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>Violet</h2>
+          <div class="pair">
+            <div class="block light">
+              <h3>Light</h3>
+              <div class="strip">
+                <div class="sw" style="background: #e0c9e8">
+                  <code>#e0c9e8</code>
+                </div>
+                <div class="sw" style="background: #e1d4ed">
+                  <code>#e1d4ed</code>
+                </div>
+                <div class="sw" style="background: #e4c2e5">
+                  <code>#e4c2e5</code>
+                </div>
+                <div class="sw" style="background: #e5c8ea">
+                  <code>#e5c8ea</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+            <div class="block dark">
+              <h3>Dark</h3>
+              <div class="strip">
+                <div class="sw" style="background: #7f4891">
+                  <code>#7f4891</code>
+                </div>
+                <div class="sw" style="background: #714a96">
+                  <code>#714a96</code>
+                </div>
+                <div class="sw" style="background: #8d468e">
+                  <code>#8d468e</code>
+                </div>
+                <div class="sw" style="background: #894396">
+                  <code>#894396</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>White</h2>
+          <div class="pair">
+            <div class="block light">
+              <h3>Light</h3>
+              <div class="strip">
+                <div class="sw" style="background: #efeeeb">
+                  <code>#efeeeb</code>
+                </div>
+                <div class="sw" style="background: #f6f5f4">
+                  <code>#f6f5f4</code>
+                </div>
+                <div class="sw" style="background: #ebeae5">
+                  <code>#ebeae5</code>
+                </div>
+                <div class="sw" style="background: #f0efea">
+                  <code>#f0efea</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+            <div class="block dark">
+              <h3>Dark</h3>
+              <div class="strip">
+                <div class="sw" style="background: #837b6a">
+                  <code>#837b6a</code>
+                </div>
+                <div class="sw" style="background: #87796e">
+                  <code>#87796e</code>
+                </div>
+                <div class="sw" style="background: #807d68">
+                  <code>#807d68</code>
+                </div>
+                <div class="sw" style="background: #888065">
+                  <code>#888065</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+          </div>
+        </section>
+        <section class="family">
+          <h2>Black</h2>
+          <div class="pair">
+            <div class="block light">
+              <h3>Light</h3>
+              <div class="strip">
+                <div class="sw" style="background: #999ca3">
+                  <code>#999ca3</code>
+                </div>
+                <div class="sw" style="background: #a1a6aa">
+                  <code>#a1a6aa</code>
+                </div>
+                <div class="sw" style="background: #94959e">
+                  <code>#94959e</code>
+                </div>
+                <div class="sw" style="background: #9499a8">
+                  <code>#9499a8</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+            <div class="block dark">
+              <h3>Dark</h3>
+              <div class="strip">
+                <div class="sw" style="background: #4c4e52">
+                  <code>#4c4e52</code>
+                </div>
+                <div class="sw" style="background: #4f5356">
+                  <code>#4f5356</code>
+                </div>
+                <div class="sw" style="background: #494a50">
+                  <code>#494a50</code>
+                </div>
+                <div class="sw" style="background: #484b56">
+                  <code>#484b56</code>
+                </div>
+              </div>
+              <p class="lbl">ground, then tints 1 to 3</p>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

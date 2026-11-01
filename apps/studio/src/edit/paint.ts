@@ -11,7 +11,11 @@ import { nextId, type EditableLayer } from './ops.ts';
 export type PaintTool =
   'lake' | 'river' | 'mountain' | 'park' | 'spawn' | 'guide' | 'road';
 
-export type Tool = 'select' | PaintTool;
+/**
+ * The tool in use. `select` edits shapes and labels, `label` places and moves text labels, and
+ * the paint tools make new shapes. Only the paint tools have a PaintSpec.
+ */
+export type Tool = 'select' | 'label' | PaintTool;
 
 /**
  * How a painted shape is stored: a closed region, a stroke with a width (rivers), or an open

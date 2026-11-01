@@ -43,9 +43,11 @@ export function buildSourceMap(input: BuildInput): SourceMap {
       spawnZones: [],
       motorwayGuide: layers.motorwayGuide,
       starterRoads: [],
+      labels: layers.labels,
     },
     rules: [],
     palette: 'default',
+    waterPalette: 'shared',
     attribution: '© OpenStreetMap contributors (ODbL)',
     osmImport: { fetchedAt: input.fetchedAt, queryHash: input.queryHash },
   });

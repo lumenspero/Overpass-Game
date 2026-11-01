@@ -36,6 +36,12 @@ const ARROW_PAN_SHIFT_PX = 240;
  * space clears the selection. Shift adds to the selection: Shift+click on a shape toggles it,
  * and a Shift box adds to what is selected. Double-clicking an edge adds a point there.
  *
+ * Labels: a press on a label grabs it and dragging moves it; a press on its bottom-right corner
+ * resizes it instead. Labels are picked before shapes, since they are drawn over them.
+ *
+ * Label tool: a click on empty space places a new label; a click on an existing label grabs it
+ * as the select tool does.
+ *
  * Paint tools: each click adds a point; a click on the first point of a closed shape closes it,
  * and a double-click finishes any shape.
  *
@@ -91,7 +97,7 @@ export function attachInteraction(
     const found = locate(editor, e);
     if (!found) return;
 
-    if (editor.tool !== 'select') {
+    if (editor.tool !== 'select' && editor.tool !== 'label') {
       const first = editor.pendingPoints[0];
       const closes =
         editor.closesOnFirst &&
@@ -101,6 +107,18 @@ export function attachInteraction(
           found.tol;
       if (closes) editor.finishPaint();
       else editor.addPaintPoint(found.loc.point);
+      return;
+    }
+
+    const label = editor.pickLabel(found.loc.point, found.tol);
+    if (label) {
+      editor.beginLabelDrag(label.id, label.grip, found.loc.point);
+      dragging = true;
+      canvas.setPointerCapture(e.pointerId);
+      return;
+    }
+    if (editor.tool === 'label') {
+      editor.placeLabel(found.loc.point);
       return;
     }
 
@@ -215,7 +233,7 @@ export function attachInteraction(
     if (!editor || isTyping(e.target)) return;
     const mod = e.ctrlKey || e.metaKey;
     const key = e.key.toLowerCase();
-    const painting = editor.tool !== 'select';
+    const painting = editor.tool !== 'select' && editor.tool !== 'label';
 
     if (e.key === ' ') {
       e.preventDefault();
@@ -247,6 +265,7 @@ export function attachInteraction(
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
       if (painting) editor.removePaintPoint();
+      else if (editor.selectedLabelId !== null) editor.deleteSelectedLabel();
       else if (
         editor.selection?.index !== null &&
         editor.selection?.index !== undefined

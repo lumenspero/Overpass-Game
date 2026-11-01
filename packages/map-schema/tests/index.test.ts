@@ -6,6 +6,7 @@ import {
   parseCompiledMap,
   parseSave,
   parseSourceMap,
+  MapLabelSchema,
 } from '../src/index.ts';
 
 const readJson = (path: string): unknown =>
@@ -105,5 +106,55 @@ describe('@overpass-game/map-schema', () => {
     };
     expect(() => parseSave(save)).toThrow(/mapHash/);
     expect(() => parseSave({ ...save, mapHash: 'a1b2c3d4' })).not.toThrow();
+  });
+});
+
+describe('map labels', () => {
+  it('accepts a park, mountain or water label', () => {
+    for (const kind of ['park', 'mountain', 'water'] as const) {
+      expect(() =>
+        MapLabelSchema.parse({
+          id: 'l1',
+          kind,
+          text: 'Riverside Park',
+          x: 4,
+          y: 5,
+          size: 1.2,
+        }),
+      ).not.toThrow();
+    }
+  });
+
+  it('rejects an unknown kind, empty text and a non-positive size', () => {
+    expect(() =>
+      MapLabelSchema.parse({
+        id: 'l1',
+        kind: 'road',
+        text: 'A',
+        x: 0,
+        y: 0,
+        size: 1,
+      }),
+    ).toThrow();
+    expect(() =>
+      MapLabelSchema.parse({
+        id: 'l1',
+        kind: 'park',
+        text: '   ',
+        x: 0,
+        y: 0,
+        size: 1,
+      }),
+    ).toThrow();
+    expect(() =>
+      MapLabelSchema.parse({
+        id: 'l1',
+        kind: 'park',
+        text: 'A',
+        x: 0,
+        y: 0,
+        size: 0,
+      }),
+    ).toThrow();
   });
 });

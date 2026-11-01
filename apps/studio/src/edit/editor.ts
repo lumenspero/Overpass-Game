@@ -1,4 +1,4 @@
-import type { SourceMap } from '@overpass-game/map-schema';
+import type { MapLabel, SourceMap } from '@overpass-game/map-schema';
 import { EDIT, IMPORT } from '../config.ts';
 import * as history from './history.ts';
 import {
@@ -22,6 +22,13 @@ import {
 import * as ops from './ops.ts';
 import { insideRect, lengthOf, type Rect } from './select.ts';
 import type { EditableLayer } from './ops.ts';
+import {
+  LABEL_DEFAULT_TEXT,
+  LABEL_SIZE,
+  labelBox,
+  pickLabel,
+  type LabelGrip,
+} from './labels.ts';
 
 /** The point (or whole shape) the primary selection is on. */
 export interface Selection extends Target {
@@ -47,6 +54,14 @@ type Drag =
       readonly kind: 'body';
       readonly targets: readonly Target[];
       readonly start: Pt;
+    }
+  | { readonly kind: 'label'; readonly id: string; readonly offset: Pt }
+  | {
+      readonly kind: 'labelSize';
+      readonly id: string;
+      readonly centre: Pt;
+      readonly startSize: number;
+      readonly startDist: number;
     };
 
 const sameTarget = (a: Target, b: Target): boolean =>
@@ -100,6 +115,18 @@ function applyDrag(
         base,
       );
     }
+    case 'label': {
+      const x = ops.snapValue(at.x + drag.offset.x, step);
+      const y = ops.snapValue(at.y + drag.offset.y, step);
+      return ops.moveLabel(base, drag.id, x, y);
+    }
+    case 'labelSize': {
+      // The size follows the pointer's distance from the label's centre, so the corner stays under the pointer.
+      const dist = Math.hypot(at.x - drag.centre.x, at.y - drag.centre.y);
+      const size =
+        Math.round(((drag.startSize * dist) / drag.startDist) * 10) / 10;
+      return ops.setLabel(base, drag.id, { size });
+    }
   }
 }
 
@@ -128,6 +155,10 @@ export class Editor {
   /** Other shapes in a multi-selection, in the order they were chosen. */
   private extra: Target[] = [];
   private toolState: Tool = 'select';
+  /** The selected text label, if any. A label and a shape are never selected at once. */
+  private labelSel: string | null = null;
+  /** The kind a new label gets, and the kind shown for the selected label. */
+  private labelKind: MapLabel['kind'] = 'park';
   private pending: readonly Pt[] = [];
   private river: number = IMPORT.riverWidthDefault;
   private snapOn = true;
@@ -174,6 +205,21 @@ export class Editor {
     return this.toolState;
   }
 
+  get selectedLabelId(): string | null {
+    return this.labelSel;
+  }
+
+  /** The selected label as the map now holds it, including any drag in progress. */
+  get selectedLabel(): MapLabel | null {
+    if (!this.labelSel) return null;
+    return this.map.layers.labels.find((l) => l.id === this.labelSel) ?? null;
+  }
+
+  /** The kind of the selected label, or of the next label to be placed when none is selected. */
+  get labelKindValue(): MapLabel['kind'] {
+    return this.selectedLabel?.kind ?? this.labelKind;
+  }
+
   /** Points of the shape being painted, not yet committed. */
   get pendingPoints(): readonly Pt[] {
     return this.pending;
@@ -198,9 +244,11 @@ export class Editor {
 
   /** True when the current tool makes a closed shape, which a click on its first point closes. */
   get closesOnFirst(): boolean {
+    const tool = this.toolState;
     return (
-      this.toolState !== 'select' &&
-      PAINT_SPECS[this.toolState].form === 'closed'
+      tool !== 'select' &&
+      tool !== 'label' &&
+      PAINT_SPECS[tool].form === 'closed'
     );
   }
 
@@ -235,9 +283,19 @@ export class Editor {
     this.emit();
   }
 
-  /** Selects one point or one whole shape, replacing any multi-selection. */
+  /** Selects one point or one whole shape, replacing any multi-selection and any selected label. */
   select(sel: Selection | null): void {
     this.sel = sel;
+    this.extra = [];
+    this.labelSel = null;
+    this.settle();
+    this.emit();
+  }
+
+  /** Selects one label, or none. Shapes are deselected. */
+  selectLabel(id: string | null): void {
+    this.labelSel = id;
+    this.sel = null;
     this.extra = [];
     this.settle();
     this.emit();
@@ -293,6 +351,7 @@ export class Editor {
 
   /** Points the primary selection at the last shape of `list`, and the rest at the others. */
   private assignShapes(list: readonly Target[]): void {
+    this.labelSel = null;
     if (list.length === 0) {
       this.sel = null;
       this.extra = [];
@@ -316,9 +375,112 @@ export class Editor {
     return hitTest(map, at, tol, this.sel ? toTarget(this.sel) : null);
   }
 
+  /**
+   * What a press on a label lands on: its corner (resize) or its body (move). Null when no label
+   * is there. Labels are picked before shapes, since they are drawn over them.
+   */
+  pickLabel(at: Pt, tol: number): { id: string; grip: LabelGrip } | null {
+    return pickLabel(this.timeline.present, at, tol);
+  }
+
+  /** Starts moving or resizing a label, and selects it. */
+  beginLabelDrag(id: string, grip: LabelGrip, at: Pt): void {
+    const base = this.timeline.present;
+    const label = base.layers.labels.find((l) => l.id === id);
+    if (!label) return;
+    this.sel = null;
+    this.extra = [];
+    this.labelSel = id;
+    let drag: Drag;
+    if (grip === 'resize') {
+      const corner = labelBox(label);
+      const centre = { x: label.x, y: label.y };
+      drag = {
+        kind: 'labelSize',
+        id,
+        centre,
+        startSize: label.size,
+        startDist: Math.hypot(corner.x1 - centre.x, corner.y1 - centre.y),
+      };
+    } else {
+      drag = {
+        kind: 'label',
+        id,
+        offset: offsetBetween(at, { x: label.x, y: label.y }),
+      };
+    }
+    this.gesture = { drag, base };
+    this.draft = null;
+    this.emit();
+  }
+
+  /** Places a new label at a point, with the kind chosen for labels, and selects it. */
+  placeLabel(at: Pt): void {
+    const id = ops.nextId(this.timeline.present, 'label');
+    const pos = ops.snapPoint(at, this.step);
+    const label: MapLabel = {
+      id,
+      kind: this.labelKind,
+      text: LABEL_DEFAULT_TEXT[this.labelKind],
+      x: pos.x,
+      y: pos.y,
+      size: LABEL_SIZE.default,
+    };
+    this.apply((m) => ops.addLabel(m, label));
+    this.selectLabel(id);
+  }
+
+  /** Changes the selected label's text. Blank text is refused and leaves the label alone. */
+  setLabelText(text: string): void {
+    const id = this.labelSel;
+    if (!id) return;
+    this.apply((m) => ops.setLabel(m, id, { text }));
+  }
+
+  /** Changes the selected label's size in grid tiles. */
+  setLabelSize(size: number): void {
+    const id = this.labelSel;
+    if (!id) return;
+    this.apply((m) => ops.setLabel(m, id, { size }));
+  }
+
+  /** Sets the kind for new labels, and for the selected label when there is one. */
+  setLabelKind(kind: MapLabel['kind']): void {
+    this.labelKind = kind;
+    const id = this.labelSel;
+    if (!id) {
+      this.emit();
+      return;
+    }
+    this.apply((m) => ops.setLabel(m, id, { kind }));
+  }
+
+  /** Removes the selected label. */
+  deleteSelectedLabel(): void {
+    const id = this.labelSel;
+    if (!id) return;
+    this.apply((m) => ops.removeLabel(m, id));
+  }
+
+  /** Sets the base palette family the map is drawn with. Undoable like any other edit. */
+  setPalette(paletteId: string): void {
+    this.apply((m) => ops.setPalette(m, paletteId));
+  }
+
+  /** Sets the water choice the map is drawn with. Undoable like any other edit. */
+  setWaterPalette(waterId: string): void {
+    this.apply((m) => ops.setWaterPalette(m, waterId));
+  }
+
+  /** Removes every label, for pruning an import in one step. Undo restores them. */
+  clearLabels(): void {
+    this.apply((m) => ops.clearLabels(m));
+  }
+
   beginDrag(hit: Hit, at: Pt): void {
     const base = this.timeline.present;
     const target: Target = { layer: hit.layer, id: hit.id };
+    this.labelSel = null;
     let drag: Drag;
     if (hit.kind === 'point') {
       const pos = anchorOf(base, target, hit.index);
@@ -537,7 +699,7 @@ export class Editor {
 
   /** Adds a point to the shape being painted, snapped to the grid when snapping is on. */
   addPaintPoint(at: Pt): void {
-    if (this.toolState === 'select') return;
+    if (this.toolState === 'select' || this.toolState === 'label') return;
     this.pending = [...this.pending, ops.snapPoint(at, this.step)];
     this.emit();
   }
@@ -545,7 +707,7 @@ export class Editor {
   /** Makes the painted shape from the pending points and selects it; too few points make nothing. */
   finishPaint(): void {
     const tool = this.toolState;
-    if (tool === 'select') return;
+    if (tool === 'select' || tool === 'label') return;
     const built = buildPainted(
       this.timeline.present,
       tool as PaintTool,
@@ -597,6 +759,12 @@ export class Editor {
     if (!this.sel && this.extra.length > 0) {
       const last = this.extra.pop()!;
       this.sel = { layer: last.layer, id: last.id, index: null };
+    }
+    if (
+      this.labelSel !== null &&
+      !present.layers.labels.some((l) => l.id === this.labelSel)
+    ) {
+      this.labelSel = null;
     }
   }
 

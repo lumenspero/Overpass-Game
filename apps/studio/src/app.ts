@@ -23,6 +23,14 @@ import { loadRegion } from './osm/region.ts';
 import { Editor, type Selection } from './edit/editor.ts';
 import { attachInteraction } from './edit/interaction.ts';
 import { replaceLayer, type EditableLayer } from './edit/ops.ts';
+import { LABEL_SIZE } from './edit/labels.ts';
+import {
+  BASE_PALETTE_IDS,
+  WATER_PALETTE_IDS,
+  resolvePalette,
+  type LabelKind,
+  type ThemeMode,
+} from '@overpass-game/render-style';
 import { PAINT_SPECS, PAINT_TOOLS } from './edit/paint.ts';
 import type { Pt, Target } from './edit/hit.ts';
 import { PreviewCanvas } from './preview/preview-canvas.ts';
@@ -38,6 +46,13 @@ import { listDrafts, removeDraft, saveDraft } from './drafts/store.ts';
  * Preact's h() typings are strict about prop shapes, which gets in the way of a
  * plain list of HTML elements. This wrapper keeps the call sites simple.
  */
+/** Label kinds with the names the Labels panel shows. */
+const LABEL_KIND_OPTIONS: readonly [LabelKind, string][] = [
+  ['park', 'Park'],
+  ['mountain', 'Mountain'],
+  ['water', 'Water'],
+];
+
 function el(
   tag: string,
   props: Record<string, unknown> | null,
@@ -182,6 +197,8 @@ export function App(): VNode {
   const [shortMax, setShortMax] = useState(2);
   const [outlines, setOutlines] = useState(false);
   const [drafts, setDrafts] = useState<{ id: string; draft: Draft }[]>([]);
+  // Light or dark: how the preview is drawn. It is a view setting, not map data.
+  const [themeMode, setThemeMode] = useState<ThemeMode>('light');
   const [draftNote, setDraftNote] = useState('');
   const saver = useRef<Debouncer | null>(null);
   // Read by the autosave when it fires, so it always sees the latest state.
@@ -298,11 +315,24 @@ export function App(): VNode {
   const riverWidth = editor.current?.riverWidth ?? IMPORT.riverWidthDefault;
   useEffect(() => {
     preview.current?.setPending(
-      tool === 'select' ? null : tool,
+      tool === 'select' || tool === 'label' ? null : tool,
       pendingPoints,
       riverWidth,
     );
   }, [tool, pendingPoints, riverWidth]);
+
+  // The palette family comes from the map; light or dark comes from the toggle.
+  const paletteId = editor.current?.map.palette ?? 'default';
+  const waterId = editor.current?.map.waterPalette ?? 'shared';
+  useEffect(() => {
+    preview.current?.setPalette(resolvePalette(paletteId, themeMode, waterId));
+  }, [paletteId, waterId, themeMode]);
+
+  const selectedLabel = editor.current?.selectedLabel ?? null;
+  const selectedLabelId = selectedLabel?.id ?? null;
+  useEffect(() => {
+    preview.current?.setLabelSelection(selectedLabelId);
+  }, [selectedLabelId]);
 
   // Each edit re-renders the screen, so the preview and the panels stay in step.
   useEffect(() => {
@@ -836,6 +866,80 @@ export function App(): VNode {
             ),
           )
         : null,
+      el(
+        'section',
+        { class: 'appearance' },
+        el('h2', null, 'Appearance'),
+        el(
+          'div',
+          { class: 'tool-grid' },
+          ...(['light', 'dark'] as const).map((mode) =>
+            el(
+              'button',
+              {
+                key: mode,
+                type: 'button',
+                class: themeMode === mode ? 'toggle on' : 'toggle',
+                'aria-pressed': themeMode === mode ? 'true' : 'false',
+                onClick: () => setThemeMode(mode),
+              },
+              mode === 'light' ? 'Light' : 'Dark',
+            ),
+          ),
+        ),
+        imported
+          ? el(
+              'div',
+              null,
+              el(
+                'label',
+                { for: 'palette-family' },
+                'Base palette (used by the game too)',
+              ),
+              el(
+                'select',
+                {
+                  id: 'palette-family',
+                  value: (BASE_PALETTE_IDS as readonly string[]).includes(
+                    paletteId,
+                  )
+                    ? paletteId
+                    : 'white',
+                  onChange: (e: Event) =>
+                    editor.current?.setPalette(
+                      (e.currentTarget as HTMLSelectElement).value,
+                    ),
+                },
+                BASE_PALETTE_IDS.map((id) =>
+                  el('option', { key: id, value: id }, id),
+                ),
+              ),
+              el(
+                'label',
+                { for: 'water-palette' },
+                'Water palette (used by the game too)',
+              ),
+              el(
+                'select',
+                {
+                  id: 'water-palette',
+                  value: waterId,
+                  onChange: (e: Event) =>
+                    editor.current?.setWaterPalette(
+                      (e.currentTarget as HTMLSelectElement).value,
+                    ),
+                },
+                WATER_PALETTE_IDS.map((id) =>
+                  el(
+                    'option',
+                    { key: id, value: id },
+                    id === 'shared' ? 'Shared ramp (approved)' : 'From ' + id,
+                  ),
+                ),
+              ),
+            )
+          : null,
+      ),
       imported
         ? el(
             'section',
@@ -867,6 +971,16 @@ export function App(): VNode {
                   PAINT_SPECS[t].label,
                 ),
               ),
+              el(
+                'button',
+                {
+                  type: 'button',
+                  class: tool === 'label' ? 'toggle on' : 'toggle',
+                  'aria-pressed': tool === 'label' ? 'true' : 'false',
+                  onClick: () => editor.current?.setTool('label'),
+                },
+                'Label',
+              ),
             ),
             tool === 'river'
               ? el(
@@ -891,7 +1005,14 @@ export function App(): VNode {
                   }),
                 )
               : null,
-            tool !== 'select'
+            tool === 'label'
+              ? el(
+                  'p',
+                  { class: 'frame-status' },
+                  'Label: click to place a label of the chosen kind. Drag a label to move it, or its bottom-right corner to resize it. Delete removes the selected label.',
+                )
+              : null,
+            tool !== 'select' && tool !== 'label'
               ? el(
                   'p',
                   { class: 'frame-status', 'data-testid': 'paint-status' },
@@ -952,6 +1073,110 @@ export function App(): VNode {
                 'Reset zoom',
               ),
             ),
+          )
+        : null,
+      imported
+        ? el(
+            'section',
+            { class: 'labels' },
+            el('h2', null, 'Labels'),
+            el(
+              'p',
+              { class: 'frame-status' },
+              (editor.current?.map.layers.labels.length ?? 0) +
+                ' on the map. Pick one here or on the map to edit it.',
+            ),
+            el(
+              'button',
+              {
+                type: 'button',
+                disabled: (editor.current?.map.layers.labels.length ?? 0) === 0,
+                onClick: () => editor.current?.clearLabels(),
+              },
+              'Remove all labels',
+            ),
+            el(
+              'div',
+              { class: 'tool-grid' },
+              ...(editor.current?.map.layers.labels ?? []).map((l) =>
+                el(
+                  'button',
+                  {
+                    key: l.id,
+                    type: 'button',
+                    class: l.id === selectedLabelId ? 'toggle on' : 'toggle',
+                    'aria-pressed': l.id === selectedLabelId ? 'true' : 'false',
+                    onClick: () => editor.current?.selectLabel(l.id),
+                  },
+                  l.text + ' (' + l.kind + ')',
+                ),
+              ),
+            ),
+            el(
+              'div',
+              null,
+              el('label', { for: 'label-kind' }, 'Kind'),
+              el(
+                'select',
+                {
+                  id: 'label-kind',
+                  value: editor.current?.labelKindValue ?? 'park',
+                  onChange: (e: Event) =>
+                    editor.current?.setLabelKind(
+                      (e.currentTarget as HTMLSelectElement).value as LabelKind,
+                    ),
+                },
+                LABEL_KIND_OPTIONS.map(([kind, name]) =>
+                  el('option', { key: kind, value: kind }, name),
+                ),
+              ),
+            ),
+            selectedLabel
+              ? el(
+                  'div',
+                  null,
+                  el('label', { for: 'label-text' }, 'Text'),
+                  el('input', {
+                    id: 'label-text',
+                    type: 'text',
+                    maxLength: 40,
+                    value: selectedLabel.text,
+                    onChange: (e: Event) =>
+                      editor.current?.setLabelText(
+                        (e.currentTarget as HTMLInputElement).value,
+                      ),
+                  }),
+                  el(
+                    'label',
+                    { for: 'label-size' },
+                    'Size: ' + selectedLabel.size.toFixed(1) + ' tiles',
+                  ),
+                  el('input', {
+                    id: 'label-size',
+                    type: 'range',
+                    min: LABEL_SIZE.min,
+                    max: LABEL_SIZE.max,
+                    step: 0.1,
+                    value: selectedLabel.size,
+                    onChange: (e: Event) =>
+                      editor.current?.setLabelSize(
+                        Number((e.currentTarget as HTMLInputElement).value),
+                      ),
+                  }),
+                  el(
+                    'button',
+                    {
+                      type: 'button',
+                      onClick: () => editor.current?.deleteSelectedLabel(),
+                    },
+                    'Delete label',
+                  ),
+                )
+              : el(
+                  'p',
+                  { class: 'frame-status' },
+                  'Pick a label on the map to edit its text and size. Use the Label tool to add one.',
+                ),
           )
         : null,
       imported

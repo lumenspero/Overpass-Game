@@ -2231,8 +2231,9 @@
     ]
   ],
   "starterRoads": [],
+  "labels": [],
   "rules": [],
   "palette": "default",
   "attribution": "Hand-made test map. No OpenStreetMap data.",
-  "contentHash": "4de7c606"
+  "contentHash": "b166d86d"
 }

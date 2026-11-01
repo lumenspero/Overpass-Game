@@ -82,6 +82,16 @@ export function placeControl(
   return { ok: true };
 }
 
+/** Puts a control back on a tile, taking its stock again. Undo uses this for an erased control. */
+export function restoreControl(
+  state: SimState,
+  tile: number,
+  kind: ControlKind,
+): void {
+  state.controls[tile] = kind;
+  state.stock[kind] -= 1;
+}
+
 /** Removes the controls on any of these tiles, returning their stock. Returns how many went. */
 export function dropControlsAt(
   state: SimState,
