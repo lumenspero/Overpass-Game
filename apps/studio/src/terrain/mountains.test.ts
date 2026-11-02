@@ -23,25 +23,26 @@ function block(c0: number, r0: number, size: number): [number, number][] {
 
 describe('deriveMountains', () => {
   it('turns one block of high cells into one mountain', () => {
-    const shapes = deriveMountains(grid(4, 4, block(1, 1, 2)), 4, 4, 500);
+    const shapes = deriveMountains(grid(8, 8, block(1, 1, 5)), 8, 8, 500);
     expect(shapes).toHaveLength(1);
     const shape = shapes[0]!;
     expect(shape.id).toBe('terrain-0');
     expect(shape.kind).toBe('closedSpline');
     expect(shape.origin).toBe('osm');
-    expect(ringArea(shape.points)).toBeCloseTo(4);
+    expect(ringArea(shape.points)).toBeCloseTo(25);
   });
 
   it('keeps separate blocks as separate mountains', () => {
-    const cells = [...block(0, 0, 1), ...block(3, 3, 1)];
-    const shapes = deriveMountains(grid(4, 4, cells), 4, 4, 500);
+    const cells = [...block(0, 0, 5), ...block(7, 7, 5)];
+    const shapes = deriveMountains(grid(12, 12, cells), 12, 12, 500);
     expect(shapes).toHaveLength(2);
-    for (const shape of shapes) expect(ringArea(shape.points)).toBeCloseTo(1);
+    for (const shape of shapes) expect(ringArea(shape.points)).toBeCloseTo(25);
   });
 
   it('counts a cell exactly at the threshold', () => {
-    const elevation = new Float32Array([500, 0, 0, 0]);
-    expect(deriveMountains(elevation, 2, 2, 500)).toHaveLength(1);
+    const elevation = new Float32Array(36);
+    for (const [c, r] of block(0, 0, 5)) elevation[r * 6 + c] = 500;
+    expect(deriveMountains(elevation, 6, 6, 500)).toHaveLength(1);
   });
 
   it('returns nothing when no cell reaches the threshold', () => {
@@ -54,9 +55,9 @@ describe('deriveMountains', () => {
   });
 
   it('keeps only the outer edge when the high cells surround a low centre', () => {
-    const ring = block(0, 0, 3).filter(([c, r]) => !(c === 1 && r === 1));
-    const shapes = deriveMountains(grid(3, 3, ring), 3, 3, 500);
+    const ring = block(0, 0, 5).filter(([c, r]) => !(c === 2 && r === 2));
+    const shapes = deriveMountains(grid(5, 5, ring), 5, 5, 500);
     expect(shapes).toHaveLength(1);
-    expect(ringArea(shapes[0]!.points)).toBeCloseTo(9);
+    expect(ringArea(shapes[0]!.points)).toBeCloseTo(25);
   });
 });

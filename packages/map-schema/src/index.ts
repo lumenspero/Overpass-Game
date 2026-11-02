@@ -99,7 +99,7 @@ export const MapLabelSchema = z.object({
   text: z.string().trim().min(1).max(40),
   x: z.number().finite(),
   y: z.number().finite(),
-  size: z.number().positive().max(10),
+  size: z.number().positive().max(20),
 });
 export type MapLabel = z.infer<typeof MapLabelSchema>;
 

@@ -64,7 +64,7 @@ describe('label ops', () => {
     const edited = setLabel(m, 'label-1', { text: '  Hyde Park  ', size: 99 });
     expect(edited.layers.labels[0]).toMatchObject({
       text: 'Hyde Park',
-      size: 10,
+      size: 20,
     });
     expect(setLabel(m, 'label-1', { text: '   ' })).toBe(m);
     expect(setLabel(m, 'label-1', { size: Number.NaN })).toBe(m);

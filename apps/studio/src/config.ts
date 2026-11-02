@@ -1,13 +1,14 @@
 // Map Studio authoring settings. They shape the map frame and the tools, not
 // gameplay, so they live here rather than in packages/sim/src/config.ts.
 
-/** Web Mercator metres per grid tile. Mercator stretches north-south distances by about 1.3x at 40°N (see docs/decisions.md). */
-export const METRES_PER_TILE = 1000;
+/** Web Mercator metres per grid tile. A quarter of the old 1000, so the 96-tile grid covers the real-map panel's 24 km view. Mercator stretches north-south distances by about 1.3x at 40°N (see docs/decisions.md). */
+export const METRES_PER_TILE = 250;
 
 /** Frame size limits, in tiles per side. */
 export const MIN_FRAME_TILES = 16;
-export const MAX_FRAME_TILES = 96;
-export const DEFAULT_FRAME_TILES = 48;
+export const MAX_FRAME_TILES = 192;
+/** Twice the old 48 per side, at a quarter of the metres per tile: the frame covers 24 km. */
+export const DEFAULT_FRAME_TILES = 96;
 
 /** Continental United States bounding box as [west, south, east, north] in degrees. Frames must lie inside it. */
 export const CONTINENTAL_US_BBOX = [-124.85, 24.4, -66.85, 49.45] as const;
@@ -26,22 +27,23 @@ export const NOMINATIM_MIN_INTERVAL_MS = 1100;
 
 /**
  * OSM import tuning, in tiles. These decide how much detail survives the import. They are
- * authoring choices, not gameplay numbers, so they stay here.
+ * authoring choices, not gameplay numbers, so they stay here. A tile is now 250 m (was 1000 m),
+ * so each tile-based value is quadrupled to keep the same ground size as before.
  */
 export const IMPORT = {
   /** Douglas-Peucker tolerance: shapes keep points that deviate more than this. */
-  simplifyTolerance: 0.05,
+  simplifyTolerance: 0.2,
   /** Closed shapes smaller than this area are dropped as noise. */
-  minClosedArea: 1,
+  minClosedArea: 16,
   /** Strokes shorter than this length are dropped as noise. */
-  minStrokeLength: 0.5,
+  minStrokeLength: 2,
   /** River and canal widths are clamped to this range. */
-  riverWidthMin: 0.25,
-  riverWidthMax: 1,
+  riverWidthMin: 1,
+  riverWidthMax: 4,
   /** Used when a waterway has no usable width tag. */
-  riverWidthDefault: 0.3,
+  riverWidthDefault: 1.2,
   /** Coastlines are drawn as strokes this wide. */
-  coastWidth: 0.25,
+  coastWidth: 1,
   /** The mountain slider starts here, in metres, and runs from min to max in steps. */
   mountainThresholdDefault: 500,
   mountainThresholdMin: 0,

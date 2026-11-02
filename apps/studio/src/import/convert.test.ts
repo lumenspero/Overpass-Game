@@ -4,7 +4,8 @@ import { frameAt } from '../geo/frame.ts';
 import { convertFeatures, stitchLines, type OsmCollection } from './convert.ts';
 
 const CENTRE: [number, number] = [-95.99, 36.15];
-const frame = frameAt(CENTRE, 48, 48, 0);
+// 192 tiles at 250 m is 48 km, the same ground the fixtures were drawn for.
+const frame = frameAt(CENTRE, 192, 192, 0);
 
 function square(lon: number, lat: number, half: number): [number, number][] {
   return [

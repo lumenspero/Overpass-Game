@@ -97,10 +97,10 @@ describe('isInsideContinentalUS', () => {
   });
 
   it('is judged on the rotated corners, not the unturned frame', () => {
-    // At 40°N a 96-tile frame's half-width is about 0.43° of longitude. Unturned, its east edge
-    // stays inside the box; turned 45°, the corners reach about 0.61° out and pass the edge.
-    expect(isInsideContinentalUS(frameAt([-67.37, 40], 96, 96, 0))).toBe(true);
-    expect(isInsideContinentalUS(frameAt([-67.37, 40], 96, 96, 45))).toBe(
+    // The box's east edge is at -66.85°. Centred at -67.1°, a 192-tile frame (48 km at 250 m a tile)
+    // unturned has its east edge at about -66.88°, inside the box; turned 45°, a corner reaches about -66.80°.
+    expect(isInsideContinentalUS(frameAt([-67.1, 40], 192, 192, 0))).toBe(true);
+    expect(isInsideContinentalUS(frameAt([-67.1, 40], 192, 192, 45))).toBe(
       false,
     );
   });

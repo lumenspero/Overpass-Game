@@ -408,8 +408,8 @@ export interface LabelPatch {
 
 /** Limits from the map schema, so an edit can never write a label the compiler would reject. */
 export const LABEL_TEXT_MAX = 40;
-export const LABEL_SIZE_MIN = 0.5;
-export const LABEL_SIZE_MAX = 10;
+export const LABEL_SIZE_MIN = 1;
+export const LABEL_SIZE_MAX = 20;
 
 /**
  * Changes a label's text, kind or size. Text is trimmed and cut to the schema's length; blank

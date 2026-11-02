@@ -27,7 +27,7 @@ export function previewLayout(
   shape: PreviewShape,
   width: number,
   height: number,
-  padTiles = 2,
+  marginPx = 60,
 ): PreviewLayout {
   const t = (shape.rotationDeg * Math.PI) / 180;
   const cos = Math.cos(t);
@@ -36,8 +36,9 @@ export function previewLayout(
     (shape.cols / 2) * Math.abs(cos) + (shape.rows / 2) * Math.abs(sin);
   const halfH =
     (shape.cols / 2) * Math.abs(sin) + (shape.rows / 2) * Math.abs(cos);
-  const fitW = width / (2 * halfW + 2 * padTiles);
-  const fitH = height / (2 * halfH + 2 * padTiles);
+  // The frame fills the canvas less a margin on each side, as the real-map fit does with 60 px padding.
+  const fitW = (width - 2 * marginPx) / (2 * halfW);
+  const fitH = (height - 2 * marginPx) / (2 * halfH);
   const scale = Math.max(0, Math.min(fitW, fitH));
   // X = a*u + c*v + e and Y = b*u + d*v + f, with v flipped so north is up.
   return {

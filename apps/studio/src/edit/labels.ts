@@ -1,8 +1,8 @@
 import type { MapLabel, SourceMap } from '@overpass-game/map-schema';
 import type { Pt } from './hit.ts';
 
-/** Label text sizes in grid tiles: the schema allows up to 10. New labels start at 0.5 tiles. */
-export const LABEL_SIZE = { min: 0.5, max: 10, default: 0.5 } as const;
+/** Label text sizes in grid tiles: the schema allows up to 20. New labels start at 1 tile, twice the old 0.5, since the grid is twice as fine. */
+export const LABEL_SIZE = { min: 1, max: 20, default: 1 } as const;
 
 /** The text a new label gets, by kind. The author can edit it straight away. */
 export const LABEL_DEFAULT_TEXT: Record<MapLabel['kind'], string> = {
