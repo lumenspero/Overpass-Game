@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { Side } from '../src/buildings.ts';
 import { createGrid, type Grid } from '../src/grid.ts';
-import { createSim, placeBuilding, Terrain } from '../src/index.ts';
+import { accessTile, createSim, placeBuilding, Terrain } from '../src/index.ts';
 import {
   BUILDING_SIZE,
   LOT_DEPTH,
   LOT_LENGTH,
   lotAt,
   lotBlocker,
+  PARKING_SPACES,
+  stripLayout,
   STRIP_LENGTH,
 } from '../src/lots.ts';
 import { at, drawRoads, makeGrid } from './helpers.ts';
@@ -166,5 +168,80 @@ describe('lotBlocker', () => {
       entrance: 'n',
     });
     expect(lotBlocker(sim, at(sim.grid, 3, 6), 'n')).toBeNull();
+  });
+});
+
+describe('the driving lane and parking spaces', () => {
+  it('has three spaces, each clear of the others', () => {
+    expect(PARKING_SPACES).toHaveLength(3);
+    // The spaces are diagonal, so compare the edges at each end of the slant: the far edge of one
+    // space must stay short of the near edge of the next.
+    const depthAt = (space: { a: number; d: number }[], a: number) =>
+      space.filter((p) => p.a === a).map((p) => p.d);
+    for (let i = 1; i < PARKING_SPACES.length; i++) {
+      const prev = PARKING_SPACES[i - 1];
+      const next = PARKING_SPACES[i];
+      for (const a of [0.5, 1.5]) {
+        const far = Math.max(...depthAt(prev, a));
+        const near = Math.min(...depthAt(next, a));
+        expect(near).toBeGreaterThan(far);
+      }
+    }
+  });
+
+  it('keeps every space between the entry and exit lanes, and off the far lane', () => {
+    for (const space of PARKING_SPACES) {
+      for (const p of space) {
+        // The entry lane is at a = 0.25 and the exit lane at a = 1.75, each a quarter tile wide either side.
+        expect(p.a).toBeGreaterThanOrEqual(0.5);
+        expect(p.a).toBeLessThanOrEqual(1.5);
+        // The return lane is at d = 0.25 and the far lane at d = 2.75, each an eighth of a tile either side.
+        expect(p.d).toBeGreaterThan(0.25 + 0.125);
+        expect(p.d).toBeLessThan(2.75 - 0.125);
+      }
+    }
+  });
+
+  it('starts and ends the lane at the access road node, for every side', () => {
+    const grid = createGrid(9, 9);
+    const origin = 3 * grid.cols + 3;
+    for (const side of SIDES) {
+      const layout = stripLayout(grid, origin, side);
+      if (!layout) throw new Error(`no layout for ${side}`);
+      const first = layout.lane[0];
+      const last = layout.lane[layout.lane.length - 1];
+      expect(first).toEqual(last);
+      // The node sits one tile out from the lot's inlet, on the road side.
+      const access = accessTile(grid, {
+        id: -1,
+        kind: 'destination',
+        color: 0,
+        tile: origin,
+        entrance: side,
+      });
+      if (access === null) throw new Error('no access tile');
+      expect(Math.floor(first.x)).toBe(access % grid.cols);
+      expect(Math.floor(first.y)).toBe(Math.floor(access / grid.cols));
+    }
+  });
+
+  it('keeps the spaces inside the lot footprint for every side', () => {
+    const grid = createGrid(9, 9);
+    const origin = 3 * grid.cols + 3;
+    for (const side of SIDES) {
+      const lot = lotAt(grid, origin, side);
+      const layout = stripLayout(grid, origin, side);
+      if (!lot || !layout) throw new Error(`no lot for ${side}`);
+      const xs = lot.tiles.map((t) => t % grid.cols);
+      const ys = lot.tiles.map((t) => Math.floor(t / grid.cols));
+      for (const space of layout.spaces) {
+        for (const p of space) {
+          expect(p.x).toBeGreaterThanOrEqual(Math.min(...xs));
+          expect(p.x).toBeLessThanOrEqual(Math.max(...xs) + 1);
+          expect(p.y).toBeGreaterThanOrEqual(Math.min(...ys));
+          expect(p.y).toBeLessThanOrEqual(Math.max(...ys) + 1);
+        }
+      }
+    }
   });
 });

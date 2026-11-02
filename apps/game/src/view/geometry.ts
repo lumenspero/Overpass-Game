@@ -277,6 +277,18 @@ export function carShapes(
     dy: Math.sign(Math.floor(b / grid.cols) - Math.floor(a / grid.cols)),
   });
   for (const car of cars) {
+    if (car.lot) {
+      // A car in a lot follows its lane: from the road node into its space, or back out.
+      const spot = pointAtDistance(car.lot.path, car.lot.s);
+      const owner = buildings[car.house];
+      out.push({
+        x: spot.x * TILE_SIZE,
+        y: spot.y * TILE_SIZE,
+        r: CAR_RADIUS,
+        color: (owner && colors[owner.color]) ?? colors[0],
+      });
+      continue;
+    }
     const { route, progress, along } = car;
     const tile = route[progress];
     const prev = progress > 0 ? route[progress - 1] : null;
@@ -430,9 +442,18 @@ export function carShapes(
       progress === route.length - 1 &&
       tile === entranceOf(arrival)
     ) {
-      const b = anchorOf(arrival, c);
-      x += (b.x - x) * along;
-      y += (b.y - y) * along;
+      // Drive in from the entry edge to the anchor, so the car never backs up on its last tile.
+      const nIn = inRaw ? rightOfTravel(inRaw) : { x: 0, y: 0 };
+      // A house is driven into; a destination is reached in its lane, so the car stays in lane.
+      const b =
+        arrival.kind === 'house'
+          ? anchorOf(arrival, c)
+          : { x: c.x + nIn.x, y: c.y + nIn.y };
+      const edgeIn = inRaw
+        ? { x: c.x - inRaw.dx * half + nIn.x, y: c.y - inRaw.dy * half + nIn.y }
+        : c;
+      x = edgeIn.x + (b.x - edgeIn.x) * along;
+      y = edgeIn.y + (b.y - edgeIn.y) * along;
     } else if (
       route.length > 1 &&
       departure &&
@@ -440,9 +461,18 @@ export function carShapes(
       tile === entranceOf(departure) &&
       !rideOut
     ) {
-      const b = anchorOf(departure, c);
-      x = b.x + (x - b.x) * along;
-      y = b.y + (y - b.y) * along;
+      // Drive out from the anchor to the exit edge, so the car never backs up when it leaves.
+      const outD = outRaw ?? inRaw;
+      const nOut = outD ? rightOfTravel(outD) : { x: 0, y: 0 };
+      const b =
+        departure.kind === 'house'
+          ? anchorOf(departure, c)
+          : { x: c.x + nOut.x, y: c.y + nOut.y };
+      const edgeOut = outD
+        ? { x: c.x + outD.dx * half + nOut.x, y: c.y + outD.dy * half + nOut.y }
+        : c;
+      x = b.x + (edgeOut.x - b.x) * along;
+      y = b.y + (edgeOut.y - b.y) * along;
     }
     const house = buildings[car.house];
     out.push({

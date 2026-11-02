@@ -1,8 +1,10 @@
+import { accessTile } from './buildings.ts';
 import type { Car } from './cars.ts';
 import { tuning } from './config.ts';
 import { DIAGONAL_STEP, type Grid, isDiagonal, roadLinks } from './grid.ts';
 import { laneHasGreen, roundaboutPath } from './controls.ts';
 import { motorwayBetween, polylineLength } from './motorways.ts';
+import { advanceLot } from './lot-trips.ts';
 import type { SimState } from './sim.ts';
 
 /**
@@ -22,6 +24,13 @@ const EPSILON = 1e-9;
 
 /** Lane code for "no direction known". */
 const NO_LANE = 9;
+
+/** Whether a tile is where a destination's lot meets the road. */
+function isLotNode(state: SimState, tile: number): boolean {
+  return state.buildings.some(
+    (b) => b.kind === 'destination' && accessTile(state.grid, b) === tile,
+  );
+}
 
 function isJunction(state: SimState, tile: number): boolean {
   return (
@@ -68,6 +77,10 @@ function stepLength(state: SimState, a: number, b: number): number {
  */
 function segmentLength(state: SimState, car: Car): number {
   const { route, progress } = car;
+  // A destination's lot node is drawn over half a tile on its road side, so its steps cost half.
+  if (progress === 0 && route.length > 1 && isLotNode(state, route[0])) {
+    return 0.5;
+  }
   if (progress < route.length - 1) {
     if (progress > 0 && state.controls[route[progress]] === 'roundabout') {
       // Across a roundabout the car drives round the ring, so its step costs that path.
@@ -93,6 +106,7 @@ function segmentLength(state: SimState, car: Car): number {
   if (progress > 0) {
     const a = route[progress - 1];
     const b = route[progress];
+    if (isLotNode(state, b)) return 0.5;
     return motorwayBetween(state.motorways, a, b) ? 1 : stepLength(state, a, b);
   }
   return 1;
@@ -104,7 +118,8 @@ function roomAhead(state: SimState, car: Car): number {
   const lane = laneOf(state.grid, car);
   let room = 1;
   for (const d of state.cars) {
-    if (d === car || d.route[d.progress] !== tile) continue;
+    if (d === car || d.lot !== undefined || d.route[d.progress] !== tile)
+      continue;
     if (laneOf(state.grid, d) !== lane) continue;
     const ahead =
       d.along > car.along || (d.along === car.along && d.id < car.id);
@@ -133,7 +148,8 @@ export function tileOpen(
   const single = junction || control === 'light';
   let here = 0;
   for (const d of state.cars) {
-    if (d === mover || d.route[d.progress] !== tile) continue;
+    if (d === mover || d.lot !== undefined || d.route[d.progress] !== tile)
+      continue;
     if (control === 'roundabout') {
       // A roundabout takes any car that has a gap at its entrance, up to its capacity.
       here += 1;
@@ -179,5 +195,8 @@ export function moveCars(state: SimState): void {
   const order = [...state.cars].sort(
     (a, b) => b.progress + b.along - (a.progress + a.along) || a.id - b.id,
   );
-  for (const car of order) advance(state, car);
+  for (const car of order) {
+    if (car.lot) advanceLot(car);
+    else advance(state, car);
+  }
 }

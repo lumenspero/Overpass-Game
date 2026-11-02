@@ -44,6 +44,24 @@ export interface Car {
   along: number;
   /** While parked, the ticks left before the car drives home. */
   timer: number;
+  /** While the car is in its destination's parking lot, its trip through the lot. Absent on the road. */
+  lot?: LotTrip | undefined;
+}
+
+/** A car's trip through a destination's lot: in to a space, parked, then out to the road node. */
+export interface LotTrip {
+  /** The destination whose lot the car is in. */
+  destination: number;
+  /** Which parking space, counting from 0. */
+  space: number;
+  /** `in` while driving to the space, `parked` in it, `out` while driving back to the node. */
+  phase: 'in' | 'parked' | 'out';
+  /** Map points (in tiles) of the drive, from the road node to the space, or back. */
+  path: { x: number; y: number }[];
+  /** Distance, in tiles, driven along `path`. */
+  s: number;
+  /** Total length of `path`, in tiles. */
+  length: number;
 }
 
 export type AddCarResult =
@@ -159,6 +177,11 @@ export function onRoadsChanged(
 ): void {
   const survivors: Car[] = [];
   for (const car of state.cars) {
+    if (car.lot) {
+      // A car in its lot finishes its trip there; the road is checked when it leaves.
+      survivors.push(car);
+      continue;
+    }
     const here = Math.min(car.progress, car.route.length - 1);
     const onDeleted = state.roads[car.route[here]] !== 1;
     const routeBroken =

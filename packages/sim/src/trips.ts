@@ -4,6 +4,7 @@ import { tuning } from './config.ts';
 import { servePin, unclaimedPins } from './demand.ts';
 import { isOpenTile } from './expansion.ts';
 import { tileOpen } from './movement.ts';
+import { startLotExit, startLotTrip } from './lot-trips.ts';
 import { nextFloat } from './rng.ts';
 import type { SimState } from './sim.ts';
 
@@ -52,10 +53,46 @@ export function spawnCars(state: SimState): void {
   }
 }
 
-/** Parks cars that reach their destination, sends parked cars home, and brings home cars in. */
+/** A car that has driven out of its space joins the road at the lot's node, and drives home from there. */
+function leaveLot(state: SimState, car: Car): void {
+  car.lot = undefined;
+  car.along = 0;
+  const next =
+    state.roads[car.route[car.progress]] === 1 ? sendHome(state, car) : null;
+  if (next) {
+    Object.assign(car, next);
+  } else {
+    dropCar(state, car);
+    removeCar(state, car);
+  }
+}
+
+/**
+ * Parks cars that reach their destination, sends parked cars home, and brings home cars in.
+ * A destination with a lot takes the car into a free space; the car waits on the road while
+ * the lane or every space is taken.
+ */
 export function updateTrips(state: SimState): void {
   for (const car of [...state.cars]) {
+    const lot = car.lot;
+    if (lot) {
+      if (lot.phase === 'in' && lot.s >= lot.length - EPSILON) {
+        lot.phase = 'parked';
+        servePin(state, car.destination);
+        state.tripsCompleted += 1;
+        car.state = 'parked';
+        car.timer = tuning.PARK_TICKS;
+      } else if (lot.phase === 'parked') {
+        car.timer -= 1;
+        if (car.timer > 0) continue;
+        startLotExit(state, car);
+      } else if (lot.phase === 'out' && lot.s >= lot.length - EPSILON) {
+        leaveLot(state, car);
+      }
+      continue;
+    }
     if (car.state === 'driving' && atRouteEnd(car)) {
+      if (startLotTrip(state, car) !== 'none') continue;
       servePin(state, car.destination);
       state.tripsCompleted += 1;
       car.state = 'parked';

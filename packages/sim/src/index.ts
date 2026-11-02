@@ -14,6 +14,7 @@ export * from './movement.ts';
 export * from './pathfind.ts';
 export * from './grid.ts';
 export * from './lots.ts';
+export * from './lot-trips.ts';
 export * from './rng.ts';
 export * from './score.ts';
 export * from './sim.ts';

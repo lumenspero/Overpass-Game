@@ -1,8 +1,8 @@
 import { TILE_SIZE } from '@overpass-game/render-style';
 import {
-  accessTile,
   createGrid,
   createSim,
+  destinationLot,
   linkTiles,
   placeBuilding,
   placeRoads,
@@ -112,7 +112,11 @@ describe.each(LAYOUTS)('car dots, $name', (layout) => {
         const tile = tileAt(sim, p.x, p.y);
         const onRoad = tile >= 0 && sim.roads[tile] === 1;
         const inBuilding = tile >= 0 && sim.buildingAt[tile] !== -1;
-        if (!onRoad && !inBuilding && problems.length < 6) {
+        const lot = car.lot
+          ? destinationLot(sim.grid, sim.buildings[car.destination])
+          : null;
+        const onLot = lot !== null && lot.tiles.includes(tile);
+        if (!onRoad && !inBuilding && !onLot && problems.length < 6) {
           problems.push(
             `tick ${sim.tick}: car ${car.id} ${car.state} off road at (${(p.x / TILE_SIZE).toFixed(2)}, ${(p.y / TILE_SIZE).toFixed(2)})`,
           );
@@ -133,7 +137,7 @@ describe.each(LAYOUTS)('car dots, $name', (layout) => {
     expect(problems).toEqual([]);
   });
 
-  it('a parked car sits on the road tile in front of its destination lot', () => {
+  it('a parked car sits in a space of its destination lot', () => {
     const sim = build(layout);
     for (let t = 0; t < 1500; t++) {
       step(sim);
@@ -142,7 +146,8 @@ describe.each(LAYOUTS)('car dots, $name', (layout) => {
         const idx = sim.cars.indexOf(car);
         const p = carShapes(sim.cars, sim.buildings, sim.grid, [0])[idx];
         const b = sim.buildings[car.destination];
-        expect(tileAt(sim, p.x, p.y)).toBe(accessTile(sim.grid, b));
+        const lot = destinationLot(sim.grid, b);
+        expect(lot?.strip).toContain(tileAt(sim, p.x, p.y));
         return;
       }
     }

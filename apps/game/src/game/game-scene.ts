@@ -1,3 +1,4 @@
+import { stripLayout } from '@overpass-game/sim';
 import { greenIsHorizontal, ROUNDABOUT_RING_TILES } from '@overpass-game/sim';
 import type { CompiledMap, OutlinePath } from '@overpass-game/map-schema';
 import { activeDemo, buildDemo, DEMOS, setActiveDemo } from './demos.ts';
@@ -20,7 +21,12 @@ import {
   Terrain,
   type TerrainKind,
 } from '@overpass-game/sim';
-import { type Car, type CurvePoint, motorwayCurve } from '@overpass-game/sim';
+import {
+  type Car,
+  type CurvePoint,
+  motorwayCurve,
+  pointAtDistance,
+} from '@overpass-game/sim';
 import { carOutline, headingBetween } from '../view/car-shape.ts';
 import {
   BUILDING_COLORS,
@@ -145,6 +151,8 @@ const BUILDING_DEPTH_PX = 4;
 const SHADOW_DX = 4;
 const SHADOW_DY = 5;
 const SHADOW_ALPHA = 0.55;
+/** Width of a parking space's outline, in world units. */
+const SPACE_LINE_PX = 2;
 /** Shaded side colour for each standard building face colour. */
 const SIDE_BY_FACE = new Map(
   STANDARD_BUILDING_PALETTE.map((style) => [style.face, style.side]),
@@ -787,6 +795,21 @@ export class GameScene extends Phaser.Scene {
     // Kerb first, a little wider, then the pavement on top, so each road has a thin outline.
     this.paintRoadShapes(gfx, shapes, this.pal.kerb, BORDER_PX);
     this.paintRoadShapes(gfx, shapes, this.pal.road, 0);
+    // Parking spaces: outlined in the kerb colour, on each destination's pavement.
+    gfx.lineStyle(SPACE_LINE_PX, this.pal.kerb, 1);
+    for (const b of visible) {
+      if (b.kind !== 'destination') continue;
+      const layout = stripLayout(this.sim.grid, b.tile, b.entrance);
+      if (!layout) continue;
+      for (const space of layout.spaces) {
+        gfx.strokePoints(
+          space.map(
+            (p) => new Phaser.Math.Vector2(p.x * TILE_SIZE, p.y * TILE_SIZE),
+          ),
+          true,
+        );
+      }
+    }
   }
 
   /** Paints road shapes in one colour, each grown outwards by `grow` pixels. */
@@ -988,6 +1011,18 @@ export class GameScene extends Phaser.Scene {
    */
   private carHeading(car: Car): number | null {
     const eps = 0.05;
+    if (car.lot) {
+      // A car in its lot faces along the lane, so it follows the lane's path rather than its road.
+      const { path, s, length, phase } = car.lot;
+      if (phase === 'parked' || length <= 0) return null;
+      const lo = Math.max(0, s - eps);
+      const hi = Math.min(length, s + eps);
+      if (hi - lo < 1e-9) return null;
+      return headingBetween(
+        pointAtDistance(path, lo),
+        pointAtDistance(path, hi),
+      );
+    }
     const lo = Math.max(0, car.along - eps);
     const hi = Math.min(1, car.along + eps);
     if (hi - lo < 1e-9) return null;

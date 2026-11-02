@@ -130,3 +130,166 @@ export function lotBlocker(
   }
   return null;
 }
+
+/** A point in the lot frame, in tiles: a along the road from the strip end, d away from the road. */
+export interface FramePoint {
+  a: number;
+  d: number;
+}
+
+/**
+ * The driving lane (M9a step 1). A car drives in from the access road node by the outer lane,
+ * along the far edge, back by the inner return, and out to the node. Each lane is half a road
+ * wide, so the loop keeps clear of the spaces inside it.
+ */
+export const DRIVING_LANE: FramePoint[] = [
+  { a: 0.5, d: -0.5 },
+  { a: 0.25, d: 0.25 },
+  { a: 0.25, d: 2.75 },
+  { a: 1.75, d: 2.75 },
+  { a: 1.75, d: 0.25 },
+  { a: 0.75, d: 0.25 },
+  { a: 0.5, d: -0.5 },
+];
+
+/**
+ * Three diagonal parking spaces inside the lane loop, each a parallelogram between a = 0.5 and
+ * a = 1.5. They are stacked along the strip with a gap between them.
+ */
+export const PARKING_SPACES: FramePoint[][] = [0, 1, 2].map((k) => {
+  const d0 = 0.45 + k * 0.65;
+  return [
+    { a: 0.5, d: d0 },
+    { a: 1.5, d: d0 + 0.25 },
+    { a: 1.5, d: d0 + 0.85 },
+    { a: 0.5, d: d0 + 0.6 },
+  ];
+});
+
+/** A lot-frame point mapped to a box offset in tiles, for one road side. Continuous, unlike toBox. */
+function boxPoint(side: Side, a: number, d: number): { x: number; y: number } {
+  switch (side) {
+    case 'n':
+      return { x: a, y: d };
+    case 's':
+      return { x: LOT_LENGTH - a, y: LOT_DEPTH - d };
+    case 'e':
+      return { x: LOT_DEPTH - d, y: a };
+    case 'w':
+      return { x: d, y: LOT_LENGTH - a };
+  }
+}
+
+/**
+ * The lane and spaces of the lot at `origin` facing `side`, in world tile units (a tile's centre is
+ * at +0.5). Null when the lot is off the map.
+ */
+export function stripLayout(
+  grid: Grid,
+  origin: number,
+  side: Side,
+): {
+  lane: { x: number; y: number }[];
+  spaces: { x: number; y: number }[][];
+} | null {
+  if (!lotAt(grid, origin, side)) return null;
+  const ox = origin % grid.cols;
+  const oy = Math.floor(origin / grid.cols);
+  const place = ({ a, d }: FramePoint) => {
+    const p = boxPoint(side, a, d);
+    return { x: ox + p.x, y: oy + p.y };
+  };
+  return {
+    lane: DRIVING_LANE.map(place),
+    spaces: PARKING_SPACES.map((space) => space.map(place)),
+  };
+}
+
+/**
+ * The lot-frame points a car drives through: `in` from the road node into space `k`, `out` from
+ * space `k` back to the node. The lane runs down the middle of the inlet tab (a = 0.5). A space
+ * slopes (1, 0.25) per tile, so the drive ends along that slope, and the car parks nose-in
+ * diagonally. `back` is half a tile before the space's middle, on the slope.
+ */
+export function spacePath(k: number, phase: 'in' | 'out'): FramePoint[] {
+  const space = PARKING_SPACES[k];
+  if (!space) throw new Error(`no parking space ${k}`);
+  const dk = space.reduce((sum, p) => sum + p.d, 0) / space.length;
+  const node = { a: 0.5, d: -0.5 };
+  // Each lane sits a quarter of a tile off the inlet's centre, on the right of its travel.
+  // The inbound lane runs at a = 0.375, the outbound at 0.625, and stays in the lot until the
+  // slope to the space: a line from the middle of the space at a = 0.375 or 0.625.
+  const lane = phase === 'in' ? 0.375 : 0.625;
+  const tab = { a: lane, d: 0 };
+  const back = { a: lane, d: dk - (1 - lane) * 0.25 };
+  const centre = { a: 1, d: dk };
+  return phase === 'in' ? [node, tab, back, centre] : [centre, back, tab, node];
+}
+
+/**
+ * Rounds the corners of a path, so a car turns through a curve rather than snapping its heading.
+ * Each corner becomes a quadratic curve that starts and ends `radius` tiles from the corner. The
+ * curve is limited to half of each adjacent segment, so neighbouring corners never overlap.
+ */
+export function roundedPath(points: LotPoint[], radius = 0.3): LotPoint[] {
+  if (points.length < 3) return points.map((q) => ({ ...q }));
+  const SAMPLES = 6;
+  const out: LotPoint[] = [{ ...points[0] }];
+  for (let i = 1; i < points.length - 1; i++) {
+    const p = points[i - 1];
+    const c = points[i];
+    const n = points[i + 1];
+    const inLen = Math.hypot(c.x - p.x, c.y - p.y);
+    const outLen = Math.hypot(n.x - c.x, n.y - c.y);
+    const cross = (c.x - p.x) * (n.y - c.y) - (c.y - p.y) * (n.x - c.x);
+    if (inLen === 0 || outLen === 0 || Math.abs(cross) < 1e-9) {
+      out.push({ ...c });
+      continue;
+    }
+    const r = Math.min(radius, inLen / 2, outLen / 2);
+    const a = {
+      x: c.x + ((p.x - c.x) / inLen) * r,
+      y: c.y + ((p.y - c.y) / inLen) * r,
+    };
+    const b = {
+      x: c.x + ((n.x - c.x) / outLen) * r,
+      y: c.y + ((n.y - c.y) / outLen) * r,
+    };
+    out.push(a);
+    for (let k = 1; k <= SAMPLES; k++) {
+      const t = k / SAMPLES;
+      const u = 1 - t;
+      out.push({
+        x: u * u * a.x + 2 * u * t * c.x + t * t * b.x,
+        y: u * u * a.y + 2 * u * t * c.y + t * t * b.y,
+      });
+    }
+  }
+  out.push({ ...points[points.length - 1] });
+  return out;
+}
+
+/** A point on the map, in tiles. */
+export interface LotPoint {
+  x: number;
+  y: number;
+}
+
+/**
+ * The map points of a car's drive into, or out of, space `k` of the destination `b`'s lot. Null
+ * when the lot is off the map.
+ */
+export function lotPath(
+  grid: Grid,
+  b: Building,
+  k: number,
+  phase: 'in' | 'out',
+): LotPoint[] | null {
+  if (!lotAt(grid, b.tile, b.entrance)) return null;
+  const ox = b.tile % grid.cols;
+  const oy = Math.floor(b.tile / grid.cols);
+  return spacePath(k, phase).map(({ a, d }) => {
+    const p = boxPoint(b.entrance, a, d);
+    return { x: ox + p.x, y: oy + p.y };
+  });
+}
