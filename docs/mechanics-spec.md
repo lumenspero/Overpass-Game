@@ -172,6 +172,7 @@ Elevated links for faster travel between two points on the ground network. `appr
 
 - **Campaign order:** the campaign plays its maps in a fixed order. The first map is open from the start.
 - **Unlock rule:** a run unlocks the next map in the order when its trips reach `CAMPAIGN_UNLOCK_TRIPS` (default 20). The check is made when the run ends, against the trips that run completed. The same threshold applies to every map until per-map values arrive with the map content in M14. `approximated`
+- **Best scores:** kept per map and per mode (campaign or challenge): the highest trips of any finished run. A map's open or locked state is derived from these, so nothing else is stored. Campaign and challenge bests are separate. `approximated`
 - **Challenge mode:** each challenge is scored by trips, as in the campaign. No goal beyond score (such as a road-tile limit) yet. The challenge list is empty until M14 supplies maps with starter roads. `approximated`
 
 ### Business arrival and house supply

@@ -113,6 +113,7 @@ Short log of choices and why. Newest at the bottom.
 | 2026-11-01 | Tile-based import thresholds (simplify tolerance, minimum shape area and stroke length, river and coast widths) are scaled to the 250 m tile, a quarter of the old 1000 m | They are authoring choices in tiles, so they must describe the same ground size as before the tile change. Mountains below about 1 km² are dropped as noise |
 | 2026-11-01 | The real-map panel fits and outlines the frame at its real size, with no half-scale factor | The panel and the generated map must show the same ground, so the lake and river positions line up |
 | 2026-11-02 | Campaign maps unlock on a trips threshold per run (`CAMPAIGN_UNLOCK_TRIPS`, one value for all maps for now); challenge mode is scored by trips, with no extra goal yet; no audio setting until M12 | The plan's M10 checklist sets score thresholds, and the open questions were answered by the author; per-map values wait for the M14 content, and audio does not exist before M12 |
+| 2026-11-02 | Campaign unlock state is derived from best scores, not stored; best scores are kept per mode and map, so challenge runs never open the campaign | Only the best scores need saving at M11; an unlock can't drift from the record it came from |
 
 ## M9 · Palette and labels
 

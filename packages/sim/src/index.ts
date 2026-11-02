@@ -1,4 +1,5 @@
 export * from './buildings.ts';
+export * from './campaign.ts';
 export * from './cars.ts';
 export * from './clock.ts';
 export * from './crossings.ts';
