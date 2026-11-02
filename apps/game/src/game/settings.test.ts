@@ -1,5 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, toggleGuide, toggleTheme } from './settings.ts';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  currentSettings,
+  DEFAULT_SETTINGS,
+  saveSettings,
+  toggleGuide,
+  toggleSymbols,
+  toggleTheme,
+} from './settings.ts';
+
+afterEach(() => saveSettings(DEFAULT_SETTINGS));
 
 describe('settings', () => {
   it('starts with the motorway guide on', () => {
@@ -22,5 +31,20 @@ describe('settings', () => {
     expect(dark.theme).toBe('dark');
     expect(DEFAULT_SETTINGS.theme).toBe('light');
     expect(toggleTheme(dark).theme).toBe('light');
+  });
+
+  it('starts with building symbols off, and toggles them', () => {
+    expect(DEFAULT_SETTINGS.buildingSymbols).toBe(false);
+    const on = toggleSymbols(DEFAULT_SETTINGS);
+    expect(on.buildingSymbols).toBe(true);
+    expect(DEFAULT_SETTINGS.buildingSymbols).toBe(false);
+    expect(toggleSymbols(on).buildingSymbols).toBe(false);
+  });
+
+  it('keeps the chosen settings for the next screen', () => {
+    expect(currentSettings()).toEqual(DEFAULT_SETTINGS);
+    const chosen = toggleSymbols(toggleTheme(DEFAULT_SETTINGS));
+    saveSettings(chosen);
+    expect(currentSettings()).toEqual(chosen);
   });
 });

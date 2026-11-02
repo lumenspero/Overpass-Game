@@ -176,6 +176,14 @@ Elevated links for faster travel between two points on the ground network. `appr
 - **Best scores:** kept per map and per mode (campaign or challenge): the highest trips of any finished run. A map's open or locked state is derived from these, so nothing else is stored. Campaign and challenge bests are separate. `approximated`
 - **Challenge mode:** each challenge is scored by trips, as in the campaign. No goal beyond score (such as a road-tile limit) yet. The challenge list is empty until M14 supplies maps with starter roads. `approximated`
 
+### Settings
+
+- **Motorway guide:** on by default. Toggled with G or in Settings. `approximated`
+- **Dark mode:** light by default. Toggled with N or in Settings. `approximated`
+- **Building symbols:** off by default. When on, each building colour draws one symbol: circle, square, triangle, then diamond, in the building palette's order, repeating past four colours. The symbol is black or white, whichever has the higher contrast with the colour. Houses and destinations both carry it. Cars and pins are not symbol-coded yet. `approximated`
+- **Settings screen:** reached from the menu and from the Settings button in play. In play, the clock stops while it is open and resumes after, if it was running. Escape or Done closes it.
+- **Storage:** settings are held in memory until M11 saves them. No audio setting until M12.
+
 ### Business arrival and house supply
 
 _Planned for M14 with the spawn system. Not built yet._

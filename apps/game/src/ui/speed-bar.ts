@@ -1,17 +1,18 @@
 import { SPEED_OPTIONS, type Speed } from '@overpass-game/sim';
 
 /**
- * Pause and speed buttons for mouse and touch. The keys do the same: P pauses, and 1 to 4 pick
- * a speed. The bar only touches the DOM when its state changes, so it is cheap to sync every frame.
+ * Pause, speed and settings buttons for mouse and touch. The keys do the same: P pauses, and 1 to 4
+ * pick a speed. The bar only touches the DOM when its state changes, so it is cheap to sync every frame.
  */
 
 export interface SpeedBarHandlers {
   onPause(): void;
   onSpeed(speed: Speed): void;
+  onSettings(): void;
 }
 
 export interface SpeedBar {
-  /** Shows the pause state and the speed. `enabled` false disables every button (the game is over). */
+  /** Shows the pause state and the speed. `enabled` false disables pause and speed (the game is over). */
   sync(paused: boolean, speed: Speed, enabled: boolean): void;
   destroy(): void;
 }
@@ -52,6 +53,17 @@ export function createSpeedBar(handlers: SpeedBarHandlers): SpeedBar {
     speeds.set(s, b);
     root.append(b);
   }
+
+  const settings = document.createElement('button');
+  settings.type = 'button';
+  settings.textContent = 'Settings';
+  settings.style.cssText = BUTTON_CSS;
+  settings.addEventListener('click', () => {
+    handlers.onSettings();
+    settings.blur();
+  });
+  root.append(settings);
+
   document.body.append(root);
 
   let last = '';

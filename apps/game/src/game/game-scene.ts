@@ -82,6 +82,7 @@ import {
 } from '../debug/tuning-panel.ts';
 import { createOfferPanel, type OfferPanel } from '../ui/offer-panel.ts';
 import { createSpeedBar, type SpeedBar } from '../ui/speed-bar.ts';
+import { showSettings, type SettingsScreen } from '../ui/settings-screen.ts';
 import { previewRoads } from '../view/crossing-preview.ts';
 import {
   BADGE_H,
@@ -94,10 +95,17 @@ import {
   shieldOutline,
 } from '../view/motorway-view.ts';
 import { guideWorldLines } from '../view/guide.ts';
-import { GUIDE_STYLE } from '@overpass-game/render-style';
 import {
+  buildingSymbol,
+  type BuildingSymbol,
+  GUIDE_STYLE,
+  symbolInk,
+} from '@overpass-game/render-style';
+import {
+  currentSettings,
   DEFAULT_SETTINGS,
   type GameSettings,
+  saveSettings,
   toggleGuide,
   toggleTheme,
 } from './settings.ts';
@@ -140,6 +148,31 @@ const LIGHT_RED_COLOUR = 0xd9534f;
 
 /** Stroke width of thin region and pavement borders, in pixels. */
 const BORDER_PX = 2;
+
+/** Radius of a building's symbol, as a share of the building's width. */
+const SYMBOL_RADIUS = 0.3;
+
+/** Draws one colour-blind symbol centred on (cx, cy), with radius r. */
+function drawSymbol(
+  gfx: Phaser.GameObjects.Graphics,
+  symbol: BuildingSymbol,
+  cx: number,
+  cy: number,
+  r: number,
+  ink: number,
+): void {
+  gfx.fillStyle(ink, 1);
+  if (symbol === 'circle') {
+    gfx.fillCircle(cx, cy, r);
+  } else if (symbol === 'square') {
+    gfx.fillRect(cx - r, cy - r, 2 * r, 2 * r);
+  } else if (symbol === 'triangle') {
+    gfx.fillTriangle(cx, cy - r, cx + r, cy + r, cx - r, cy + r);
+  } else {
+    gfx.fillTriangle(cx, cy - r, cx + r, cy, cx, cy + r);
+    gfx.fillTriangle(cx, cy - r, cx, cy + r, cx - r, cy);
+  }
+}
 
 /** A 24-bit colour as the `#rrggbb` text Phaser's text objects take. */
 function hexString(colour: number): string {
@@ -221,6 +254,9 @@ export class GameScene extends Phaser.Scene {
   private debugText!: Phaser.GameObjects.Text;
   private offerPanel!: OfferPanel;
   private speedBar!: SpeedBar;
+  private settingsScreen: SettingsScreen | null = null;
+  /** Whether the clock was running when the settings opened, so it resumes only if it was. */
+  private pausedBeforeSettings = false;
   private debugOn = false;
   private overlayDirty = true;
   private meter!: TickMeter;
@@ -236,6 +272,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.settings = currentSettings();
     const demo = activeDemo();
     if (demo) {
       this.sim = buildDemo(demo);
@@ -256,6 +293,7 @@ export class GameScene extends Phaser.Scene {
     this.speedBar = createSpeedBar({
       onPause: () => this.togglePause(),
       onSpeed: (s) => this.setGameSpeed(s),
+      onSettings: () => this.openSettings(),
     });
     this.mapSize = worldSize(grid.cols, grid.rows);
     this.view = createFittedCamera(this.mapSize, this.viewport());
@@ -536,26 +574,30 @@ export class GameScene extends Phaser.Scene {
   private onRoundaboutKey = (): void => this.pickCrossing('roundabout');
   private onLightKey = (): void => this.pickCrossing('light');
   /** G shows or hides the motorway guide. */
-  private onGuideKey = (): void => {
-    this.settings = toggleGuide(this.settings);
-    this.guideGfx.setVisible(this.settings.motorwayGuide);
-  };
+  private onGuideKey = (): void =>
+    this.applySettings(toggleGuide(this.settings));
 
   /** N switches light and dark mode. The ground, guide and buildings redraw in place. */
-  private onThemeKey = (): void => {
-    this.settings = toggleTheme(this.settings);
-    this.pal = resolvePalette(
-      this.paletteId,
-      this.settings.theme,
-      this.waterId,
-    );
+  private onThemeKey = (): void =>
+    this.applySettings(toggleTheme(this.settings));
+
+  /**
+   * Applies a change from a key or the settings screen: keeps it for later screens and games,
+   * and redraws whatever it changes. The settings screen is refreshed to match.
+   */
+  private applySettings(next: GameSettings): void {
+    this.settings = next;
+    saveSettings(next);
+    this.guideGfx.setVisible(next.motorwayGuide);
+    this.pal = resolvePalette(this.paletteId, next.theme, this.waterId);
     this.cameras.main.setBackgroundColor(this.pal.background);
     this.drawTerrain(this.terrainGfx, this.sim.grid, this.terrainOutlines);
     this.drawLabels();
     this.drawGuide(this.guideLines);
     this.drawBuildings();
     this.roadsDirty = true;
-  };
+    this.settingsScreen?.refresh();
+  }
 
   /**
    * The map's park, mountain and water names. Each sits over the ground and under the roads, in
@@ -800,6 +842,40 @@ export class GameScene extends Phaser.Scene {
       } else {
         gfx.lineStyle(ENTRANCE_WIDTH, this.pal.road, 1);
         gfx.lineBetween(s.x1, s.y1, s.x2, s.y2);
+      }
+    }
+    if (this.settings.buildingSymbols) this.drawBuildingSymbols(shapes);
+  }
+
+  /**
+   * Draws one symbol on each building, for the colour-blind option. A colour keeps its place in
+   * the building palette, so it keeps its symbol wherever it appears.
+   */
+  private drawBuildingSymbols(shapes: ReturnType<typeof buildingShapes>): void {
+    for (const s of shapes) {
+      if (s.kind !== 'square' && s.kind !== 'circle') continue;
+      const index = BUILDING_COLORS.indexOf(s.color);
+      if (index < 0) continue;
+      const symbol = buildingSymbol(index);
+      const ink = symbolInk(s.color);
+      if (s.kind === 'square') {
+        drawSymbol(
+          this.buildingGfx,
+          symbol,
+          s.x + s.size / 2,
+          s.y + s.size / 2,
+          SYMBOL_RADIUS * s.size,
+          ink,
+        );
+      } else if (s.kind === 'circle') {
+        drawSymbol(
+          this.buildingGfx,
+          symbol,
+          s.x,
+          s.y,
+          SYMBOL_RADIUS * 2 * s.r,
+          ink,
+        );
       }
     }
   }
@@ -1210,7 +1286,26 @@ export class GameScene extends Phaser.Scene {
 
   /** P or the Pause button stops and restarts the clock. A speed change leaves the pause as it is. */
   private togglePause = (): void => {
+    if (this.settingsScreen) return;
     setPaused(this.clock, !this.clock.paused);
+  };
+
+  /** Opens the settings over the game. The clock stops while they are open, and resumes after if it was running. */
+  private openSettings = (): void => {
+    if (this.settingsScreen) return;
+    this.pausedBeforeSettings = this.clock.paused;
+    setPaused(this.clock, true);
+    this.settingsScreen = showSettings(
+      () => this.settings,
+      (s) => this.applySettings(s),
+      () => this.closeSettings(),
+    );
+  };
+
+  private closeSettings = (): void => {
+    this.settingsScreen?.destroy();
+    this.settingsScreen = null;
+    setPaused(this.clock, this.pausedBeforeSettings);
   };
 
   /** Redraws the dimmed land and the buildings when a district opens. */
@@ -1342,6 +1437,8 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown-P', this.togglePause);
     this.offerPanel.destroy();
     this.speedBar.destroy();
+    this.settingsScreen?.destroy();
+    this.settingsScreen = null;
     this.input.keyboard?.off('keydown', this.onKey);
     this.input.keyboard?.off('keydown-SPACE', this.onSpaceDown);
     this.input.keyboard?.off('keyup-SPACE', this.onSpaceUp);

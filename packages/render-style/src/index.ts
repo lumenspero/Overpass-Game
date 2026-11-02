@@ -472,3 +472,25 @@ export function labelColour(palette: MapPalette, kind: LabelKind): number {
 
 /** Motorway guide overlay: a faint line along real motorways. Visual only, not a gameplay number. */
 export const GUIDE_STYLE = { alpha: 0.3, widthTiles: 0.12 } as const;
+
+/** The shapes drawn on buildings for the colour-blind option, in palette order. */
+export const BUILDING_SYMBOLS = [
+  'circle',
+  'square',
+  'triangle',
+  'diamond',
+] as const;
+export type BuildingSymbol = (typeof BUILDING_SYMBOLS)[number];
+
+/** The symbol for a building colour, by its place in the building palette. Colours past the list repeat. */
+export function buildingSymbol(colourIndex: number): BuildingSymbol {
+  const n = BUILDING_SYMBOLS.length;
+  return BUILDING_SYMBOLS[((colourIndex % n) + n) % n];
+}
+
+/** Black or white, whichever reads better on this colour. */
+export function symbolInk(colour: number): number {
+  return contrastRatio(colour, 0x000000) >= contrastRatio(colour, 0xffffff)
+    ? 0x000000
+    : 0xffffff;
+}

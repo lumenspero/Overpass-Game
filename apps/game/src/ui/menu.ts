@@ -3,8 +3,8 @@ import type { BestScores } from '@overpass-game/sim';
 import { campaignRows } from './menu-model.ts';
 
 /**
- * The start menu: the campaign's unlock path, the (still empty) challenge list, and the test map.
- * Built with DOM elements and text nodes, so no map or player text is parsed as markup.
+ * The start menu: the campaign's unlock path, the (still empty) challenge list, the test map, and
+ * settings. Built with DOM elements and text nodes, so no map or player text is parsed as markup.
  */
 
 export type MenuChoice = { kind: 'campaign'; id: string } | { kind: 'test' };
@@ -34,6 +34,7 @@ function heading(text: string): HTMLElement {
 export function showMenu(
   best: BestScores,
   onPick: (choice: MenuChoice) => void,
+  onSettings: () => void,
 ): Menu {
   const root = document.createElement('div');
   root.id = 'menu';
@@ -86,7 +87,12 @@ export function showMenu(
   test.textContent = 'Test map';
   test.style.cssText = BUTTON_CSS;
   test.addEventListener('click', () => onPick({ kind: 'test' }));
-  other.append(test);
+  const settings = document.createElement('button');
+  settings.type = 'button';
+  settings.textContent = 'Settings';
+  settings.style.cssText = BUTTON_CSS;
+  settings.addEventListener('click', () => onSettings());
+  other.append(test, settings);
 
   inner.append(title, error, campaign, challenges, other);
   root.append(inner);
