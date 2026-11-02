@@ -93,7 +93,8 @@ const TERRAIN_LIGHT: Readonly<Record<BasePaletteId, Hsl>> = {
 const ACCENTS = {
   light: {
     road: 0xe8e4d8,
-    kerb: 0xe8e4d8,
+    // Guide #9aa7b8 at 30 percent alpha over the light background #f4efe4.
+    kerb: 0xd9d9d7,
     motorway: 0x9aa7b8,
     motorwayContrast: 0x9aa7b8,
     motorwayBadge: 0x9aa7b8,

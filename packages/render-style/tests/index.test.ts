@@ -78,7 +78,7 @@ describe('@overpass-game/render-style', () => {
   it('uses the approved accent values in both modes', () => {
     expect(BASE_PALETTES.yellow.light).toMatchObject({
       road: 0xe8e4d8,
-      kerb: 0xe8e4d8,
+      kerb: 0xd9d9d7,
       motorway: 0x9aa7b8,
       motorwayContrast: 0x9aa7b8,
       motorwayBadge: 0x9aa7b8,

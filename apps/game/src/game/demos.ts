@@ -5,6 +5,7 @@ import {
   placeBuilding,
   placeRoads,
   type Grid,
+  type LotKind,
   type Side,
   type SimState,
   Terrain,
@@ -17,7 +18,8 @@ import {
  * isolation. Pick one from the debug panel; "Test map" returns to the normal map.
  */
 
-export type DemoId = 'bridge' | 'tunnel' | 'motorway' | 'roundabout' | 'light';
+export type DemoId =
+  'bridge' | 'tunnel' | 'motorway' | 'roundabout' | 'light' | 'lots';
 
 export interface Demo {
   id: DemoId;
@@ -50,6 +52,11 @@ export const DEMOS: readonly Demo[] = [
     id: 'light',
     title: 'Traffic light',
     hint: 'Demo · Traffic light (L): press L, then click the crossing.',
+  },
+  {
+    id: 'lots',
+    title: 'Lots: single vs double',
+    hint: 'Demo · Lots: the left destination has a single lot, the right a double lot. Its second building arrives a set number of weeks after it is placed (debug panel).',
   },
 ];
 
@@ -112,8 +119,9 @@ function building(
   x: number,
   y: number,
   entrance: Side,
+  lot?: LotKind,
 ): number {
-  const r = placeBuilding(sim, { kind, color, tile: at(x, y), entrance });
+  const r = placeBuilding(sim, { kind, color, tile: at(x, y), entrance, lot });
   if (!r.ok) throw new Error(`demo building refused: ${r.reason}`);
   return r.id;
 }
@@ -151,6 +159,14 @@ export function buildDemo(id: DemoId): SimState {
     building(sim, 'house', 1, 7, 2, 's');
     building(sim, 'destination', 1, 7, 10, 'n');
   }
-  sim.stock[id] = 1;
+  if (id === 'lots') {
+    // One road, with a single-lot and a double-lot destination, each with a house of its colour.
+    road(sim, line([2, 5], [12, 5]));
+    building(sim, 'house', 0, 2, 4, 's');
+    building(sim, 'destination', 0, 4, 6, 'n', 'single');
+    building(sim, 'house', 1, 9, 4, 's');
+    building(sim, 'destination', 1, 10, 6, 'n', 'double');
+  }
+  if (id !== 'lots') sim.stock[id] = 1;
   return sim;
 }

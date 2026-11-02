@@ -67,6 +67,14 @@ export const DEFAULT_TUNING = {
   CONGESTION_COST_PER_CAR: 1.5, // approximated
   /** Demand each destination gains every week, so demand rises as the game goes on. */
   DEMAND_GROWTH_STEP: 0.25, // approximated
+  /** Chance a destination placed with a roll gets a double lot, before the inflection week (spec: Parking lots). */
+  DOUBLE_LOT_CHANCE_EARLY: 0.1, // approximated
+  /** Chance a destination placed with a roll gets a double lot, from the inflection week on. */
+  DOUBLE_LOT_CHANCE_LATE: 0.2, // approximated
+  /** Inflection week: from here on, double buildings spawn more often (at the later chance). */
+  DOUBLE_LOT_WEEK: 4, // approximated
+  /** Weeks after a double lot spawns before its second building is filled in, if its far half is clear. */
+  SECOND_BUILDING_DELAY_WEEKS: 6, // approximated
 };
 
 export type Tuning = typeof DEFAULT_TUNING;

@@ -21,6 +21,7 @@ import {
   removeLink,
 } from './grid.ts';
 import { moveCars } from './movement.ts';
+import { addSecondBuildings } from './buildings.ts';
 import { createRng, type RngState } from './rng.ts';
 import { spawnCars, updateTrips } from './trips.ts';
 import {
@@ -214,6 +215,7 @@ export function step(state: SimState): void {
   if (state.tick % tuning.WEEK_TICKS === 0) {
     grantWeeklyReward(state);
     growDestinations(state);
+    addSecondBuildings(state);
   }
   generateDemand(state);
   updateOverflow(state);

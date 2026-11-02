@@ -1,7 +1,13 @@
 import { type Car, sendHome } from './cars.ts';
 import { tuning } from './config.ts';
 import type { Grid } from './grid.ts';
-import { type LotPoint, lotPath, PARKING_SPACES, roundedPath } from './lots.ts';
+import {
+  type LotPoint,
+  lotOwnerId,
+  lotPath,
+  roundedPath,
+  spacesFor,
+} from './lots.ts';
 import { polylineLength } from './motorways.ts';
 import type { SimState } from './sim.ts';
 
@@ -32,15 +38,15 @@ export function laneFree(state: SimState, destination: number): boolean {
   );
 }
 
-/** The first parking space of the destination's lot that no car is using, or null when all are full. */
-function freeSpace(state: SimState, destination: number): number | null {
+/** The first parking space of the lot that no car is using, or null when all are full. */
+function freeSpace(state: SimState, lot: number, count: number): number | null {
   const taken = new Set<number>();
   for (const c of state.cars) {
-    if (c.lot !== undefined && c.lot.destination === destination) {
+    if (c.lot !== undefined && c.lot.destination === lot) {
       taken.add(c.lot.space);
     }
   }
-  for (let k = 0; k < PARKING_SPACES.length; k++) {
+  for (let k = 0; k < count; k++) {
     if (!taken.has(k)) return k;
   }
   return null;
@@ -108,8 +114,14 @@ export function startLotTrip(state: SimState, car: Car): LotStart {
   if (!building || lotPath(state.grid, building, 0, 'in') === null) {
     return 'none';
   }
-  if (!laneFree(state, car.destination)) return 'waiting';
-  const space = freeSpace(state, car.destination);
+  // A double lot's two buildings share one lane and one set of spaces, so the lot's owner keys them.
+  const owner = lotOwnerId(building);
+  if (!laneFree(state, owner)) return 'waiting';
+  const space = freeSpace(
+    state,
+    owner,
+    spacesFor(building.lot ?? 'single').length,
+  );
   if (space === null) return 'waiting';
   const lane = lotPath(state.grid, building, space, 'in');
   if (lane === null) return 'none';
@@ -130,7 +142,7 @@ export function startLotTrip(state: SimState, car: Car): LotStart {
     s = distanceTo(path, nodeLane);
   }
   car.lot = {
-    destination: car.destination,
+    destination: owner,
     space,
     phase: 'in',
     path,

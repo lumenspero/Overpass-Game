@@ -1,4 +1,5 @@
 import {
+  isConnected,
   accessTile,
   findRoute,
   roadLinks,
@@ -30,10 +31,21 @@ function connected(sim: SimState): boolean {
 }
 
 describe('the scripted demos', () => {
-  it('each starts with one of the upgrade it demonstrates', () => {
+  it('each upgrade demo starts with the upgrade it demonstrates', () => {
     for (const demo of DEMOS) {
+      if (demo.id === 'lots') continue;
       expect(buildDemo(demo.id).stock[demo.id]).toBe(1);
     }
+  });
+
+  it('the lots demo has one single lot and one double lot, both connected', () => {
+    const sim = buildDemo('lots');
+    const destinations = sim.buildings.filter((b) => b.kind === 'destination');
+    expect(destinations.map((b) => b.lot ?? 'single')).toEqual([
+      'single',
+      'double',
+    ]);
+    for (const b of destinations) expect(isConnected(sim, b)).toBe(true);
   });
 
   it('the bridge, tunnel and motorway demos cannot connect without their upgrade', () => {

@@ -2,7 +2,14 @@ import { tuning } from './config.ts';
 import { colourUnlocked } from './rules.ts';
 import { type Grid, isBuildable, isInBounds } from './grid.ts';
 import type { SimState } from './sim.ts';
-import { destinationLot, lotAt, type LotReason, lotBlocker } from './lots.ts';
+import {
+  destinationLot,
+  lotAt,
+  type LotKind,
+  type LotReason,
+  lotBlocker,
+} from './lots.ts';
+import { nextFloat } from './rng.ts';
 
 /**
  * Buildings: houses (where cars start and end) and destinations (where they go).
@@ -13,6 +20,8 @@ import { destinationLot, lotAt, type LotReason, lotBlocker } from './lots.ts';
  */
 
 export type Side = 'n' | 'e' | 's' | 'w';
+/** Which half of a double lot a building stands in. */
+export type Wing = 'near' | 'far';
 export type BuildingKind = 'house' | 'destination';
 
 export interface Building {
@@ -22,6 +31,14 @@ export interface Building {
   color: number;
   tile: number;
   entrance: Side;
+  /** A destination's lot kind. Absent for a single lot. */
+  lot?: LotKind;
+  /** A destination in a double lot: which half it stands in. Absent for the near half. */
+  wing?: Wing;
+  /** The near building of a double lot, on a far building. */
+  lotOwner?: number;
+  /** When a double lot's near building was placed, in ticks. */
+  placedTick?: number;
 }
 
 /** A destination's demand. `pins` are waiting requests; one is used up when a car arrives. */
@@ -48,6 +65,8 @@ export interface PlaceBuildingOptions {
   color: number;
   tile: number;
   entrance: Side;
+  /** A destination's lot. `'roll'` chooses a double lot with the week's chance; absent is a single lot. */
+  lot?: LotKind | 'roll';
 }
 
 export type PlaceBuildingResult =
@@ -139,9 +158,11 @@ export function placeBuilding(
   ) {
     return { ok: false, reason: 'bad-color' };
   }
+  const lotKind =
+    opts.kind === 'destination' ? resolveLotKind(state, opts.lot) : 'single';
   if (opts.kind === 'destination') {
     // A destination takes its whole lot, so every lot tile must be free before it spawns.
-    const why = lotBlocker(state, opts.tile, opts.entrance);
+    const why = lotBlocker(state, opts.tile, opts.entrance, lotKind);
     if (why) return { ok: false, reason: LOT_REFUSAL[why] };
   } else {
     if (!isBuildable(state.grid, opts.tile)) {
@@ -152,11 +173,23 @@ export function placeBuilding(
     }
   }
   const id = state.buildings.length;
-  state.buildings.push({ id, ...opts });
+  const record: Building = {
+    id,
+    kind: opts.kind,
+    color: opts.color,
+    tile: opts.tile,
+    entrance: opts.entrance,
+  };
+  if (opts.kind === 'destination' && lotKind === 'double')
+    record.lot = 'double';
+  if (record.lot === 'double') record.placedTick = state.tick;
+  state.buildings.push(record);
   // A house occupies its tile. A destination occupies its 3×3 footprint; its lot stays reserved.
   const occupied =
     opts.kind === 'destination'
-      ? (lotAt(state.grid, opts.tile, opts.entrance)?.footprint ?? [opts.tile])
+      ? (lotAt(state.grid, opts.tile, opts.entrance, lotKind)?.footprint ?? [
+          opts.tile,
+        ])
       : [opts.tile];
   for (const t of occupied) state.buildingAt[t] = id;
   if (opts.kind === 'house') {
@@ -174,4 +207,61 @@ export function placeBuilding(
     };
   }
   return { ok: true, id };
+}
+
+/** The lot kind a destination gets: a roll for `'roll'`, otherwise the kind given (single by default). */
+function resolveLotKind(
+  state: SimState,
+  lot: LotKind | 'roll' | undefined,
+): LotKind {
+  if (lot !== 'roll') return lot ?? 'single';
+  const week = Math.floor(state.tick / tuning.WEEK_TICKS) + 1;
+  const chance =
+    week >= tuning.DOUBLE_LOT_WEEK
+      ? tuning.DOUBLE_LOT_CHANCE_LATE
+      : tuning.DOUBLE_LOT_CHANCE_EARLY;
+  return nextFloat(state.rng) < chance ? 'double' : 'single';
+}
+
+/**
+ * Adds the far building to each double lot once the set week arrives (spec: Parking lots). It
+ * takes the empty half of the lot. A lot whose half is not clear is tried again the next week.
+ */
+export function addSecondBuildings(state: SimState): void {
+  for (const near of [...state.buildings]) {
+    if (near.kind !== 'destination' || near.lot !== 'double') continue;
+    if (near.lotOwner !== undefined || near.wing !== undefined) continue;
+    const due =
+      (near.placedTick ?? 0) +
+      tuning.SECOND_BUILDING_DELAY_WEEKS * tuning.WEEK_TICKS;
+    if (state.tick < due) continue;
+    if (state.buildings.some((b) => b.lotOwner === near.id)) continue;
+    const far = lotAt(state.grid, near.tile, near.entrance, 'double', 'far');
+    if (!far) continue;
+    const clear = far.footprint.every(
+      (t) =>
+        isBuildable(state.grid, t) &&
+        state.roads[t] !== 1 &&
+        state.buildingAt[t] === -1,
+    );
+    if (!clear) continue;
+    const id = state.buildings.length;
+    state.buildings.push({
+      id,
+      kind: 'destination',
+      color: near.color,
+      tile: near.tile,
+      entrance: near.entrance,
+      lot: 'double',
+      wing: 'far',
+      lotOwner: near.id,
+    });
+    for (const t of far.footprint) state.buildingAt[t] = id;
+    state.demand[id] = {
+      pins: 0,
+      cooldown: tuning.DEMAND_INTERVAL_TICKS,
+      overflow: 0,
+      growth: state.demand[near.id]?.growth ?? 0,
+    };
+  }
 }

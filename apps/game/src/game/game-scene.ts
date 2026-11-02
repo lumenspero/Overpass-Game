@@ -1,4 +1,4 @@
-import { stripLayout } from '@overpass-game/sim';
+import { lotAt, stripLayout } from '@overpass-game/sim';
 import { greenIsHorizontal, ROUNDABOUT_RING_TILES } from '@overpass-game/sim';
 import type { CompiledMap, OutlinePath } from '@overpass-game/map-schema';
 import { activeDemo, buildDemo, DEMOS, setActiveDemo } from './demos.ts';
@@ -795,11 +795,37 @@ export class GameScene extends Phaser.Scene {
     // Kerb first, a little wider, then the pavement on top, so each road has a thin outline.
     this.paintRoadShapes(gfx, shapes, this.pal.kerb, BORDER_PX);
     this.paintRoadShapes(gfx, shapes, this.pal.road, 0);
-    // Parking spaces: outlined in the kerb colour, on each destination's pavement.
+    // A double lot's empty far half is an outline until its second building arrives.
     gfx.lineStyle(SPACE_LINE_PX, this.pal.kerb, 1);
     for (const b of visible) {
-      if (b.kind !== 'destination') continue;
-      const layout = stripLayout(this.sim.grid, b.tile, b.entrance);
+      if (
+        b.kind !== 'destination' ||
+        b.lot !== 'double' ||
+        b.lotOwner !== undefined
+      )
+        continue;
+      if (this.sim.buildings.some((o) => o.lotOwner === b.id)) continue;
+      const far = lotAt(this.sim.grid, b.tile, b.entrance, 'double', 'far');
+      if (!far) continue;
+      const cols = far.footprint.map((t) => t % this.sim.grid.cols);
+      const rows = far.footprint.map((t) => Math.floor(t / this.sim.grid.cols));
+      gfx.strokeRect(
+        Math.min(...cols) * TILE_SIZE,
+        Math.min(...rows) * TILE_SIZE,
+        (Math.max(...cols) - Math.min(...cols) + 1) * TILE_SIZE,
+        (Math.max(...rows) - Math.min(...rows) + 1) * TILE_SIZE,
+      );
+    }
+    // Parking spaces: outlined in the kerb colour, on each destination's pavement.
+    for (const b of visible) {
+      // A double lot's spaces are drawn once, from its near building.
+      if (b.kind !== 'destination' || b.lotOwner !== undefined) continue;
+      const layout = stripLayout(
+        this.sim.grid,
+        b.tile,
+        b.entrance,
+        b.lot ?? 'single',
+      );
       if (!layout) continue;
       for (const space of layout.spaces) {
         gfx.strokePoints(

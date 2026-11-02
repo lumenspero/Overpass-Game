@@ -1,31 +1,48 @@
-import type { Building, Side } from './buildings.ts';
+import type { Building, Side, Wing } from './buildings.ts';
 import { isBuildable, type Grid } from './grid.ts';
 import type { SimState } from './sim.ts';
 
 /**
- * Destination parking lots (spec: Parking lots and building kinds, M9a). A standard lot is 5
- * tiles long and 3 deep. The road runs along one long edge. The destination's 3×3 building sits
- * at one end of the lot, and the 2×3 strip at the other end is left open for the parking spaces
- * and the turn. The inlet is the strip tile on the road edge, at the end farthest from the
- * building. Houses have no lot; they keep the entrance tile.
+ * Destination parking lots (spec: Parking lots and building kinds, M9a). A single lot is 5 tiles
+ * long and 3 deep, with a 3×3 building at one end and a 2×3 strip at the other. A double lot is 5
+ * long and 6 deep: two 3×3 buildings side by side across its depth, with a 2×6 strip at the road
+ * end. A double lot starts with its near building, and its far building arrives later. The road
+ * runs along one long edge. The inlet is the strip tile on the road edge, farthest from the
+ * buildings. Houses have no lot; they keep the entrance tile.
  */
 
-/** The standard lot: along the road, and deep (from the road to the far edge), in tiles. */
+/** A single lot holds one building; a double lot holds two, one behind the other. */
+export type LotKind = 'single' | 'double';
+
+/** The standard lot: along the road, in tiles. */
 export const LOT_LENGTH = 5;
+/** A single lot is this deep, from the road to its far edge, in tiles. */
 export const LOT_DEPTH = 3;
-/** The destination building is square, at the end of the lot away from the strip. */
+/** A double lot is this deep. */
+export const DOUBLE_LOT_DEPTH = 6;
+/** Each destination building is square. */
 export const BUILDING_SIZE = 3;
-/** The open strip at the other end: the tiles left over once the building is placed along the lot. */
+/** The open strip at the road end: the tiles left over once the buildings are placed along the lot. */
 export const STRIP_LENGTH = LOT_LENGTH - BUILDING_SIZE;
 
+/** How deep a lot of this kind is, in tiles. */
+export function lotDepth(kind: LotKind): number {
+  return kind === 'double' ? DOUBLE_LOT_DEPTH : LOT_DEPTH;
+}
+
+/** The lot a building belongs to: its owner's id for a far building, otherwise its own id. */
+export function lotOwnerId(b: Building): number {
+  return b.lotOwner ?? b.id;
+}
+
 export interface Lot {
-  /** The 3×3 building's tiles. */
+  /** The building's own tiles: the whole footprint for a single lot, one half of a double lot. */
   footprint: number[];
-  /** All fifteen tiles of the lot. */
+  /** Every tile of the lot. */
   tiles: number[];
   /** The open strip's tiles, which hold the parking spaces and the turn. */
   strip: number[];
-  /** The strip tile on the road edge, at the end farthest from the building. Cars drive in here. */
+  /** The strip tile on the road edge, at the end farthest from the buildings. Cars drive in here. */
   inlet: number;
   /** The road tile the inlet joins. */
   road: number;
@@ -33,8 +50,8 @@ export interface Lot {
 
 /**
  * A point in the lot's own frame, with the road on the north side. `a` runs along the road
- * (0 to 4), with 0 at the strip end. `d` runs away from the road (0 is the road edge, 2 the far
- * edge). The road is at d = -1. Each side maps this frame onto the map.
+ * (0 to 4), with 0 at the strip end. `d` runs away from the road (0 is the road edge). The road is
+ * at d = -1. Each side maps this frame onto the map.
  */
 interface Frame {
   a: number;
@@ -43,30 +60,49 @@ interface Frame {
 
 /**
  * Maps a point in the lot frame to a box offset, where the box's top-left is (0, 0). A north or
- * south road gives a 5×3 box; an east or west road gives a 3×5 box.
+ * south road gives a box 5 wide and `depth` deep; an east or west road gives the other way round.
  */
-function toBox(side: Side, { a, d }: Frame): { x: number; y: number } {
+function toBox(
+  side: Side,
+  { a, d }: Frame,
+  depth: number,
+): { x: number; y: number } {
   switch (side) {
     case 'n':
       return { x: a, y: d };
     case 's':
-      return { x: LOT_LENGTH - 1 - a, y: LOT_DEPTH - 1 - d };
+      return { x: LOT_LENGTH - 1 - a, y: depth - 1 - d };
     case 'e':
-      return { x: LOT_DEPTH - 1 - d, y: a };
+      return { x: depth - 1 - d, y: a };
     case 'w':
       return { x: d, y: LOT_LENGTH - 1 - a };
   }
 }
 
+/** Whether a lot tile belongs to the building in `wing`. The strip never does. */
+function inFootprint(kind: LotKind, wing: Wing, a: number, d: number): boolean {
+  if (a < STRIP_LENGTH) return false;
+  if (kind === 'single') return true;
+  return (wing === 'near') === d < BUILDING_SIZE;
+}
+
 /**
  * The lot for a destination whose lot box starts at tile `origin` (its top-left tile) and whose
- * road is on `side`. Returns null when any part of the lot, or its road tile, is off the map.
+ * road is on `side`. `wing` picks the half of a double lot. Returns null when any part of the lot,
+ * or its road tile, is off the map.
  */
-export function lotAt(grid: Grid, origin: number, side: Side): Lot | null {
+export function lotAt(
+  grid: Grid,
+  origin: number,
+  side: Side,
+  kind: LotKind = 'single',
+  wing: Wing = 'near',
+): Lot | null {
   const ox = origin % grid.cols;
   const oy = Math.floor(origin / grid.cols);
+  const depth = lotDepth(kind);
   const tileOf = (a: number, d: number): number | null => {
-    const b = toBox(side, { a, d });
+    const b = toBox(side, { a, d }, depth);
     const col = ox + b.x;
     const row = oy + b.y;
     if (col < 0 || row < 0 || col >= grid.cols || row >= grid.rows) return null;
@@ -76,24 +112,24 @@ export function lotAt(grid: Grid, origin: number, side: Side): Lot | null {
   const tiles: number[] = [];
   const strip: number[] = [];
   for (let a = 0; a < LOT_LENGTH; a++) {
-    for (let d = 0; d < LOT_DEPTH; d++) {
+    for (let d = 0; d < depth; d++) {
       const t = tileOf(a, d);
       if (t === null) return null;
       tiles.push(t);
       if (a < STRIP_LENGTH) strip.push(t);
-      else footprint.push(t);
+      else if (inFootprint(kind, wing, a, d)) footprint.push(t);
     }
   }
-  // The inlet is on the road edge (d = 0) at the strip end (a = 0), the farthest point from the building.
+  // The inlet is on the road edge (d = 0) at the strip end (a = 0), the farthest point from the buildings.
   const road = tileOf(0, -1);
   const inlet = tileOf(0, 0);
   if (road === null || inlet === null) return null;
   return { footprint, tiles, strip, inlet, road };
 }
 
-/** The lot a destination occupies, from its origin and the side its road is on. */
+/** The lot a destination occupies, from its origin, its road side, and its kind and wing. */
 export function destinationLot(grid: Grid, b: Building): Lot | null {
-  return lotAt(grid, b.tile, b.entrance);
+  return lotAt(grid, b.tile, b.entrance, b.lot ?? 'single', b.wing ?? 'near');
 }
 
 /** Every tile reserved by the lots of destinations already placed. */
@@ -111,15 +147,16 @@ export type LotReason =
   'no-lot' | 'unbuildable' | 'road' | 'occupied' | 'reserved';
 
 /**
- * Why a destination cannot spawn with this origin and road side, or null when it can. Every lot
- * tile is checked. A road that is not yet placed does not block the spawn, as with houses.
+ * Why a destination cannot spawn with this origin, road side and lot kind, or null when it can.
+ * Every lot tile is checked. A road that is not yet placed does not block the spawn, as with houses.
  */
 export function lotBlocker(
   sim: SimState,
   origin: number,
   side: Side,
+  kind: LotKind = 'single',
 ): LotReason | null {
-  const lot = lotAt(sim.grid, origin, side);
+  const lot = lotAt(sim.grid, origin, side, kind, 'near');
   if (!lot) return 'no-lot';
   const reserved = reservedLotTiles(sim);
   for (const t of lot.tiles) {
@@ -138,9 +175,8 @@ export interface FramePoint {
 }
 
 /**
- * The driving lane (M9a step 1). A car drives in from the access road node by the outer lane,
- * along the far edge, back by the inner return, and out to the node. Each lane is half a road
- * wide, so the loop keeps clear of the spaces inside it.
+ * The driving lane of a single lot (M9a step 1). A car drives in from the access road node by the
+ * outer lane, along the far edge, back by the inner return, and out to the node.
  */
 export const DRIVING_LANE: FramePoint[] = [
   { a: 0.5, d: -0.5 },
@@ -153,28 +189,59 @@ export const DRIVING_LANE: FramePoint[] = [
 ];
 
 /**
- * Three diagonal parking spaces inside the lane loop, each a parallelogram between a = 0.5 and
- * a = 1.5. They are stacked along the strip with a gap between them.
+ * Parking spaces for `count` diagonal spaces, stacked along the strip with a gap between them.
+ * Each is a parallelogram between a = 0.5 and a = 1.5, sloping (1, 0.25) per tile.
  */
-export const PARKING_SPACES: FramePoint[][] = [0, 1, 2].map((k) => {
-  const d0 = 0.45 + k * 0.65;
-  return [
-    { a: 0.5, d: d0 },
-    { a: 1.5, d: d0 + 0.25 },
-    { a: 1.5, d: d0 + 0.85 },
-    { a: 0.5, d: d0 + 0.6 },
-  ];
-});
+function makeSpaces(count: number): FramePoint[][] {
+  return Array.from({ length: count }, (_, k) => {
+    const d0 = 0.45 + k * 0.65;
+    return [
+      { a: 0.5, d: d0 },
+      { a: 1.5, d: d0 + 0.25 },
+      { a: 1.5, d: d0 + 0.85 },
+      { a: 0.5, d: d0 + 0.6 },
+    ];
+  });
+}
+
+/**
+ * How many spaces fit down a strip of this depth, at the spaces' pitch. The first space starts
+ * 0.45 in from the road, and the last must end a quarter tile short of the far edge.
+ */
+export function spaceCount(depth: number): number {
+  const first = 0.45;
+  const pitch = 0.65;
+  const span = 0.85;
+  const margin = 0.25;
+  return Math.floor((depth - margin - span - first) / pitch) + 1;
+}
+
+/** Three spaces, for a single lot. */
+export const PARKING_SPACES: FramePoint[][] = makeSpaces(spaceCount(LOT_DEPTH));
+/** Seven spaces, for a double lot: the strip's full depth, at the same pitch. */
+export const DOUBLE_PARKING_SPACES: FramePoint[][] = makeSpaces(
+  spaceCount(DOUBLE_LOT_DEPTH),
+);
+
+/** The parking spaces of a lot of this kind. */
+export function spacesFor(kind: LotKind): FramePoint[][] {
+  return kind === 'double' ? DOUBLE_PARKING_SPACES : PARKING_SPACES;
+}
 
 /** A lot-frame point mapped to a box offset in tiles, for one road side. Continuous, unlike toBox. */
-function boxPoint(side: Side, a: number, d: number): { x: number; y: number } {
+function boxPoint(
+  side: Side,
+  a: number,
+  d: number,
+  depth: number,
+): { x: number; y: number } {
   switch (side) {
     case 'n':
       return { x: a, y: d };
     case 's':
-      return { x: LOT_LENGTH - a, y: LOT_DEPTH - d };
+      return { x: LOT_LENGTH - a, y: depth - d };
     case 'e':
-      return { x: LOT_DEPTH - d, y: a };
+      return { x: depth - d, y: a };
     case 'w':
       return { x: d, y: LOT_LENGTH - a };
   }
@@ -188,42 +255,51 @@ export function stripLayout(
   grid: Grid,
   origin: number,
   side: Side,
+  kind: LotKind = 'single',
 ): {
   lane: { x: number; y: number }[];
   spaces: { x: number; y: number }[][];
 } | null {
-  if (!lotAt(grid, origin, side)) return null;
+  if (!lotAt(grid, origin, side, kind)) return null;
   const ox = origin % grid.cols;
   const oy = Math.floor(origin / grid.cols);
+  const depth = lotDepth(kind);
   const place = ({ a, d }: FramePoint) => {
-    const p = boxPoint(side, a, d);
+    const p = boxPoint(side, a, d, depth);
     return { x: ox + p.x, y: oy + p.y };
   };
   return {
     lane: DRIVING_LANE.map(place),
-    spaces: PARKING_SPACES.map((space) => space.map(place)),
+    spaces: spacesFor(kind).map((space) => space.map(place)),
   };
 }
 
 /**
  * The lot-frame points a car drives through: `in` from the road node into space `k`, `out` from
- * space `k` back to the node. The lane runs down the middle of the inlet tab (a = 0.5). A space
- * slopes (1, 0.25) per tile, so the drive ends along that slope, and the car parks nose-in
- * diagonally. `back` is half a tile before the space's middle, on the slope.
+ * space `k` back to the node. The lane sits a quarter of a tile off the inlet's centre, on the
+ * right of its travel: the inbound lane at a = 0.375, the outbound at 0.625. It stays in the lot
+ * until the slope to the space, so the car parks nose-in diagonally along the space's slope.
  */
-export function spacePath(k: number, phase: 'in' | 'out'): FramePoint[] {
-  const space = PARKING_SPACES[k];
+export function spacePath(
+  k: number,
+  phase: 'in' | 'out',
+  kind: LotKind = 'single',
+): FramePoint[] {
+  const space = spacesFor(kind)[k];
   if (!space) throw new Error(`no parking space ${k}`);
   const dk = space.reduce((sum, p) => sum + p.d, 0) / space.length;
   const node = { a: 0.5, d: -0.5 };
-  // Each lane sits a quarter of a tile off the inlet's centre, on the right of its travel.
-  // The inbound lane runs at a = 0.375, the outbound at 0.625, and stays in the lot until the
-  // slope to the space: a line from the middle of the space at a = 0.375 or 0.625.
   const lane = phase === 'in' ? 0.375 : 0.625;
   const tab = { a: lane, d: 0 };
   const back = { a: lane, d: dk - (1 - lane) * 0.25 };
   const centre = { a: 1, d: dk };
   return phase === 'in' ? [node, tab, back, centre] : [centre, back, tab, node];
+}
+
+/** A point on the map, in tiles. */
+export interface LotPoint {
+  x: number;
+  y: number;
 }
 
 /**
@@ -285,11 +361,13 @@ export function lotPath(
   k: number,
   phase: 'in' | 'out',
 ): LotPoint[] | null {
-  if (!lotAt(grid, b.tile, b.entrance)) return null;
+  const kind = b.lot ?? 'single';
+  if (!lotAt(grid, b.tile, b.entrance, kind)) return null;
   const ox = b.tile % grid.cols;
   const oy = Math.floor(b.tile / grid.cols);
-  return spacePath(k, phase).map(({ a, d }) => {
-    const p = boxPoint(b.entrance, a, d);
+  const depth = lotDepth(kind);
+  return spacePath(k, phase, kind).map(({ a, d }) => {
+    const p = boxPoint(b.entrance, a, d, depth);
     return { x: ox + p.x, y: oy + p.y };
   });
 }

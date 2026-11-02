@@ -19,6 +19,7 @@ import {
   pointAtDistance,
   polylineLength,
   roundaboutPath,
+  roundedPath,
 } from '@overpass-game/sim';
 
 /**
@@ -147,7 +148,8 @@ export function lotShapes(
   });
   const width = ROAD_WIDTH_TILES * TILE_SIZE;
   for (const b of buildings) {
-    if (b.kind !== 'destination') continue;
+    // A double lot's far building shares the near building's lot, which is drawn once.
+    if (b.kind !== 'destination' || b.lotOwner !== undefined) continue;
     const lot = destinationLot(grid, b);
     if (!lot) continue;
     let minX = Infinity;
@@ -444,16 +446,24 @@ export function carShapes(
     ) {
       // Drive in from the entry edge to the anchor, so the car never backs up on its last tile.
       const nIn = inRaw ? rightOfTravel(inRaw) : { x: 0, y: 0 };
-      // A house is driven into; a destination is reached in its lane, so the car stays in lane.
-      const b =
-        arrival.kind === 'house'
-          ? anchorOf(arrival, c)
-          : { x: c.x + nIn.x, y: c.y + nIn.y };
       const edgeIn = inRaw
         ? { x: c.x - inRaw.dx * half + nIn.x, y: c.y - inRaw.dy * half + nIn.y }
         : c;
-      x = edgeIn.x + (b.x - edgeIn.x) * along;
-      y = edgeIn.y + (b.y - edgeIn.y) * along;
+      if (arrival.kind === 'house') {
+        // A house is turned into round the corner of its access tile, never cut across it.
+        const path = roundedPath(
+          [edgeIn, c, anchorOf(arrival, c)],
+          0.3 * TILE_SIZE,
+        );
+        const spot = pointAtDistance(path, along * polylineLength(path));
+        x = spot.x;
+        y = spot.y;
+      } else {
+        // A destination is reached in its lane, so the car stays in lane.
+        const b = { x: c.x + nIn.x, y: c.y + nIn.y };
+        x = edgeIn.x + (b.x - edgeIn.x) * along;
+        y = edgeIn.y + (b.y - edgeIn.y) * along;
+      }
     } else if (
       route.length > 1 &&
       departure &&
@@ -464,15 +474,23 @@ export function carShapes(
       // Drive out from the anchor to the exit edge, so the car never backs up when it leaves.
       const outD = outRaw ?? inRaw;
       const nOut = outD ? rightOfTravel(outD) : { x: 0, y: 0 };
-      const b =
-        departure.kind === 'house'
-          ? anchorOf(departure, c)
-          : { x: c.x + nOut.x, y: c.y + nOut.y };
       const edgeOut = outD
         ? { x: c.x + outD.dx * half + nOut.x, y: c.y + outD.dy * half + nOut.y }
         : c;
-      x = b.x + (edgeOut.x - b.x) * along;
-      y = b.y + (edgeOut.y - b.y) * along;
+      if (departure.kind === 'house') {
+        // A house is driven out of round the corner of its access tile, never cut across it.
+        const path = roundedPath(
+          [anchorOf(departure, c), c, edgeOut],
+          0.3 * TILE_SIZE,
+        );
+        const spot = pointAtDistance(path, along * polylineLength(path));
+        x = spot.x;
+        y = spot.y;
+      } else {
+        const b = { x: c.x + nOut.x, y: c.y + nOut.y };
+        x = b.x + (edgeOut.x - b.x) * along;
+        y = b.y + (edgeOut.y - b.y) * along;
+      }
     }
     const house = buildings[car.house];
     out.push({
