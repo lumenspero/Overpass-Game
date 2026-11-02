@@ -1,4 +1,4 @@
-import { tuning } from './config.ts';
+import { tuning, demandIntervalFor } from './config.ts';
 import { colourUnlocked } from './rules.ts';
 import { type Grid, isBuildable, isInBounds } from './grid.ts';
 import type { SimState } from './sim.ts';
@@ -40,6 +40,8 @@ export interface Building {
   lotOwner?: number;
   /** When a double lot's near building was placed, in ticks. */
   placedTick?: number;
+  /** A destination's shape: square is the slower-demand kind, round the faster one. */
+  shape?: DestinationShape;
 }
 
 /** A destination's demand. `pins` are waiting requests; one is used up when a car arrives. */
@@ -61,6 +63,9 @@ export interface Home {
   cooldown: number;
 }
 
+/** A destination's shape: square is slower to demand, round is quicker. */
+export type DestinationShape = 'square' | 'round';
+
 export interface PlaceBuildingOptions {
   kind: BuildingKind;
   color: number;
@@ -68,6 +73,8 @@ export interface PlaceBuildingOptions {
   entrance: Side;
   /** A destination's lot. `'roll'` chooses a double lot with the week's chance; absent is a single lot. */
   lot?: LotKind | 'roll';
+  /** A destination's shape. Absent is round. */
+  shape?: DestinationShape;
 }
 
 export type PlaceBuildingResult =
@@ -193,6 +200,7 @@ export function placeBuilding(
   if (opts.kind === 'destination' && lotKind === 'double')
     record.lot = 'double';
   if (record.lot === 'double') record.placedTick = state.tick;
+  if (opts.kind === 'destination') record.shape = opts.shape ?? 'round';
   state.buildings.push(record);
   // A house occupies its tile. A destination occupies its 3×3 footprint; its lot stays reserved.
   const occupied =
@@ -202,6 +210,8 @@ export function placeBuilding(
         ])
       : [opts.tile];
   for (const t of occupied) state.buildingAt[t] = id;
+  const shape: DestinationShape | undefined =
+    opts.kind === 'destination' ? (opts.shape ?? 'round') : undefined;
   if (opts.kind === 'house') {
     state.homes[id] = {
       owned: tuning.CARS_PER_HOUSE,
@@ -211,7 +221,7 @@ export function placeBuilding(
   } else {
     state.demand[id] = {
       pins: 0,
-      cooldown: tuning.DEMAND_INTERVAL_TICKS,
+      cooldown: demandIntervalFor(shape),
       overflow: 0,
       growth: 0,
     };
@@ -265,13 +275,19 @@ export function addSecondBuildings(state: SimState): void {
       lot: 'double',
       wing: 'far',
       lotOwner: near.id,
+      shape: near.shape,
     });
     for (const t of far.footprint) state.buildingAt[t] = id;
     state.demand[id] = {
       pins: 0,
-      cooldown: tuning.DEMAND_INTERVAL_TICKS,
+      cooldown: demandIntervalFor(near.shape),
       overflow: 0,
       growth: state.demand[near.id]?.growth ?? 0,
     };
   }
+}
+
+/** The shape a new destination takes in a given week: square early, round from the switch week. */
+export function shapeForWeek(week: number): DestinationShape {
+  return week < tuning.SHAPE_SWITCH_WEEK ? 'square' : 'round';
 }

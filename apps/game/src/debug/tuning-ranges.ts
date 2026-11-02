@@ -27,6 +27,8 @@ export const TUNING_RANGES: Record<TuningKey, TuningRange> = {
   DOUBLE_LOT_WEEK: { min: 1, max: 20, step: 1 },
   SECOND_BUILDING_DELAY_WEEKS: { min: 1, max: 20, step: 1 },
   DEMAND_INTERVAL_TICKS: { min: 10, max: 600, step: 10 },
+  DEMAND_INTERVAL_SQUARE_TICKS: { min: 10, max: 600, step: 10 },
+  SHAPE_SWITCH_WEEK: { min: 1, max: 20, step: 1 },
   OVERFLOW_PIN_LIMIT: { min: 0, max: 12, step: 1 },
   OVERFLOW_TICKS: { min: 30, max: 3000, step: 30 },
   WEEK_TICKS: { min: 300, max: 7200, step: 60 },

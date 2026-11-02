@@ -19,7 +19,13 @@ import {
  */
 
 export type DemoId =
-  'bridge' | 'tunnel' | 'motorway' | 'roundabout' | 'light' | 'lots';
+  | 'bridge'
+  | 'tunnel'
+  | 'motorway'
+  | 'roundabout'
+  | 'light'
+  | 'lots'
+  | 'buildings';
 
 export interface Demo {
   id: DemoId;
@@ -56,7 +62,12 @@ export const DEMOS: readonly Demo[] = [
   {
     id: 'lots',
     title: 'Lots: single vs double',
-    hint: 'Demo · Lots: the left destination has a single lot, the right a double lot. Its second building arrives a set number of weeks after it is placed (debug panel). The far inlet of the double lot is reached by the loop round the east end of the road.',
+    hint: 'Demo · Lots: the left destination is square with a single lot, the right round with a double lot. Its second building arrives a set number of weeks after it is placed (debug panel). The far inlet of the double lot is reached by the loop round the east end of the road.',
+  },
+  {
+    id: 'buildings',
+    title: 'Buildings: square and round',
+    hint: 'Demo · Buildings: a square destination (left), a round one (middle) and a round double lot (right). Square pins more slowly. The second building of the double lot arrives after its delay (debug panel).',
   },
 ];
 
@@ -120,8 +131,16 @@ function building(
   y: number,
   entrance: Side,
   lot?: LotKind,
+  shape?: 'square' | 'round',
 ): number {
-  const r = placeBuilding(sim, { kind, color, tile: at(x, y), entrance, lot });
+  const r = placeBuilding(sim, {
+    kind,
+    color,
+    tile: at(x, y),
+    entrance,
+    lot,
+    shape,
+  });
   if (!r.ok) throw new Error(`demo building refused: ${r.reason}`);
   return r.id;
 }
@@ -166,10 +185,20 @@ export function buildDemo(id: DemoId): SimState {
     road(sim, line([15, 5], [15, 12]));
     road(sim, line([15, 12], [10, 12]));
     building(sim, 'house', 0, 2, 4, 's');
-    building(sim, 'destination', 0, 4, 6, 'n', 'single');
+    building(sim, 'destination', 0, 4, 6, 'n', 'single', 'square');
     building(sim, 'house', 1, 9, 4, 's');
-    building(sim, 'destination', 1, 10, 6, 'n', 'double');
+    building(sim, 'destination', 1, 10, 6, 'n', 'double', 'round');
   }
-  if (id !== 'lots') sim.stock[id] = 1;
+  if (id === 'buildings') {
+    // One road, with a square and a round single-lot destination and a round double lot, each with a house.
+    road(sim, line([0, 5], [15, 5]));
+    building(sim, 'house', 0, 1, 4, 's');
+    building(sim, 'destination', 0, 0, 6, 'n', 'single', 'square');
+    building(sim, 'house', 1, 6, 4, 's');
+    building(sim, 'destination', 1, 5, 6, 'n', 'single', 'round');
+    building(sim, 'house', 1, 11, 4, 's');
+    building(sim, 'destination', 1, 10, 6, 'n', 'double', 'round');
+  }
+  if (id !== 'lots' && id !== 'buildings') sim.stock[id] = 1;
   return sim;
 }

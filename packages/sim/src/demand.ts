@@ -1,4 +1,4 @@
-import { tuning } from './config.ts';
+import { tuning, demandIntervalFor } from './config.ts';
 import { isOpenTile } from './expansion.ts';
 import type { Demand } from './buildings.ts';
 import type { SimState } from './sim.ts';
@@ -23,7 +23,7 @@ export function generateDemand(state: SimState): void {
     demand.cooldown = Math.max(0, demand.cooldown - 1);
     if (demand.cooldown > 0) continue;
     demand.pins += 1;
-    demand.cooldown = cooldownFor(demand);
+    demand.cooldown = cooldownFor(demand, b.shape);
   }
 }
 
@@ -84,12 +84,12 @@ export function demandRate(demand: Demand): number {
   return 1 + demand.growth * tuning.DEMAND_GROWTH_STEP;
 }
 
-/** Ticks between one pin and the next at this destination's rate. */
-function cooldownFor(demand: Demand): number {
-  return Math.max(
-    1,
-    Math.round(tuning.DEMAND_INTERVAL_TICKS / demandRate(demand)),
-  );
+/** Ticks between one pin and the next at this destination's rate and shape. */
+function cooldownFor(
+  demand: Demand,
+  shape: 'square' | 'round' | undefined,
+): number {
+  return Math.max(1, Math.round(demandIntervalFor(shape) / demandRate(demand)));
 }
 
 /** Every destination grows by one step. Called once a week. */

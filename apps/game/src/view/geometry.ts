@@ -131,6 +131,12 @@ export type BuildingShape =
 
 /** Corner radius of a destination lot's pavement, in world units. */
 export const LOT_CORNER = 0.2 * TILE_SIZE;
+/**
+ * The gap between a road and a lot's long edge, in world units: the road is a half tile wide, so
+ * the gap is the rest of the tile split either side. Neighbouring lots keep the same gap between
+ * their short ends, so two lots never touch.
+ */
+export const LOT_GAP = ((1 - ROAD_WIDTH_TILES) / 2) * TILE_SIZE;
 
 /**
  * Each destination's lot as rounded pavement, with a rounded neck from its road's edge into the
@@ -164,12 +170,16 @@ export function lotShapes(
       maxX = Math.max(maxX, x);
       maxY = Math.max(maxY, y);
     }
+    // Lots that stand side by side along the road are inset at their short ends, by half the gap each.
+    const roadY = Math.floor(lot.road / grid.cols);
+    const alongX = roadY < minY || roadY > maxY;
+    const inset = LOT_GAP / 2;
     out.push({
       kind: 'roundrect',
-      x: minX * TILE_SIZE,
-      y: minY * TILE_SIZE,
-      w: (maxX - minX + 1) * TILE_SIZE,
-      h: (maxY - minY + 1) * TILE_SIZE,
+      x: minX * TILE_SIZE + (alongX ? inset : 0),
+      y: minY * TILE_SIZE + (alongX ? 0 : inset),
+      w: (maxX - minX + 1) * TILE_SIZE - (alongX ? 2 * inset : 0),
+      h: (maxY - minY + 1) * TILE_SIZE - (alongX ? 0 : 2 * inset),
       r: LOT_CORNER,
     });
     // Each inlet has a road-width tab from its access road's centre into the lot, with rounded ends.
@@ -541,6 +551,15 @@ export function buildingShapes(
         y1: cy + dy * half,
         x2: cx + (dx * TILE_SIZE) / 2,
         y2: cy + (dy * TILE_SIZE) / 2,
+      });
+    } else if (b.shape === 'square') {
+      // A square destination's body spans the same 3×3 footprint as a round one.
+      out.push({
+        kind: 'square',
+        x: cx - DESTINATION_RADIUS,
+        y: cy - DESTINATION_RADIUS,
+        size: 2 * DESTINATION_RADIUS,
+        color,
       });
     } else {
       out.push({

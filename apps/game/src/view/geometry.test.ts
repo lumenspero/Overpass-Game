@@ -14,6 +14,7 @@ import {
   DESTINATION_RADIUS,
   entranceStubShapes,
   LANE_OFFSET,
+  LOT_GAP,
   lotShapes,
   roadShapes,
   terrainTiles,
@@ -351,13 +352,13 @@ describe('lotShapes', () => {
   };
   const width = ROAD_WIDTH_TILES * TILE_SIZE;
 
-  it("covers a destination's 5×3 lot with rounded pavement", () => {
+  it("covers a destination's 5×3 lot with rounded pavement, inset at its short ends", () => {
     const [lot] = lotShapes([d], big);
     expect(lot).toMatchObject({
       kind: 'roundrect',
-      x: 3 * TILE_SIZE,
+      x: 3 * TILE_SIZE + LOT_GAP / 2,
       y: 3 * TILE_SIZE,
-      w: 5 * TILE_SIZE,
+      w: 5 * TILE_SIZE - LOT_GAP,
       h: 3 * TILE_SIZE,
     });
   });

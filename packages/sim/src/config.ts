@@ -31,6 +31,10 @@ export const DEFAULT_TUNING = {
   PARK_TICKS: 60, // approximated
   /** Ticks between one demand pin appearing at a destination and the next. */
   DEMAND_INTERVAL_TICKS: 150, // approximated
+  /** Ticks between pins at a square destination, which is slower than a round one. */
+  DEMAND_INTERVAL_SQUARE_TICKS: 200, // approximated
+  /** The week a square destination stops being the shape for new spawns, and round ones take over. */
+  SHAPE_SWITCH_WEEK: 8, // approximated
   /** Waiting pins a destination can hold. Above this it overflows and its countdown runs. */
   OVERFLOW_PIN_LIMIT: 4, // approximated
   /** Ticks an overflowing destination has before the game ends. Serving a pin resets it. */
@@ -122,3 +126,12 @@ export const MOTORWAY_SPEED = DEFAULT_TUNING.MOTORWAY_SPEED;
 export const ROUNDABOUT_CAPACITY = DEFAULT_TUNING.ROUNDABOUT_CAPACITY;
 export const LIGHT_GREEN_TICKS = DEFAULT_TUNING.LIGHT_GREEN_TICKS;
 export const CONGESTION_COST_PER_CAR = DEFAULT_TUNING.CONGESTION_COST_PER_CAR;
+
+/** Ticks between pins at a destination of this shape. Square is the slower of the two. */
+export function demandIntervalFor(
+  shape: 'square' | 'round' | undefined,
+): number {
+  return shape === 'square'
+    ? tuning.DEMAND_INTERVAL_SQUARE_TICKS
+    : tuning.DEMAND_INTERVAL_TICKS;
+}

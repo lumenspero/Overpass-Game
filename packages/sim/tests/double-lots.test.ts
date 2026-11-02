@@ -135,3 +135,31 @@ describe('far inlet', () => {
     }
   });
 });
+
+describe('destination shapes', () => {
+  it('square destinations pin more slowly than round ones', () => {
+    const sim = createSim({ seed: 1, grid: makeGrid(12, 12), roadBudget: 100 });
+    const square = placeBuilding(sim, {
+      kind: 'destination',
+      color: 0,
+      tile: at(sim.grid, 0, 3),
+      entrance: 'n',
+      shape: 'square',
+    });
+    const round = placeBuilding(sim, {
+      kind: 'destination',
+      color: 0,
+      tile: at(sim.grid, 6, 3),
+      entrance: 'n',
+      shape: 'round',
+    });
+    if (!square.ok || !round.ok) throw new Error('placement refused');
+    expect(sim.demand[square.id]?.cooldown).toBe(
+      tuning.DEMAND_INTERVAL_SQUARE_TICKS,
+    );
+    expect(sim.demand[round.id]?.cooldown).toBe(tuning.DEMAND_INTERVAL_TICKS);
+    expect(tuning.DEMAND_INTERVAL_SQUARE_TICKS).toBeGreaterThan(
+      tuning.DEMAND_INTERVAL_TICKS,
+    );
+  });
+});

@@ -33,7 +33,7 @@ function connected(sim: SimState): boolean {
 describe('the scripted demos', () => {
   it('each upgrade demo starts with the upgrade it demonstrates', () => {
     for (const demo of DEMOS) {
-      if (demo.id === 'lots') continue;
+      if (demo.id === 'lots' || demo.id === 'buildings') continue;
       expect(buildDemo(demo.id).stock[demo.id]).toBe(1);
     }
   });
@@ -60,5 +60,16 @@ describe('the scripted demos', () => {
       expect(connected(sim)).toBe(true);
       expect(roadLinks(sim.roads, sim.links, at(7, 6)).length).toBe(4);
     }
+  });
+
+  it('the buildings demo has a square and two round destinations, all connected', () => {
+    const sim = buildDemo('buildings');
+    const destinations = sim.buildings.filter((b) => b.kind === 'destination');
+    expect(destinations.map((b) => b.shape)).toEqual([
+      'square',
+      'round',
+      'round',
+    ]);
+    for (const b of destinations) expect(isConnected(sim, b)).toBe(true);
   });
 });
