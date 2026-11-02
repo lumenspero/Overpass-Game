@@ -86,7 +86,6 @@ export function entranceStubShapes(
   grid: Grid,
   roads: readonly number[],
 ): RoadShape[] {
-  const r = (ROAD_WIDTH_TILES * TILE_SIZE) / 2;
   const out: RoadShape[] = [];
   for (const b of buildings) {
     if (b.kind !== 'house') continue;
@@ -98,7 +97,15 @@ export function entranceStubShapes(
     const by = c.y * TILE_SIZE;
     const ex = ((entrance % grid.cols) + 0.5) * TILE_SIZE;
     const ey = (Math.floor(entrance / grid.cols) + 0.5) * TILE_SIZE;
-    out.push({ kind: 'line', x1: ex, y1: ey, x2: bx, y2: by, w: 2 * r });
+    // A driveway as wide as the house, so it reads as a pad into the road, not as a road.
+    out.push({
+      kind: 'line',
+      x1: ex,
+      y1: ey,
+      x2: bx,
+      y2: by,
+      w: BUILDING_SCALE * TILE_SIZE,
+    });
   }
   return out;
 }

@@ -190,25 +190,7 @@
       }
     ],
     "spawnZones": [],
-    "motorwayGuide": [
-      {
-        "id": "guide-1",
-        "points": [
-          {
-            "x": 0,
-            "y": 15
-          },
-          {
-            "x": 12,
-            "y": 9
-          },
-          {
-            "x": 24,
-            "y": 2
-          }
-        ]
-      }
-    ],
+    "motorwayGuide": [],
     "starterRoads": []
   },
   "rules": [],

@@ -70,6 +70,9 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Roads:** a road cannot be placed on a building tile.
 - **Removal:** buildings are never removed in M3.
 
+- **Driveway:** a house's road extension is drawn as wide as the house body (`BUILDING_SCALE` of a tile), from the house to the road tile in front of its entrance. It is drawn only while that road exists. It is view only: the sim is unchanged. `approximated`
+- **Open for M14:** a house connects only through its fixed entrance tile today. Connecting it from any of its 8 neighbours, with the entrance following the road, changes the sim's building rules and the road graph, and is deferred to M14.
+
 ### Score and clock
 
 - **Score:** trips completed. A trip counts when a car reaches its destination and uses up a pin. A car sent home without arriving doesn't count. `approximated`

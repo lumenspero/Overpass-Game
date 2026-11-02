@@ -305,11 +305,13 @@ Done when: you can build a complete map from import to playable export without e
 
 **M10 · Game structure**
 
-- [ ] Main menu, map select showing the sequential unlock path, challenge mode list
-- [ ] Unlock rules (score thresholds per map, `approximated`)
+- [x] Main menu, map select showing the sequential unlock path, challenge mode list (the challenge list is empty until M14)
+- [x] Unlock rules (score thresholds per map, `approximated`)
 - [ ] Challenge mode: maps with starter roads and their own goals
-- [ ] Pause, speed controls, settings (guide toggle, audio, color-blind-friendly building symbols)
-- [ ] End-of-run screen, best scores per map
+- [x] Pause, speed controls, settings (guide toggle, color-blind-friendly building symbols; audio deferred to M12)
+- [x] End-of-run screen, best scores per map
+
+> **Status (built; challenge mode and end-to-end runs open):** the menu and map select, unlock rules, pause and speed controls, settings and the end-of-run screen are in. Challenge mode is not: its list is empty until M14 supplies maps with starter roads and goals, so that item stays open. Campaign runs can't be finished on the Tulsa map until M14 adds spawns, so the unlock path and campaign best scores are untested in play; the end screen was checked on the test map, which has hand-placed buildings. Audio is left out until M12. Decisions are in the 2026-11-02 rows of `docs/decisions.md`.
 
 **M11 · Persistence**
 
@@ -340,6 +342,7 @@ Done when: a run survives a reload mid-game, and a save exported on one host imp
 - [ ] Pick the 25 locations and their unlock order (variety of water, mountains, grid shapes)
 - [ ] Author the remaining 22 maps in the Studio; per-map rules and palettes
 - [ ] Challenge set with starter roads
+- [ ] Houses connect from any of their 8 neighbours, with the entrance following the road (today a house connects only through its fixed entrance tile; see the Buildings section of the spec)
 - [ ] Balance pass using fast-forward and recorded seeds
 
 > **Checkpoint F · Full campaign.** Play through the unlock path; sign off on difficulty curve and each map.

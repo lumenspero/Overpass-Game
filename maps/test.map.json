@@ -2214,27 +2214,12 @@
       }
     ]
   },
-  "motorwayGuide": [
-    [
-      {
-        "x": 0,
-        "y": 15
-      },
-      {
-        "x": 12,
-        "y": 9
-      },
-      {
-        "x": 24,
-        "y": 2
-      }
-    ]
-  ],
+  "motorwayGuide": [],
   "starterRoads": [],
   "labels": [],
   "rules": [],
   "palette": "default",
   "waterPalette": "shared",
   "attribution": "Hand-made test map. No OpenStreetMap data.",
-  "contentHash": "4d9d723e"
+  "contentHash": "50806b49"
 }
