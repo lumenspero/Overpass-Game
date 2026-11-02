@@ -109,6 +109,9 @@ Short log of choices and why. Newest at the bottom.
 | 2026-11-01 | A double lot has a far inlet on its far edge, reached from a road beyond that edge; cars use whichever inlet is closer on their route | Adds throughput and a second way into the lot for road planning; the spaces and capacity are unchanged |
 | 2026-11-01 | Cars from the far inlet drive along the far edge in front of the far building, turn in at the strip's building side, and angle into the same spaces | Keeps the right-hand rule on the road and keeps the spaces clear of the far lane |
 | 2026-11-01 | Inbound cars use the lane at a = 0.25 and outbound at 0.625; the spaces start at a = 0.75 | Outbound cars no longer cross a space's corner, and the entry reads as the right lane |
+| 2026-11-01 | Map Studio tiles are 250 m (`METRES_PER_TILE`), and the default frame is 96 × 96 tiles, so it covers 24 km | The captured features must cover the same ground as the real-map panel's outline, so the frame and its features line up across both panels |
+| 2026-11-01 | Tile-based import thresholds (simplify tolerance, minimum shape area and stroke length, river and coast widths) are scaled to the 250 m tile, a quarter of the old 1000 m | They are authoring choices in tiles, so they must describe the same ground size as before the tile change. Mountains below about 1 km² are dropped as noise |
+| 2026-11-01 | The real-map panel fits and outlines the frame at its real size, with no half-scale factor | The panel and the generated map must show the same ground, so the lake and river positions line up |
 
 ## M9 · Palette and labels
 
