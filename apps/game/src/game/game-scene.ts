@@ -145,6 +145,12 @@ function hexString(colour: number): string {
 }
 /** Motorway contrast stroke, wider than the motorway itself, in pixels. */
 const MOTORWAY_CONTRAST_PX = 4;
+/*
+ * Large buildings (destinations) have a lip on their bottom and right edges and rounded corners,
+ * as fractions of their size. Houses keep the flat lip below.
+ */
+const LIP_FRAC = 0.08;
+const CORNER_FRAC = 0.14;
 /** Building depth: how far the shaded side shows below the face, in pixels. */
 const BUILDING_DEPTH_PX = 4;
 /** Cast shadow offset and opacity under buildings. */
@@ -764,14 +770,22 @@ export class GameScene extends Phaser.Scene {
       }
     }
     for (const s of shapes) {
-      if (s.kind === 'square') {
+      if (s.kind === 'square' && s.large) {
+        const lip = LIP_FRAC * s.size;
+        const corner = CORNER_FRAC * s.size;
+        gfx.fillStyle(SIDE_BY_FACE.get(s.color) ?? s.color, 1);
+        gfx.fillRoundedRect(s.x + lip, s.y + lip, s.size, s.size, corner);
+        gfx.fillStyle(s.color, 1);
+        gfx.fillRoundedRect(s.x, s.y, s.size, s.size, corner);
+      } else if (s.kind === 'square') {
         gfx.fillStyle(SIDE_BY_FACE.get(s.color) ?? s.color, 1);
         gfx.fillRect(s.x, s.y + BUILDING_DEPTH_PX, s.size, s.size);
         gfx.fillStyle(s.color, 1);
         gfx.fillRect(s.x, s.y, s.size, s.size);
       } else if (s.kind === 'circle') {
+        const lip = LIP_FRAC * s.r * 2;
         gfx.fillStyle(SIDE_BY_FACE.get(s.color) ?? s.color, 1);
-        gfx.fillCircle(s.x, s.y + BUILDING_DEPTH_PX, s.r);
+        gfx.fillCircle(s.x + lip, s.y + lip, s.r);
         gfx.fillStyle(s.color, 1);
         gfx.fillCircle(s.x, s.y, s.r);
       } else {

@@ -125,7 +125,15 @@ export function terrainTiles(grid: Grid): TerrainTile[] {
 }
 
 export type BuildingShape =
-  | { kind: 'square'; x: number; y: number; size: number; color: number }
+  | {
+      kind: 'square';
+      x: number;
+      y: number;
+      size: number;
+      color: number;
+      /** True for a destination; houses are small and draw without the destination lip. */
+      large: boolean;
+    }
   | { kind: 'circle'; x: number; y: number; r: number; color: number }
   | { kind: 'entrance'; x1: number; y1: number; x2: number; y2: number };
 
@@ -543,6 +551,7 @@ export function buildingShapes(
         y: cy - half,
         size: 2 * half,
         color,
+        large: false,
       });
       const { dx, dy } = SIDE_STEP[b.entrance];
       out.push({
@@ -556,6 +565,7 @@ export function buildingShapes(
       // A square destination's body spans the same 3×3 footprint as a round one.
       out.push({
         kind: 'square',
+        large: true,
         x: cx - DESTINATION_RADIUS,
         y: cy - DESTINATION_RADIUS,
         size: 2 * DESTINATION_RADIUS,
