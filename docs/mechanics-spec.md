@@ -168,6 +168,12 @@ Elevated links for faster travel between two points on the ground network. `appr
 - **Growth:** every week, every destination gains `DEMAND_GROWTH_STEP` (default 0.25) demand, so demand rises as the game goes on. It is automatic: the player has no choice in it, and destinations are not upgraded by hand. `approximated`
 - **Rule hooks:** a map's rules are a list passed to the sim when it starts, each with a week it applies from. The first rule kind, `unlockColour` (a colour is unused until its week), is a temporary stopgap. Business arrival below replaces it at M14, and then it is removed. The sim reads the list at each week boundary, so a map changes by data, not code. `approximated`
 
+### Campaign unlocks
+
+- **Campaign order:** the campaign plays its maps in a fixed order. The first map is open from the start.
+- **Unlock rule:** a run unlocks the next map in the order when its trips reach `CAMPAIGN_UNLOCK_TRIPS` (default 20). The check is made when the run ends, against the trips that run completed. The same threshold applies to every map until per-map values arrive with the map content in M14. `approximated`
+- **Challenge mode:** each challenge is scored by trips, as in the campaign. No goal beyond score (such as a road-tile limit) yet. The challenge list is empty until M14 supplies maps with starter roads. `approximated`
+
 ### Business arrival and house supply
 
 _Planned for M14 with the spawn system. Not built yet._

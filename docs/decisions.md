@@ -112,6 +112,7 @@ Short log of choices and why. Newest at the bottom.
 | 2026-11-01 | Map Studio tiles are 250 m (`METRES_PER_TILE`), and the default frame is 96 × 96 tiles, so it covers 24 km | The captured features must cover the same ground as the real-map panel's outline, so the frame and its features line up across both panels |
 | 2026-11-01 | Tile-based import thresholds (simplify tolerance, minimum shape area and stroke length, river and coast widths) are scaled to the 250 m tile, a quarter of the old 1000 m | They are authoring choices in tiles, so they must describe the same ground size as before the tile change. Mountains below about 1 km² are dropped as noise |
 | 2026-11-01 | The real-map panel fits and outlines the frame at its real size, with no half-scale factor | The panel and the generated map must show the same ground, so the lake and river positions line up |
+| 2026-11-02 | Campaign maps unlock on a trips threshold per run (`CAMPAIGN_UNLOCK_TRIPS`, one value for all maps for now); challenge mode is scored by trips, with no extra goal yet; no audio setting until M12 | The plan's M10 checklist sets score thresholds, and the open questions were answered by the author; per-map values wait for the M14 content, and audio does not exist before M12 |
 
 ## M9 · Palette and labels
 

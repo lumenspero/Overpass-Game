@@ -79,6 +79,8 @@ export const DEFAULT_TUNING = {
   DOUBLE_LOT_WEEK: 4, // approximated
   /** Weeks after a double lot spawns before its second building is filled in, if its far half is clear. */
   SECOND_BUILDING_DELAY_WEEKS: 6, // approximated
+  /** Trips a campaign run must reach to unlock the next map (spec: Campaign unlocks). */
+  CAMPAIGN_UNLOCK_TRIPS: 20, // approximated
 };
 
 export type Tuning = typeof DEFAULT_TUNING;
@@ -126,6 +128,7 @@ export const MOTORWAY_SPEED = DEFAULT_TUNING.MOTORWAY_SPEED;
 export const ROUNDABOUT_CAPACITY = DEFAULT_TUNING.ROUNDABOUT_CAPACITY;
 export const LIGHT_GREEN_TICKS = DEFAULT_TUNING.LIGHT_GREEN_TICKS;
 export const CONGESTION_COST_PER_CAR = DEFAULT_TUNING.CONGESTION_COST_PER_CAR;
+export const CAMPAIGN_UNLOCK_TRIPS = DEFAULT_TUNING.CAMPAIGN_UNLOCK_TRIPS;
 
 /** Ticks between pins at a destination of this shape. Square is the slower of the two. */
 export function demandIntervalFor(

@@ -289,17 +289,19 @@ Done when: you can build a complete map from import to playable export without e
 - [ ] `render-style` package: palettes per map, colors per building type, line weights, shadows
 - [ ] Buildings, cars, pins, timers and roads in the flat minimal style; smooth car turns and parking animation
 - [ ] Water and terrain drawn from tessellated outlines; faint motorway guide style
-- [ ] Screen-size and device-pixel-ratio checks
+- [x] Screen-size and device-pixel-ratio checks
 
 **M9a · Parking lots and building kinds** (sub-milestone; the driving behaviour in M9 depends on it)
 
-- [ ] Destinations are 3×3 buildings; houses stay 1×1
-- [ ] Two destination kinds: square (slower demand, starter to mid game) and round (higher demand, mid to late game)
-- [ ] Parking lots: each building sits on a small lot whose inlet joins the road; a double-building lot (later game) has two inlets, either usable
-- [ ] Cars stop in front of the building to finish the trip, then turn round and leave through the lot inlet
-- [ ] Sim, map and Studio changes for footprints, inlets, lot occupancy and pathing into lots
+- [x] Destinations are 3×3 buildings; houses stay 1×1
+- [x] Two destination kinds: square (slower demand, starter to mid game) and round (higher demand, mid to late game)
+- [x] Parking lots: each building sits on a small lot whose inlet joins the road; a double-building lot (later game) has two inlets, either usable
+- [x] Cars stop in front of the building to finish the trip, then turn round and leave through the lot inlet
+- [x] Sim, map and Studio changes for footprints, inlets, lot occupancy and pathing into lots
 
 > **Checkpoint D · Style match.** Compare screenshots side by side with the original; adjust palettes and shapes until you sign off.
+>
+> **Status: complete.** Signed off by the author after the building lip and shadow changes. Details are in `docs/M9-session-delta.md`.
 
 **M10 · Game structure**
 
