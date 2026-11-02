@@ -56,7 +56,7 @@ export const DEMOS: readonly Demo[] = [
   {
     id: 'lots',
     title: 'Lots: single vs double',
-    hint: 'Demo · Lots: the left destination has a single lot, the right a double lot. Its second building arrives a set number of weeks after it is placed (debug panel).',
+    hint: 'Demo · Lots: the left destination has a single lot, the right a double lot. Its second building arrives a set number of weeks after it is placed (debug panel). The far inlet of the double lot is reached by the loop round the east end of the road.',
   },
 ];
 
@@ -161,7 +161,10 @@ export function buildDemo(id: DemoId): SimState {
   }
   if (id === 'lots') {
     // One road, with a single-lot and a double-lot destination, each with a house of its colour.
-    road(sim, line([2, 5], [12, 5]));
+    road(sim, line([2, 5], [15, 5]));
+    // A loop round the double lot's far side, so its far inlet is on the road network.
+    road(sim, line([15, 5], [15, 12]));
+    road(sim, line([15, 12], [10, 12]));
     building(sim, 'house', 0, 2, 4, 's');
     building(sim, 'destination', 0, 4, 6, 'n', 'single');
     building(sim, 'house', 1, 9, 4, 's');

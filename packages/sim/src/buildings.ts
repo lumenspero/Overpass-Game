@@ -8,6 +8,7 @@ import {
   type LotKind,
   type LotReason,
   lotBlocker,
+  lotRoads,
 } from './lots.ts';
 import { nextFloat } from './rng.ts';
 
@@ -99,6 +100,16 @@ export function accessTile(grid: Grid, b: Building): number | null {
   return entranceTile(grid, b.tile, b.entrance);
 }
 
+/** Every road tile a building connects through: a destination's near road, and its far road where it has one. */
+export function accessTiles(grid: Grid, b: Building): number[] {
+  if (b.kind === 'destination') {
+    const lot = destinationLot(grid, b);
+    return lot ? lotRoads(lot) : [];
+  }
+  const e = entranceTile(grid, b.tile, b.entrance);
+  return e === null ? [] : [e];
+}
+
 /**
  * A building's centre, in tile units. A house's is its tile's centre. A destination's is the
  * centre of its 3×3 footprint, so it sits in the middle of its building rather than at its origin.
@@ -127,8 +138,7 @@ export function buildingCentre(
 
 /** True when the building's access tile is a road. */
 export function isConnected(state: SimState, b: Building): boolean {
-  const e = accessTile(state.grid, b);
-  return e !== null && state.roads[e] === 1;
+  return accessTiles(state.grid, b).some((e) => state.roads[e] === 1);
 }
 
 /** How a refused destination spawn is reported in the placement result. */

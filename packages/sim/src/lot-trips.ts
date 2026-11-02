@@ -1,5 +1,6 @@
 import { type Car, sendHome } from './cars.ts';
 import { tuning } from './config.ts';
+import type { Building } from './buildings.ts';
 import type { Grid } from './grid.ts';
 import {
   type LotPoint,
@@ -7,6 +8,8 @@ import {
   lotPath,
   roundedPath,
   spacesFor,
+  destinationLot,
+  type Inlet,
 } from './lots.ts';
 import { polylineLength } from './motorways.ts';
 import type { SimState } from './sim.ts';
@@ -29,13 +32,28 @@ const LANE = 0.125;
 export type LotStart = 'started' | 'waiting' | 'none';
 
 /** True when no car is driving in or out of the destination's lot, so its lane is free. */
-export function laneFree(state: SimState, destination: number): boolean {
+export function laneFree(
+  state: SimState,
+  destination: number,
+  inlet: Inlet,
+): boolean {
   return !state.cars.some(
     (c) =>
       c.lot !== undefined &&
       c.lot.destination === destination &&
+      c.lot.inlet === inlet &&
       c.lot.phase !== 'parked',
   );
+}
+
+/** Which inlet a car uses, from the road tile its route reaches the lot by. */
+function inletOf(
+  state: SimState,
+  building: Building,
+  node: number | undefined,
+): Inlet {
+  const lot = destinationLot(state.grid, building);
+  return lot?.farRoad !== undefined && lot.farRoad === node ? 'far' : 'near';
 }
 
 /** The first parking space of the lot that no car is using, or null when all are full. */
@@ -119,14 +137,15 @@ export function startLotTrip(state: SimState, car: Car): LotStart {
   }
   // A double lot's two buildings share one lane and one set of spaces, so the lot's owner keys them.
   const owner = lotOwnerId(building);
-  if (!laneFree(state, owner)) return 'waiting';
+  const inlet = inletOf(state, building, car.route[car.progress]);
+  if (!laneFree(state, owner, inlet)) return 'waiting';
   const space = freeSpace(
     state,
     owner,
     spacesFor(building.lot ?? 'single').length,
   );
   if (space === null) return 'waiting';
-  const lane = lotPath(state.grid, building, space, 'in');
+  const lane = lotPath(state.grid, building, space, 'in', inlet);
   if (lane === null) return 'none';
   const node = car.route[car.progress];
   const prev = car.progress > 0 ? car.route[car.progress - 1] : undefined;
@@ -147,6 +166,7 @@ export function startLotTrip(state: SimState, car: Car): LotStart {
   car.lot = {
     destination: owner,
     space,
+    inlet,
     phase: 'in',
     path,
     s,
@@ -162,10 +182,10 @@ export function startLotTrip(state: SimState, car: Car): LotStart {
  */
 export function startLotExit(state: SimState, car: Car): boolean {
   const lot = car.lot;
-  if (!lot || !laneFree(state, lot.destination)) return false;
+  if (!lot || !laneFree(state, lot.destination, lot.inlet)) return false;
   const building = state.buildings[lot.destination];
   const lane = building
-    ? lotPath(state.grid, building, lot.space, 'out')
+    ? lotPath(state.grid, building, lot.space, 'out', lot.inlet)
     : null;
   let path: LotPoint[] = [];
   if (lane) {

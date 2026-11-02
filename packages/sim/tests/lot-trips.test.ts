@@ -101,6 +101,7 @@ describe('lot trips', () => {
       car.lot = {
         destination: 1,
         space: k,
+        inlet: 'near',
         phase: 'parked',
         path: [],
         s: 0,

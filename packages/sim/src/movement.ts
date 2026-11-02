@@ -1,4 +1,4 @@
-import { accessTile } from './buildings.ts';
+import { accessTiles } from './buildings.ts';
 import type { Car } from './cars.ts';
 import { tuning } from './config.ts';
 import { DIAGONAL_STEP, type Grid, isDiagonal, roadLinks } from './grid.ts';
@@ -28,7 +28,8 @@ const NO_LANE = 9;
 /** Whether a tile is where a destination's lot meets the road. */
 function isLotNode(state: SimState, tile: number): boolean {
   return state.buildings.some(
-    (b) => b.kind === 'destination' && accessTile(state.grid, b) === tile,
+    (b) =>
+      b.kind === 'destination' && accessTiles(state.grid, b).includes(tile),
   );
 }
 

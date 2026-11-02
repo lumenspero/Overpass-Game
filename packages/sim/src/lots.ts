@@ -13,6 +13,8 @@ import type { SimState } from './sim.ts';
 
 /** A single lot holds one building; a double lot holds two, one behind the other. */
 export type LotKind = 'single' | 'double';
+/** Which inlet a car drives in through: the near road's, or a double lot's far one. */
+export type Inlet = 'near' | 'far';
 
 /** The standard lot: along the road, in tiles. */
 export const LOT_LENGTH = 5;
@@ -46,6 +48,9 @@ export interface Lot {
   inlet: number;
   /** The road tile the inlet joins. */
   road: number;
+  /** A double lot's far inlet, on its far edge, and the road tile beyond it. Absent for other lots. */
+  farInlet?: number;
+  farRoad?: number;
 }
 
 /**
@@ -124,12 +129,27 @@ export function lotAt(
   const road = tileOf(0, -1);
   const inlet = tileOf(0, 0);
   if (road === null || inlet === null) return null;
-  return { footprint, tiles, strip, inlet, road };
+  const lot: Lot = { footprint, tiles, strip, inlet, road };
+  if (kind === 'double') {
+    // A double lot's far inlet is the far-edge strip tile, reached from the road beyond the far edge.
+    const farRoad = tileOf(0, depth);
+    const farInlet = tileOf(0, depth - 1);
+    if (farRoad !== null && farInlet !== null) {
+      lot.farRoad = farRoad;
+      lot.farInlet = farInlet;
+    }
+  }
+  return lot;
 }
 
 /** The lot a destination occupies, from its origin, its road side, and its kind and wing. */
 export function destinationLot(grid: Grid, b: Building): Lot | null {
   return lotAt(grid, b.tile, b.entrance, b.lot ?? 'single', b.wing ?? 'near');
+}
+
+/** The road tiles a lot connects to: its near road, and its far road where a double lot has one. */
+export function lotRoads(lot: Lot): number[] {
+  return lot.farRoad === undefined ? [lot.road] : [lot.road, lot.farRoad];
 }
 
 /** Every tile reserved by the lots of destinations already placed. */
@@ -285,7 +305,9 @@ export function spacePath(
   k: number,
   phase: 'in' | 'out',
   kind: LotKind = 'single',
+  inlet: Inlet = 'near',
 ): FramePoint[] {
+  if (inlet === 'far') return spacePathFar(k, phase, kind);
   const space = spacesFor(kind)[k];
   if (!space) throw new Error(`no parking space ${k}`);
   const dk = space.reduce((sum, p) => sum + p.d, 0) / space.length;
@@ -302,6 +324,42 @@ export function spacePath(
 export interface LotPoint {
   x: number;
   y: number;
+}
+
+/** The far lane's place on the far edge, in the lot frame: the car comes in on the right, a little off the inlet's centre. */
+const FAR_TAB_A = 0.625;
+/** Where the far lane turns toward the spaces: on the building side of the strip, clear of the spaces. */
+const FAR_TURN_A = 1.9;
+/** How far in from the far edge the far lane runs. */
+const FAR_EDGE_INSET = 0.375;
+/** Where a space is centred across the strip, as in `spacePath`. */
+const SPACE_CENTRE_A = 1.25;
+
+/**
+ * The lot-frame points for a car that drives in through a double lot's far inlet, or out through
+ * it. It drives along the far edge, in front of the far building, turns in at the building side of
+ * the strip, and angles into its space on the same slope as the near approach. The spaces do not
+ * change. Only double lots have a far inlet.
+ */
+export function spacePathFar(
+  k: number,
+  phase: 'in' | 'out',
+  kind: LotKind = 'double',
+): FramePoint[] {
+  const space = spacesFor(kind)[k];
+  if (!space) throw new Error(`no parking space ${k}`);
+  const depth = lotDepth(kind);
+  const dk = space.reduce((sum, p) => sum + p.d, 0) / space.length;
+  const node = { a: 0.5, d: depth + 0.5 };
+  const edge = depth - FAR_EDGE_INSET;
+  const tab = { a: FAR_TAB_A, d: edge };
+  const turn = { a: FAR_TURN_A, d: edge };
+  // On the space's slope back from the centre, so the last leg follows the same line.
+  const back = { a: FAR_TURN_A, d: dk + (FAR_TURN_A - SPACE_CENTRE_A) * 0.25 };
+  const centre = { a: SPACE_CENTRE_A, d: dk };
+  return phase === 'in'
+    ? [node, tab, turn, back, centre]
+    : [centre, back, turn, tab, node];
 }
 
 /**
@@ -362,13 +420,16 @@ export function lotPath(
   b: Building,
   k: number,
   phase: 'in' | 'out',
+  inlet: Inlet = 'near',
 ): LotPoint[] | null {
   const kind = b.lot ?? 'single';
-  if (!lotAt(grid, b.tile, b.entrance, kind)) return null;
+  const lot = lotAt(grid, b.tile, b.entrance, kind);
+  if (!lot) return null;
+  if (inlet === 'far' && lot.farRoad === undefined) return null;
   const ox = b.tile % grid.cols;
   const oy = Math.floor(b.tile / grid.cols);
   const depth = lotDepth(kind);
-  return spacePath(k, phase, kind).map(({ a, d }) => {
+  return spacePath(k, phase, kind, inlet).map(({ a, d }) => {
     const p = boxPoint(b.entrance, a, d, depth);
     return { x: ox + p.x, y: oy + p.y };
   });

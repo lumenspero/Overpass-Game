@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  accessTiles,
   addSecondBuildings,
   createSim,
   DOUBLE_PARKING_SPACES,
   lotAt,
+  lotPath,
   PARKING_SPACES,
   placeBuilding,
   resetTuning,
@@ -84,5 +86,52 @@ describe('double lots', () => {
     tuning.DOUBLE_LOT_CHANCE_EARLY = 0;
     tuning.DOUBLE_LOT_CHANCE_LATE = 0;
     expect(world('roll').buildings[0].lot).toBeUndefined();
+  });
+});
+
+describe('far inlet', () => {
+  it('gives a double lot a far road beyond its far edge, and a single lot none', () => {
+    const sim = createSim({ seed: 1, grid: makeGrid(12, 12), roadBudget: 100 });
+    const origin = 3 * sim.grid.cols + 3;
+    const double = lotAt(sim.grid, origin, 'n', 'double', 'near');
+    const single = lotAt(sim.grid, origin, 'n', 'single', 'near');
+    if (!double || !single) throw new Error('no lot');
+    expect(double.farRoad).toBe(origin + 6 * sim.grid.cols);
+    expect(single.farRoad).toBeUndefined();
+  });
+
+  it('reaches a double destination through either road', () => {
+    const sim = createSim({ seed: 1, grid: makeGrid(12, 12), roadBudget: 100 });
+    const origin = 3 * sim.grid.cols + 3;
+    const building = {
+      id: 0,
+      kind: 'destination' as const,
+      color: 0,
+      tile: origin,
+      entrance: 'n' as const,
+      lot: 'double' as const,
+    };
+    const roads = accessTiles(sim.grid, building);
+    expect(roads).toHaveLength(2);
+  });
+
+  it('drives in through the far inlet with a path that ends on the space slope', () => {
+    const sim = createSim({ seed: 1, grid: makeGrid(12, 12), roadBudget: 100 });
+    const origin = 3 * sim.grid.cols + 3;
+    const building = {
+      id: 0,
+      kind: 'destination' as const,
+      color: 0,
+      tile: origin,
+      entrance: 'n' as const,
+      lot: 'double' as const,
+    };
+    for (let k = 0; k < DOUBLE_PARKING_SPACES.length; k++) {
+      const path = lotPath(sim.grid, building, k, 'in', 'far');
+      if (!path) throw new Error('no far path');
+      const a = path[path.length - 2]!;
+      const b = path[path.length - 1]!;
+      expect((b.y - a.y) / (b.x - a.x)).toBeCloseTo(0.25, 6);
+    }
   });
 });

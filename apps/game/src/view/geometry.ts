@@ -172,36 +172,42 @@ export function lotShapes(
       h: (maxY - minY + 1) * TILE_SIZE,
       r: LOT_CORNER,
     });
-    // The tab is part of the footprint: a road-width segment from the access road's centre into the
-    // inlet, with rounded ends. It shows whether or not the road node is placed.
-    const inlet = centreOfTile(lot.inlet);
-    const road = centreOfTile(lot.road);
-    const dx = Math.sign(inlet.x - road.x);
-    const dy = Math.sign(inlet.y - road.y);
-    const r = width / 2;
-    // The tab's far end is a rounded cap centred on the road, and its near end runs into the lot.
-    const farX = road.x - dx * r;
-    const farY = road.y - dy * r;
-    const nearX = inlet.x + dx * TILE_SIZE * 0.3;
-    const nearY = inlet.y + dy * TILE_SIZE * 0.3;
-    if (dx !== 0) {
-      out.push({
-        kind: 'roundrect',
-        x: Math.min(farX, nearX),
-        y: road.y - r,
-        w: Math.abs(nearX - farX),
-        h: width,
-        r,
-      });
-    } else {
-      out.push({
-        kind: 'roundrect',
-        x: road.x - r,
-        y: Math.min(farY, nearY),
-        w: width,
-        h: Math.abs(nearY - farY),
-        r,
-      });
+    // Each inlet has a road-width tab from its access road's centre into the lot, with rounded ends.
+    // A tab shows whether or not the road node is placed. A double lot's far inlet gets one too.
+    const tabs: [number, number][] = [[lot.road, lot.inlet]];
+    if (lot.farRoad !== undefined && lot.farInlet !== undefined) {
+      tabs.push([lot.farRoad, lot.farInlet]);
+    }
+    for (const [roadTile, inletTile] of tabs) {
+      const inlet = centreOfTile(inletTile);
+      const road = centreOfTile(roadTile);
+      const dx = Math.sign(inlet.x - road.x);
+      const dy = Math.sign(inlet.y - road.y);
+      const r = width / 2;
+      // The tab's far end is a rounded cap centred on the road, and its near end runs into the lot.
+      const farX = road.x - dx * r;
+      const farY = road.y - dy * r;
+      const nearX = inlet.x + dx * TILE_SIZE * 0.3;
+      const nearY = inlet.y + dy * TILE_SIZE * 0.3;
+      if (dx !== 0) {
+        out.push({
+          kind: 'roundrect',
+          x: Math.min(farX, nearX),
+          y: road.y - r,
+          w: Math.abs(nearX - farX),
+          h: width,
+          r,
+        });
+      } else {
+        out.push({
+          kind: 'roundrect',
+          x: road.x - r,
+          y: Math.min(farY, nearY),
+          w: width,
+          h: Math.abs(nearY - farY),
+          r,
+        });
+      }
     }
   }
   return out;

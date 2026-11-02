@@ -1,4 +1,4 @@
-import { accessTile } from './buildings.ts';
+import { accessTiles, accessTile } from './buildings.ts';
 import { findRoute, routeCost, routeIsLinked } from './pathfind.ts';
 import type { SimState } from './sim.ts';
 
@@ -54,6 +54,8 @@ export interface LotTrip {
   destination: number;
   /** Which parking space, counting from 0. */
   space: number;
+  /** The inlet the car drives in through, and out by. */
+  inlet: 'near' | 'far';
   /** `in` while driving to the space, `parked` in it, `out` while driving back to the node. */
   phase: 'in' | 'parked' | 'out';
   /** Map points (in tiles) of the drive, from the road node to the space, or back. */
@@ -82,6 +84,13 @@ export function roadEntrance(
   return e !== null && state.roads[e] === 1 ? e : null;
 }
 
+/** Every road tile a building can be reached through that has a road placed. */
+export function roadEntrances(state: SimState, buildingId: number): number[] {
+  const b = state.buildings[buildingId];
+  if (!b) return [];
+  return accessTiles(state.grid, b).filter((e) => state.roads[e] === 1);
+}
+
 export function addCar(
   state: SimState,
   house: number,
@@ -93,15 +102,15 @@ export function addCar(
     return { ok: false, reason: 'bad-building' };
   }
   const start = roadEntrance(state, house);
-  const end = roadEntrance(state, destination);
-  if (start === null || end === null)
+  const ends = roadEntrances(state, destination);
+  if (start === null || ends.length === 0)
     return { ok: false, reason: 'not-connected' };
   const route = findRoute(
     state.grid,
     state.roads,
     state.links,
     start,
-    end,
+    ends,
     state.motorways,
     waitingCounts(state),
   );
@@ -123,11 +132,10 @@ export function addCar(
 }
 
 /** The car's goal tile for its current state. */
-function goalOf(state: SimState, car: Car): number | null {
-  return roadEntrance(
-    state,
-    car.state === 'driving' ? car.destination : car.house,
-  );
+function goalOf(state: SimState, car: Car): number[] | null {
+  const id = car.state === 'driving' ? car.destination : car.house;
+  const goals = roadEntrances(state, id);
+  return goals.length > 0 ? goals : null;
 }
 
 /**

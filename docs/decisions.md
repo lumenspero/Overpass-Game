@@ -106,6 +106,10 @@ Short log of choices and why. Newest at the bottom.
 | 2026-11-01 | Cars in a lot are off the road: they neither block road tiles nor are blocked by road cars; a lot's node steps cost half a tile | The lot is its own space; half-tile cost keeps the drawn speed the same as on the road |
 | 2026-11-01 | A car's drawn position moves forward through its arrival and departure, never backing up | Backing up showed as a 180° turn at the end of the road |
 
+| 2026-11-01 | A double lot has a far inlet on its far edge, reached from a road beyond that edge; cars use whichever inlet is closer on their route | Adds throughput and a second way into the lot for road planning; the spaces and capacity are unchanged |
+| 2026-11-01 | Cars from the far inlet drive along the far edge in front of the far building, turn in at the strip's building side, and angle into the same spaces | Keeps the right-hand rule on the road and keeps the spaces clear of the far lane |
+| 2026-11-01 | Inbound cars use the lane at a = 0.25 and outbound at 0.625; the spaces start at a = 0.75 | Outbound cars no longer cross a space's corner, and the entry reads as the right lane |
+
 ## M9 · Palette and labels
 
 - **Terrain and water palette:** nine terrain families (ROYGBIV, white, black) with approved ground and shadow values. Mountains are a darker alternate of the ground hue; parks a muted alternate. Each region's thin border uses the opposite mode's colour. Water is a shared nine-step greenish-blue to light-purple ramp. Review sheets are in `docs/palette/`.

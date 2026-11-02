@@ -84,15 +84,19 @@ export function findRoute(
   roads: readonly number[],
   links: Links,
   from: number,
-  to: number,
+  to: number | readonly number[],
   motorways: readonly Motorway[] = [],
   waiting: readonly number[] = [],
 ): number[] | null {
-  if (roads[from] !== 1 || roads[to] !== 1) return null;
-  if (from === to) return [from];
+  const goals = (typeof to === 'number' ? [to] : to).filter(
+    (g) => roads[g] === 1,
+  );
+  const goalSet = new Set(goals);
+  if (roads[from] !== 1 || goals.length === 0) return null;
+  if (goalSet.has(from)) return [from];
 
   const cols = grid.cols;
-  const heuristic = (i: number): number => {
+  const gridHeuristic = (i: number, to: number): number => {
     const dx = Math.abs((i % cols) - (to % cols));
     const dy = Math.abs(Math.floor(i / cols) - Math.floor(to / cols));
     // With motorways a step can cover more ground for less cost, so only the longest
@@ -102,6 +106,8 @@ export function findRoute(
     }
     return Math.max(dx, dy) + (DIAGONAL_STEP - 1) * Math.min(dx, dy);
   };
+  const heuristic = (i: number): number =>
+    Math.min(...goals.map((g) => gridHeuristic(i, g)));
 
   const cost = new Map<number, number>([[from, 0]]);
   const cameFrom = new Map<number, number>();
@@ -122,9 +128,9 @@ export function findRoute(
       if (fa < fb || (fa === fb && a < b)) best = k;
     }
     const current = open.splice(best, 1)[0];
-    if (current === to) {
-      const route = [to];
-      let step = to;
+    if (goalSet.has(current)) {
+      const route = [current];
+      let step = current;
       while (step !== from) {
         step = cameFrom.get(step) as number;
         route.push(step);
