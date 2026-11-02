@@ -1,9 +1,18 @@
 import Phaser from 'phaser';
 import './style.css';
+import type { SimState } from '@overpass-game/sim';
 import { GameScene } from './game/game-scene.ts';
 import { loadPlayableMap, mapIdFromSearch } from './game/map-source.ts';
-import { currentBest } from './game/progress.ts';
+import {
+  clearRun,
+  currentBest,
+  initProgress,
+  loadRun,
+  savedWeeks,
+  storageStatus,
+} from './game/progress.ts';
 import { setRunActions } from './game/run-actions.ts';
+import { saveActiveRun, setPendingResume } from './game/run-resume.ts';
 import { currentSettings, saveSettings } from './game/settings.ts';
 import { setActiveMap } from './game/test-map.ts';
 import { showMenu, type Menu, type MenuChoice } from './ui/menu.ts';
@@ -22,7 +31,7 @@ let loading = false;
  * destroying the game does not promise that, so the app clears them itself.
  */
 function clearRunOverlays(): void {
-  for (const id of ['speed-bar', 'settings', 'run-end']) {
+  for (const id of ['top-bar', 'run-end']) {
     document.getElementById(id)?.remove();
   }
 }
@@ -60,7 +69,7 @@ async function startFromQuery(id: string): Promise<void> {
   startGame();
 }
 
-/** Opens the settings from the menu. Changes are kept for the game that starts next. */
+/** Opens the settings from the menu. Changes are saved, and kept for the game that starts next. */
 function openMenuSettings(): void {
   if (settingsScreen) return;
   settingsScreen = showSettings(currentSettings, saveSettings, () => {
@@ -69,37 +78,66 @@ function openMenuSettings(): void {
   });
 }
 
-/** Loads the chosen map (or the test map), then plays it. A failed load stays on the menu with a message. */
+/**
+ * Loads the chosen map (or the test map), then plays it. A resumed run is checked against the map
+ * first: a map that changed since the save cannot resume it. A failed load stays on the menu.
+ */
 async function playChoice(choice: MenuChoice): Promise<void> {
   if (loading) return;
   loading = true;
+  let resume: SimState | null = null;
   try {
-    setActiveMap(
-      choice.kind === 'test' ? null : await loadPlayableMap(choice.id),
-    );
+    if (choice.kind === 'test') {
+      setActiveMap(null);
+    } else {
+      const map = await loadPlayableMap(choice.id);
+      if (choice.resume) {
+        const saved = loadRun('campaign', choice.id);
+        if (saved === null)
+          throw new Error('That saved run is no longer here.');
+        if (saved.mapHash !== map.contentHash) {
+          clearRun('campaign', choice.id);
+          throw new Error(
+            'That map has changed since the run was saved, so the saved run was discarded.',
+          );
+        }
+        resume = saved.sim;
+      }
+      setActiveMap(map);
+    }
   } catch (err) {
     console.error(err);
+    // A discarded run is gone from the list, so the menu is built again to show that.
+    if (choice.kind === 'campaign' && choice.resume) showMainMenu();
     menu?.setError(failureText(err));
     return;
   } finally {
     loading = false;
   }
+  setPendingResume(resume);
   menu?.destroy();
   menu = null;
   startGame();
 }
 
-/** Shows the start menu, with any game stopped. */
+/**
+ * Shows the start menu, with any game stopped. The running game saves first, so leaving a run
+ * from the menu can be resumed later.
+ */
 function showMainMenu(): void {
+  saveActiveRun();
   game?.destroy(true);
   game = null;
   clearRunOverlays();
   menu?.destroy();
-  menu = showMenu(
-    currentBest(),
-    (choice) => void playChoice(choice),
-    openMenuSettings,
-  );
+  menu = showMenu({
+    best: currentBest(),
+    savedWeeks: savedWeeks(),
+    storage: storageStatus(),
+    onPick: (choice) => void playChoice(choice),
+    onSettings: openMenuSettings,
+    onImported: showMainMenu,
+  });
 }
 
 // The end-of-run screen goes back to the menu, or plays the next map, through these.
@@ -108,13 +146,20 @@ setRunActions({
   play: (choice) => void playChoice(choice),
 });
 
+// Progress loads before anything reads it: settings, best scores and saved runs. It never fails;
+// if browser storage is unavailable the game starts from memory and the menu says so.
 // `root.dataset.booted` marks the app as up: the menu is on screen, or the game has started.
+const ready = initProgress();
 const queryMap = mapIdFromSearch(window.location.search);
 if (queryMap === null) {
-  showMainMenu();
-  root.dataset.booted = 'true';
-} else {
-  void startFromQuery(queryMap).then(() => {
+  void ready.then(() => {
+    showMainMenu();
     root.dataset.booted = 'true';
   });
+} else {
+  void ready
+    .then(() => startFromQuery(queryMap))
+    .then(() => {
+      root.dataset.booted = 'true';
+    });
 }

@@ -1,4 +1,4 @@
-import { lotAt, stripLayout } from '@overpass-game/sim';
+import { lotAt, stripLayout, weekOf } from '@overpass-game/sim';
 import { greenIsHorizontal, ROUNDABOUT_RING_TILES } from '@overpass-game/sim';
 import type { CompiledMap, OutlinePath } from '@overpass-game/map-schema';
 import { activeDemo, buildDemo, DEMOS, setActiveDemo } from './demos.ts';
@@ -81,8 +81,8 @@ import {
   type TuningPanel,
 } from '../debug/tuning-panel.ts';
 import { createOfferPanel, type OfferPanel } from '../ui/offer-panel.ts';
-import { createSpeedBar, type SpeedBar } from '../ui/speed-bar.ts';
-import { showSettings, type SettingsScreen } from '../ui/settings-screen.ts';
+import { createTopBar, type TopBar } from '../ui/top-bar.ts';
+import { clockFor, type PlayChoice } from '../ui/top-bar-model.ts';
 import { previewRoads } from '../view/crossing-preview.ts';
 import {
   BADGE_H,
@@ -110,7 +110,7 @@ import {
   toggleTheme,
 } from './settings.ts';
 import { lockedTileRects } from '../view/districts.ts';
-import { endLines, hudLine, OVERFLOW_RING_COLOR } from '../view/hud.ts';
+import { endLines, OVERFLOW_RING_COLOR } from '../view/hud.ts';
 import {
   showRunEnd,
   type RunEndAction,
@@ -118,7 +118,8 @@ import {
 } from '../ui/run-end.ts';
 import { runEndModel } from '../ui/run-end-model.ts';
 import { CAMPAIGN_MAPS } from './campaign-maps.ts';
-import { currentBest, recordFinishedRun } from './progress.ts';
+import { currentBest, recordFinishedRun, saveRun } from './progress.ts';
+import { setRunSaver, takePendingResume } from './run-resume.ts';
 import { runActions } from './run-actions.ts';
 import { bestKey } from '@overpass-game/sim';
 import {
@@ -248,7 +249,6 @@ export class GameScene extends Phaser.Scene {
   /** Each car's heading when last drawn, by car id, so a stopped car keeps facing the way it was going. */
   private carHeadings = new Map<number, number>();
   private ringGfx!: Phaser.GameObjects.Graphics;
-  private hudText!: Phaser.GameObjects.Text;
   private crossingText!: Phaser.GameObjects.Text;
   /** Which crossing report is on screen, and when its message stops showing (ms). */
   private crossingSeq = 0;
@@ -258,6 +258,11 @@ export class GameScene extends Phaser.Scene {
   private endPanel: RunEndPanel | null = null;
   /** The campaign map being played, or null for a demo or the test map, which keep no best. */
   private campaignId: string | null = null;
+  /** The week of the last save, so a campaign run is saved once each week. */
+  private lastSavedWeek = 0;
+  private onVisibility = (): void => {
+    if (document.visibilityState === 'hidden') this.saveNow();
+  };
   private ended = false;
   private roadsDirty = true;
   private overlayGfx!: Phaser.GameObjects.Graphics;
@@ -265,10 +270,7 @@ export class GameScene extends Phaser.Scene {
   private gridGfx!: Phaser.GameObjects.Graphics;
   private debugText!: Phaser.GameObjects.Text;
   private offerPanel!: OfferPanel;
-  private speedBar!: SpeedBar;
-  private settingsScreen: SettingsScreen | null = null;
-  /** Whether the clock was running when the settings opened, so it resumes only if it was. */
-  private pausedBeforeSettings = false;
+  private topBar!: TopBar;
   private debugOn = false;
   private overlayDirty = true;
   private meter!: TickMeter;
@@ -286,8 +288,12 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     this.settings = currentSettings();
     const demo = activeDemo();
+    // A saved run from the menu replaces the new board. It is taken once, so a restart begins fresh.
+    const resumed = takePendingResume();
     if (demo) {
       this.sim = buildDemo(demo);
+    } else if (resumed) {
+      this.sim = resumed;
     } else {
       const testGrid: Grid = buildTestGrid();
       this.sim = createSim({
@@ -299,13 +305,14 @@ export class GameScene extends Phaser.Scene {
     }
     const grid: Grid = this.sim.grid;
     this.clock = createClock();
+    // A resumed run waits for the player to start it, so they see the board first.
+    if (resumed) setPaused(this.clock, true);
     this.mapper = createIntentMapper('select');
     this.controller = createController(this.sim);
     this.offerPanel = createOfferPanel(() => this.sim);
-    this.speedBar = createSpeedBar({
-      onPause: () => this.togglePause(),
-      onSpeed: (s) => this.setGameSpeed(s),
-      onSettings: () => this.openSettings(),
+    this.topBar = createTopBar({
+      onMenu: () => runActions()?.menu(),
+      onChoice: this.onPlayChoice,
     });
     this.mapSize = worldSize(grid.cols, grid.rows);
     this.view = createFittedCamera(this.mapSize, this.viewport());
@@ -376,16 +383,7 @@ export class GameScene extends Phaser.Scene {
       .setVisible(false);
     this.meter = createTickMeter(this.time.now, this.sim.tick);
 
-    // The HUD and end screen are screen-space too, drawn over the map.
-    this.hudText = this.add
-      .text(this.scale.width / 2, 8, '', {
-        fontFamily: 'monospace',
-        fontSize: '14px',
-        color: '#cfd6de',
-      })
-      .setOrigin(0.5, 0)
-      .setScrollFactor(0)
-      .setDepth(10);
+    // The end screen and crossing messages are screen-space too, drawn over the map.
     this.crossingText = this.add
       .text(this.scale.width / 2, 30, '', {
         fontFamily: 'monospace',
@@ -404,6 +402,10 @@ export class GameScene extends Phaser.Scene {
     this.endPanel = null;
     this.campaignId = demo || isTestMap() ? null : playedMap().id;
     this.ended = false;
+    this.lastSavedWeek = weekOf(this.sim.tick);
+    setRunSaver(this.saveNow);
+    window.addEventListener('pagehide', this.saveNow);
+    document.addEventListener('visibilitychange', this.onVisibility);
 
     this.canvas = this.game.canvas;
     this.canvas.style.touchAction = 'none';
@@ -440,6 +442,8 @@ export class GameScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     const ticks = advanceClock(this.clock, delta);
     for (let i = 0; i < ticks; i++) step(this.sim);
+    // Once each week the run is saved, so a reload resumes from the start of that week.
+    if (ticks > 0 && weekOf(this.sim.tick) > this.lastSavedWeek) this.saveNow();
 
     // Timers fire here, not in an event, so a held finger can start an erase stroke.
     this.dispatch(updateTimers(this.mapper, time));
@@ -457,8 +461,13 @@ export class GameScene extends Phaser.Scene {
     this.drawMotorways();
     this.drawControls();
     this.drawRings();
-    this.hudText.setText(hudLine(this.sim, this.clock.paused));
-    this.speedBar.sync(this.clock.paused, this.clock.speed, !this.sim.over);
+    this.topBar.sync({
+      paused: this.clock.paused,
+      speed: this.clock.speed,
+      enabled: !this.sim.over,
+      tick: this.sim.tick,
+      trips: this.sim.tripsCompleted,
+    });
     this.showCrossingLine(time);
     this.offerPanel.sync();
     if (this.sim.over && !this.ended) this.showEnd();
@@ -595,8 +604,8 @@ export class GameScene extends Phaser.Scene {
     this.applySettings(toggleTheme(this.settings));
 
   /**
-   * Applies a change from a key or the settings screen: keeps it for later screens and games,
-   * and redraws whatever it changes. The settings screen is refreshed to match.
+   * Applies a change from a key or the main menu: keeps it for later screens and games,
+   * and redraws whatever it changes.
    */
   private applySettings(next: GameSettings): void {
     this.settings = next;
@@ -609,7 +618,6 @@ export class GameScene extends Phaser.Scene {
     this.drawGuide(this.guideLines);
     this.drawBuildings();
     this.roadsDirty = true;
-    this.settingsScreen?.refresh();
   }
 
   /**
@@ -649,7 +657,6 @@ export class GameScene extends Phaser.Scene {
 
   private onResize = (): void => {
     this.view = resizeCamera(this.view, this.mapSize, this.viewport());
-    this.hudText.setX(this.scale.width / 2);
     this.crossingText.setX(this.scale.width / 2);
     if (this.ended) this.showEnd();
     this.applyTransform();
@@ -1244,6 +1251,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
+   * Saves the run in progress. Only a campaign run that has not ended is saved: the test map and
+   * demos keep nothing. Once the canvas has left the page, the game was destroyed and saves nothing.
+   */
+  private saveNow = (): void => {
+    const id = this.campaignId;
+    if (id === null || this.sim.over || !this.game.canvas.isConnected) return;
+    saveRun('campaign', id, playedMap().contentHash, this.sim);
+    this.lastSavedWeek = weekOf(this.sim.tick);
+  };
+
+  /**
    * Shows the end screen over the frozen board. The first call records the run and builds the
    * panel; a resize only redraws the dimming.
    */
@@ -1326,28 +1344,16 @@ export class GameScene extends Phaser.Scene {
     this.panel?.setSpeed(speed);
   }
 
-  /** P or the Pause button stops and restarts the clock. A speed change leaves the pause as it is. */
+  /** P stops and restarts the clock. A speed change leaves the pause as it is. */
   private togglePause = (): void => {
-    if (this.settingsScreen) return;
     setPaused(this.clock, !this.clock.paused);
   };
 
-  /** Opens the settings over the game. The clock stops while they are open, and resumes after if it was running. */
-  private openSettings = (): void => {
-    if (this.settingsScreen) return;
-    this.pausedBeforeSettings = this.clock.paused;
-    setPaused(this.clock, true);
-    this.settingsScreen = showSettings(
-      () => this.settings,
-      (s) => this.applySettings(s),
-      () => this.closeSettings(),
-    );
-  };
-
-  private closeSettings = (): void => {
-    this.settingsScreen?.destroy();
-    this.settingsScreen = null;
-    setPaused(this.clock, this.pausedBeforeSettings);
+  /** The clock menu's play, pause or fast-forward button. */
+  private onPlayChoice = (choice: PlayChoice): void => {
+    const next = clockFor(choice, this.clock.speed);
+    setPaused(this.clock, next.paused);
+    this.setGameSpeed(next.speed);
   };
 
   /** Redraws the dimmed land and the buildings when a district opens. */
@@ -1478,16 +1484,17 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown-F', this.onRoadKey);
     this.input.keyboard?.off('keydown-P', this.togglePause);
     this.offerPanel.destroy();
-    this.speedBar.destroy();
+    this.topBar.destroy();
     this.endPanel?.destroy();
     this.endPanel = null;
-    this.settingsScreen?.destroy();
-    this.settingsScreen = null;
     this.input.keyboard?.off('keydown', this.onKey);
     this.input.keyboard?.off('keydown-SPACE', this.onSpaceDown);
     this.input.keyboard?.off('keyup-SPACE', this.onSpaceUp);
     this.panel?.destroy();
     this.panel = null;
     this.scale.off('resize', this.onResize);
+    window.removeEventListener('pagehide', this.saveNow);
+    document.removeEventListener('visibilitychange', this.onVisibility);
+    setRunSaver(null);
   };
 }

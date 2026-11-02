@@ -1,13 +1,14 @@
 import { z } from 'zod';
 import { DEFAULT_TUNING, Terrain } from '@overpass-game/sim';
+import { parseWith } from './errors.ts';
+
+export * from './errors.ts';
+export * from './save.ts';
 
 export const PACKAGE_NAME = '@overpass-game/map-schema' as const;
 
 /** Version of the source and compiled map formats. Bump with a migration when either changes shape. */
 export const MAP_SCHEMA_VERSION = 1 as const;
-
-/** Version of the save file format. Migrations arrive with M11. */
-export const SAVE_SCHEMA_VERSION = 1 as const;
 
 /** Content hashes are eight lower-case hex digits (see map-compiler's contentHash). */
 const HASH = /^[0-9a-f]{8}$/;
@@ -228,43 +229,13 @@ export const CompiledMapSchema = z
     }
   });
 
-/** Save file (`*.save.json`, or an exported save code). Sim state is checked again on load (M11). */
-export const SaveFileSchema = z.object({
-  schemaVersion: z.literal(SAVE_SCHEMA_VERSION),
-  mapId: z.string().min(1),
-  mapHash: z.string().regex(HASH),
-  settings: z.object({ motorwayGuide: z.boolean() }),
-  sim: z.record(z.string(), z.unknown()),
-});
-
 export type SourceMap = z.infer<typeof SourceMapSchema>;
 export type CompiledMap = z.infer<typeof CompiledMapSchema>;
-export type SaveFile = z.infer<typeof SaveFileSchema>;
 export type Shape = z.infer<typeof ShapeSchema>;
 export type SpawnZone = z.infer<typeof SpawnZoneSchema>;
 export type Polyline = z.infer<typeof PolylineSchema>;
 export type MapRuleSource = z.infer<typeof MapRuleSchema>;
 export type OutlinePath = z.infer<typeof OutlinePathSchema>;
-
-/** Thrown when a map or save file does not match its schema. `issues` names each bad field. */
-export class MapFormatError extends Error {
-  readonly issues: string[];
-
-  constructor(what: string, issues: string[]) {
-    super(`${what} is invalid: ${issues.join('; ')}`);
-    this.name = 'MapFormatError';
-    this.issues = issues;
-  }
-}
-
-function parseWith<T>(schema: z.ZodType<T>, data: unknown, what: string): T {
-  const result = schema.safeParse(data);
-  if (result.success) return result.data;
-  const issues = result.error.issues.map(
-    (i) => `${i.path.length > 0 ? i.path.join('.') : '(root)'}: ${i.message}`,
-  );
-  throw new MapFormatError(what, issues);
-}
 
 export function parseSourceMap(data: unknown): SourceMap {
   return parseWith(SourceMapSchema, data, 'source map');
@@ -272,8 +243,4 @@ export function parseSourceMap(data: unknown): SourceMap {
 
 export function parseCompiledMap(data: unknown): CompiledMap {
   return parseWith(CompiledMapSchema, data, 'compiled map');
-}
-
-export function parseSave(data: unknown): SaveFile {
-  return parseWith(SaveFileSchema, data, 'save file');
 }

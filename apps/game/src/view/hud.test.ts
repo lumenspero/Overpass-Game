@@ -2,25 +2,11 @@ import {
   createSim,
   createGrid,
   summaryOf,
-  Terrain,
   WEEK_TICKS,
   type GameSummary,
 } from '@overpass-game/sim';
 import { describe, expect, it } from 'vitest';
-import { endLines, hudLine } from './hud.ts';
-
-describe('hudLine', () => {
-  it('shows the week, the seconds left in it, and trips', () => {
-    const sim = createSim({ seed: 1, grid: createGrid(3, 3) });
-    expect(hudLine(sim)).toBe('Week 1 · 60s left · Trips 0');
-  });
-
-  it('moves on to the next week', () => {
-    const sim = createSim({ seed: 1, grid: createGrid(3, 3) });
-    sim.tick = WEEK_TICKS;
-    expect(hudLine(sim)).toBe('Week 2 · 60s left · Trips 0');
-  });
-});
+import { endLines } from './hud.ts';
 
 describe('endLines', () => {
   it('shows nothing while the game is on', () => {
@@ -37,14 +23,5 @@ describe('endLines', () => {
       'Week 2',
       'Trips completed: 7',
     ]);
-  });
-});
-
-describe('hudLine paused marker', () => {
-  it('adds a Paused marker only while the game runs paused', () => {
-    const sim = createSim({ seed: 1, grid: createGrid(4, 4, Terrain.Land) });
-    expect(hudLine(sim)).not.toContain('Paused');
-    expect(hudLine(sim, true)).toMatch(/ · Paused$/);
-    expect(hudLine(sim, false)).not.toContain('Paused');
   });
 });

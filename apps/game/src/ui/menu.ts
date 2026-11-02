@@ -1,13 +1,28 @@
-import { CAMPAIGN_MAPS } from '../game/campaign-maps.ts';
 import type { BestScores } from '@overpass-game/sim';
+import { CAMPAIGN_MAPS } from '../game/campaign-maps.ts';
+import type { StorageStatus } from '../game/progress.ts';
 import { campaignRows } from './menu-model.ts';
+import { buildSavePanel } from './save-panel.ts';
 
 /**
- * The start menu: the campaign's unlock path, the (still empty) challenge list, the test map, and
- * settings. Built with DOM elements and text nodes, so no map or player text is parsed as markup.
+ * The start menu: the campaign's unlock path, the (still empty) challenge list, the test map,
+ * settings, and the save panel. Built with DOM elements and text nodes, so no map or player text
+ * is parsed as markup.
  */
 
-export type MenuChoice = { kind: 'campaign'; id: string } | { kind: 'test' };
+export type MenuChoice =
+  { kind: 'campaign'; id: string; resume?: boolean } | { kind: 'test' };
+
+export interface MenuOptions {
+  best: BestScores;
+  /** The week of each saved campaign run, by map id. */
+  savedWeeks: Readonly<Record<string, number>>;
+  storage: StorageStatus;
+  onPick: (choice: MenuChoice) => void;
+  onSettings: () => void;
+  /** Called after an import replaces the progress, so the menu is built again to show it. */
+  onImported: () => void;
+}
 
 export interface Menu {
   destroy(): void;
@@ -20,9 +35,15 @@ const BUTTON_CSS =
   'font:16px sans-serif;text-align:left;background:#1d232c;color:#eee;border:1px solid #2e3744;' +
   'border-radius:6px;cursor:pointer';
 
+const RESUME_CSS =
+  BUTTON_CSS + ';background:#1f2e22;border-color:#34503a;color:#d8f2dc';
+
 const LOCKED_CSS =
   'margin:6px 0;padding:10px 12px;box-sizing:border-box;font:16px sans-serif;' +
   'background:#16191e;color:#7d8794;border:1px solid #242a33;border-radius:6px';
+
+const NOTE_CSS =
+  'margin:12px 0;padding:8px;background:#3a3420;color:#f2e6b8;border-radius:6px;font:14px sans-serif';
 
 function heading(text: string): HTMLElement {
   const h = document.createElement('h2');
@@ -31,11 +52,8 @@ function heading(text: string): HTMLElement {
   return h;
 }
 
-export function showMenu(
-  best: BestScores,
-  onPick: (choice: MenuChoice) => void,
-  onSettings: () => void,
-): Menu {
+export function showMenu(options: MenuOptions): Menu {
+  const { best, savedWeeks, storage, onPick, onSettings, onImported } = options;
   const root = document.createElement('div');
   root.id = 'menu';
   root.style.cssText =
@@ -55,8 +73,18 @@ export function showMenu(
 
   const campaign = document.createElement('div');
   campaign.append(heading('Campaign'));
-  for (const row of campaignRows(CAMPAIGN_MAPS, best)) {
+  for (const row of campaignRows(CAMPAIGN_MAPS, best, savedWeeks)) {
     if (row.open) {
+      if (row.savedWeek !== null) {
+        const resume = document.createElement('button');
+        resume.type = 'button';
+        resume.textContent = `Resume ${row.name} · week ${row.savedWeek}`;
+        resume.style.cssText = RESUME_CSS;
+        resume.addEventListener('click', () =>
+          onPick({ kind: 'campaign', id: row.id, resume: true }),
+        );
+        campaign.append(resume);
+      }
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent =
@@ -95,7 +123,14 @@ export function showMenu(
   settings.addEventListener('click', () => onSettings());
   other.append(test, settings);
 
-  inner.append(title, error, campaign, challenges, other);
+  inner.append(title);
+  if (storage.problem !== null) {
+    const note = document.createElement('div');
+    note.textContent = storage.problem;
+    note.style.cssText = NOTE_CSS;
+    inner.append(note);
+  }
+  inner.append(error, campaign, challenges, other, buildSavePanel(onImported));
   root.append(inner);
   document.body.append(root);
 

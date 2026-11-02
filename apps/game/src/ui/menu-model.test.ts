@@ -57,3 +57,10 @@ describe('campaignRows best scores', () => {
     expect(rows.map((r) => r.best)).toEqual([17, null, null]);
   });
 });
+
+describe('campaignRows saved runs', () => {
+  it('shows the week of a saved run on its map, and nothing elsewhere', () => {
+    const rows = campaignRows(MAPS, {}, { a: 4 });
+    expect(rows.map((r) => r.savedWeek)).toEqual([4, null, null]);
+  });
+});

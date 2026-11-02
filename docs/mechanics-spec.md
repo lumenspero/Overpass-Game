@@ -13,8 +13,9 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 ### Clock and time
 
 - **Tick rate:** 30 ticks per second of game time, `TICKS_PER_SECOND` in `config.ts`. `approximated`
-- **Speeds:** 1×, 2×, 4×, 8×. Pausing stops ticks without losing time. `approximated`
-- **Pause control:** P, or the Pause button, stops and restarts the clock. A speed key or button changes the speed and leaves the pause as it is. The HUD shows Paused while the clock is stopped, and the buttons are disabled once the game is over. `approximated`
+- **Speeds:** the clock menu offers normal speed (1×) and fast-forward (2×). Pausing stops ticks without losing time. The keys 1 to 4 still pick 1×, 2×, 4× and 8× for playtesting. `approximated`
+- **Pause control:** P, or Pause in the clock menu, stops and restarts the clock. Play and fast-forward start the clock again, at 1× or 2×. A speed key leaves the pause as it is. The clock menu's buttons are disabled once the game is over. `approximated`
+- **Calendar (display only):** a week is seven days of equal length, Monday first, so the day shown is the week's seventh-part the tick falls in. The clock dial turns twice per day, so it shows a 24-hour cycle on a 12-hour face, and the second half of the day is shown inverted (PM). The day and the dial have no gameplay effect. Design decision, 2026-11-02.
 - **Catch-up cap:** at most 15 ticks run for one frame, so a stall can't freeze the game. `MAX_CATCHUP_TICKS`. `approximated`
 
 ### Grid and terrain
@@ -185,8 +186,21 @@ Elevated links for faster travel between two points on the ground network. `appr
 - **Motorway guide:** on by default. Toggled with G or in Settings. `approximated`
 - **Dark mode:** light by default. Toggled with N or in Settings. `approximated`
 - **Building symbols:** off by default. When on, each building colour draws one symbol: circle, square, triangle, then diamond, in the building palette's order, repeating past four colours. The symbol is black or white, whichever has the higher contrast with the colour. Houses and destinations both carry it. Cars and pins are not symbol-coded yet. `approximated`
-- **Settings screen:** reached from the menu and from the Settings button in play. In play, the clock stops while it is open and resumes after, if it was running. Escape or Done closes it.
-- **Storage:** settings are held in memory until M11 saves them. No audio setting until M12.
+- **Settings screen:** reached from the main menu only. It is not in play; the G and N keys still toggle the guide and dark mode during a game.
+- **Storage:** settings are saved with the rest of the progress (see Persistence). No audio setting until M12.
+
+### Persistence
+
+These are rules for saving, not gameplay numbers, so they carry no tag.
+
+- **What is saved:** the best trips per play, the settings, and the run in progress on each campaign map. The test map and demos keep nothing.
+- **When a run is saved:** at the start of each week of a campaign run, when the page is hidden, and when the player leaves a game for the menu. A run that has ended is removed, so a finished run never resumes.
+- **Resuming:** the menu offers Resume on a map with a saved run, at the week it was saved. The resumed game starts paused, at 1×, so the player sees the board before the clock moves.
+- **Map check:** a saved run resumes only on a map with the same content hash. If the map changed since the save, the run is discarded and the menu says why.
+- **Export and import:** a save can be downloaded as a JSON file, or copied as a text code (`OG1.` followed by the compressed save). Importing either replaces the progress in this browser, after the player confirms.
+- **Blocked storage:** when browser storage can't be opened or read, or fails later, the game plays on from memory and the menu says progress lasts only until the page is closed. Export offers the way to keep it.
+- **Unreadable saves:** a saved progress that can't be read is not loaded, and it is kept under a separate key rather than overwritten.
+- **Versions:** each save carries a `schemaVersion`. A save from a newer version is refused, and older versions are migrated one version at a time.
 
 ### Business arrival and house supply
 

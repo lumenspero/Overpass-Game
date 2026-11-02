@@ -19,11 +19,14 @@ export interface MenuRow {
   best: number | null;
   /** Why a locked map is locked. Null for an open map and for the first map. */
   hint: string | null;
+  /** The week of this map's saved run, or null when there is no run to resume. */
+  savedWeek: number | null;
 }
 
 export function campaignRows(
   maps: readonly CampaignMap[],
   best: BestScores,
+  savedWeeks: Readonly<Record<string, number>> = {},
 ): MenuRow[] {
   const open = new Set(
     openCampaignMaps(
@@ -44,6 +47,7 @@ export function campaignRows(
       open: isOpen,
       best: best[bestKey('campaign', m.id)] ?? null,
       hint,
+      savedWeek: savedWeeks[m.id] ?? null,
     };
   });
 }

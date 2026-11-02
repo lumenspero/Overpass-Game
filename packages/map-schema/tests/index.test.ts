@@ -4,7 +4,6 @@ import {
   MapFormatError,
   PACKAGE_NAME,
   parseCompiledMap,
-  parseSave,
   parseSourceMap,
   MapLabelSchema,
 } from '../src/index.ts';
@@ -94,18 +93,6 @@ describe('@overpass-game/map-schema', () => {
       contentHash: '00000000',
     };
     expect(() => parseCompiledMap(map)).toThrow(/does not touch/);
-  });
-
-  it('checks save files', () => {
-    const save = {
-      schemaVersion: 1,
-      mapId: 'test',
-      mapHash: 'not-a-hash',
-      settings: { motorwayGuide: true },
-      sim: {},
-    };
-    expect(() => parseSave(save)).toThrow(/mapHash/);
-    expect(() => parseSave({ ...save, mapHash: 'a1b2c3d4' })).not.toThrow();
   });
 });
 

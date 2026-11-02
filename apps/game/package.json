@@ -19,6 +19,8 @@
     "@overpass-game/map-schema": "workspace:*",
     "@overpass-game/render-style": "workspace:*",
     "@overpass-game/sim": "workspace:*",
+    "fflate": "0.8.3",
+    "idb-keyval": "6.3.0",
     "phaser": "4.2.1"
   }
 }

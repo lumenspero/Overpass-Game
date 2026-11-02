@@ -1,9 +1,9 @@
 import type { ThemeMode } from '@overpass-game/render-style';
+import { savedSettings, setSavedSettings } from './progress.ts';
 
 /**
  * Player settings: the motorway guide, light or dark mode, and the building symbols for
- * colour-blind players. They are held in memory, so they last for this page load. M11 saves
- * them with the rest of the player's progress.
+ * colour-blind players. They are saved with the rest of the progress, so they last across visits.
  */
 export interface GameSettings {
   motorwayGuide: boolean;
@@ -33,14 +33,12 @@ export function toggleSymbols(settings: GameSettings): GameSettings {
   return { ...settings, buildingSymbols: !settings.buildingSymbols };
 }
 
-let current: GameSettings = DEFAULT_SETTINGS;
-
-/** The settings the player has chosen this page load. The menu and the game both read them. */
+/** The settings the player has chosen, or the defaults if they have never changed any. */
 export function currentSettings(): GameSettings {
-  return current;
+  return savedSettings() ?? DEFAULT_SETTINGS;
 }
 
-/** Keeps the settings for the next screen or game. */
+/** Keeps the settings for the next screen or game, and saves them. */
 export function saveSettings(settings: GameSettings): void {
-  current = settings;
+  setSavedSettings(settings);
 }
