@@ -99,6 +99,13 @@ Short log of choices and why. Newest at the bottom.
 | 2026-10-31 | Mountains are cells at or above the slider height, joined by union; the slider recomputes on release, not while dragging                | The elevation grid is kept, so a release costs one union; re-running it on every pointer move is slow at 96 tiles per side. Holes (a valley inside a ridge) are dropped, as holes are elsewhere at import                                                                                |
 | 2026-10-31 | Terrain is optional at import: if its tiles fail, the map still imports, without mountains, and the message says so                     | OSM is the core of the import; a terrain outage should not block it                                                                                                                                                                                                                      |
 
+| 2026-11-01 | Destination lots: a 5×3 lot holds a 3×3 building and a 2×3 strip of parking; the inlet is the strip tile on the road edge, farthest from the building | Room for a turnaround and the parking spaces; a destination is one building, and houses keep their single tile |
+| 2026-11-01 | Lot lane runs on the right of travel, a quarter road-width from the centre of the road and inlet, at 0.375 of the tile inbound and 0.625 outbound | Matches where cars drive on the road, so cars keep to their lane from the road into the lot |
+| 2026-11-01 | Cars park nose-in, diagonally along the space's slope (1, 0.25 per tile), in three spaces | The spaces are drawn diagonally, so cars line up with them; three spaces fit the strip. Spaces may be reduced later |
+| 2026-11-01 | One car at a time may drive in or out of a lot; a car finds no free space or lane and waits on the road at the node | Two cars never meet on the lane; a full lot queues cars on the access road, as a full destination does |
+| 2026-11-01 | Cars in a lot are off the road: they neither block road tiles nor are blocked by road cars; a lot's node steps cost half a tile | The lot is its own space; half-tile cost keeps the drawn speed the same as on the road |
+| 2026-11-01 | A car's drawn position moves forward through its arrival and departure, never backing up | Backing up showed as a 180° turn at the end of the road |
+
 ## M9 · Palette and labels
 
 - **Terrain and water palette:** nine terrain families (ROYGBIV, white, black) with approved ground and shadow values. Mountains are a darker alternate of the ground hue; parks a muted alternate. Each region's thin border uses the opposite mode's colour. Water is a shared nine-step greenish-blue to light-purple ramp. Review sheets are in `docs/palette/`.
