@@ -31,6 +31,5 @@ export function endLines(summary: GameSummary): string[] {
     'Game over',
     `Week ${summary.week}`,
     `Trips completed: ${summary.trips}`,
-    'Tap or press R to play again',
   ];
 }

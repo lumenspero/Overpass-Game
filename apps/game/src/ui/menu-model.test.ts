@@ -49,3 +49,11 @@ describe('campaignRows', () => {
     expect(best[bestKey('campaign', 'a')]).toBeUndefined();
   });
 });
+
+describe('campaignRows best scores', () => {
+  it('shows the campaign best on each map, and null before a run', () => {
+    const best: BestScores = { 'campaign/a': 17 };
+    const rows = campaignRows(MAPS, best);
+    expect(rows.map((r) => r.best)).toEqual([17, null, null]);
+  });
+});

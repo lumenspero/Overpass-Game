@@ -1,15 +1,22 @@
-import { openCampaignMaps, tuning, type BestScores } from '@overpass-game/sim';
+import {
+  bestKey,
+  openCampaignMaps,
+  tuning,
+  type BestScores,
+} from '@overpass-game/sim';
 import type { CampaignMap } from '../game/campaign-maps.ts';
 
 /**
- * The campaign rows the map select shows: which maps are open, and for a locked map, what it
- * takes to open it. Pure, so the rules the menu shows are tested without a browser.
+ * The campaign rows the map select shows: which maps are open, the best trips on each, and for a
+ * locked map, what it takes to open it. Pure, so the rules the menu shows are tested without a browser.
  */
 
 export interface MenuRow {
   id: string;
   name: string;
   open: boolean;
+  /** Best trips on this map in the campaign, or null before any run on it. */
+  best: number | null;
   /** Why a locked map is locked. Null for an open map and for the first map. */
   hint: string | null;
 }
@@ -31,6 +38,12 @@ export function campaignRows(
       !isOpen && prev
         ? `Reach ${tuning.CAMPAIGN_UNLOCK_TRIPS} trips on ${prev.name} to unlock`
         : null;
-    return { id: m.id, name: m.name, open: isOpen, hint };
+    return {
+      id: m.id,
+      name: m.name,
+      open: isOpen,
+      best: best[bestKey('campaign', m.id)] ?? null,
+      hint,
+    };
   });
 }

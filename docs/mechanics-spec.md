@@ -75,6 +75,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Score:** trips completed. A trip counts when a car reaches its destination and uses up a pin. A car sent home without arriving doesn't count. `approximated`
 - **Weeks:** the clock counts weeks of `WEEK_TICKS` ticks from week 1. A finished game reports the week it ended in. `approximated`
 - **End screen:** shows the week reached and trips completed. Pins served are the same number as trips, so they aren't shown separately. Roads placed is not shown, since the original doesn't report it.
+- **End-of-run screen:** shows the week, trips, and the map's best ("New best" when the run beat it). For a campaign map it says whether the next map is open, or what would open it, and offers Play again, Play next (when open) and Menu. Demos and the test map keep no best and have no next map. Each campaign run's trips are recorded once, when the run ends. `approximated`
 - **Weekly rewards:** see Upgrades.
 
 ### Motorways

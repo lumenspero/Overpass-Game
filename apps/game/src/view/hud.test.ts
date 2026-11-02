@@ -36,7 +36,6 @@ describe('endLines', () => {
       'Game over',
       'Week 2',
       'Trips completed: 7',
-      'Tap or press R to play again',
     ]);
   });
 });

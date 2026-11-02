@@ -59,7 +59,8 @@ export function showMenu(
     if (row.open) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = row.name;
+      b.textContent =
+        row.best === null ? row.name : `${row.name} · Best ${row.best}`;
       b.style.cssText = BUTTON_CSS;
       b.addEventListener('click', () =>
         onPick({ kind: 'campaign', id: row.id }),

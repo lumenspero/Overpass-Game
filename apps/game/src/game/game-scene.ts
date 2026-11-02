@@ -112,6 +112,16 @@ import {
 import { lockedTileRects } from '../view/districts.ts';
 import { endLines, hudLine, OVERFLOW_RING_COLOR } from '../view/hud.ts';
 import {
+  showRunEnd,
+  type RunEndAction,
+  type RunEndPanel,
+} from '../ui/run-end.ts';
+import { runEndModel } from '../ui/run-end-model.ts';
+import { CAMPAIGN_MAPS } from './campaign-maps.ts';
+import { currentBest, recordFinishedRun } from './progress.ts';
+import { runActions } from './run-actions.ts';
+import { bestKey } from '@overpass-game/sim';
+import {
   CROSSING_MESSAGE_MS,
   controlMessage,
   crossingHint,
@@ -245,7 +255,9 @@ export class GameScene extends Phaser.Scene {
   private crossingUntil = 0;
   private crossingLine = '';
   private endGfx!: Phaser.GameObjects.Graphics;
-  private endTexts: Phaser.GameObjects.Text[] = [];
+  private endPanel: RunEndPanel | null = null;
+  /** The campaign map being played, or null for a demo or the test map, which keep no best. */
+  private campaignId: string | null = null;
   private ended = false;
   private roadsDirty = true;
   private overlayGfx!: Phaser.GameObjects.Graphics;
@@ -389,7 +401,8 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(20)
       .setVisible(false);
-    this.endTexts = [];
+    this.endPanel = null;
+    this.campaignId = demo || isTestMap() ? null : playedMap().id;
     this.ended = false;
 
     this.canvas = this.game.canvas;
@@ -1230,27 +1243,56 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Shows the end screen over the frozen board, with the run's summary. */
+  /**
+   * Shows the end screen over the frozen board. The first call records the run and builds the
+   * panel; a resize only redraws the dimming.
+   */
   private showEnd(): void {
-    this.ended = true;
     const w = this.scale.width;
     const h = this.scale.height;
     this.endGfx.setVisible(true).clear();
     this.endGfx.fillStyle(0x000000, 0.7);
     this.endGfx.fillRect(0, 0, w, h);
-    for (const t of this.endTexts) t.destroy();
-    const lines = endLines(summaryOf(this.sim));
-    this.endTexts = lines.map((line, i) =>
-      this.add
-        .text(w / 2, h / 2 + (i - (lines.length - 1) / 2) * 36, line, {
-          fontFamily: 'monospace',
-          fontSize: i === 0 ? '28px' : '18px',
-          color: '#f0f3f6',
-        })
-        .setOrigin(0.5)
-        .setScrollFactor(0)
-        .setDepth(21),
-    );
+    if (this.endPanel) return;
+
+    this.ended = true;
+    const summary = summaryOf(this.sim);
+    const id = this.campaignId;
+    const previousBest =
+      id === null ? null : (currentBest()[bestKey('campaign', id)] ?? null);
+    if (id !== null) recordFinishedRun('campaign', id, summary.trips);
+    const model = runEndModel({
+      mapId: id,
+      trips: summary.trips,
+      previousBest,
+      best: currentBest(),
+      maps: CAMPAIGN_MAPS,
+    });
+
+    const notes: string[] = [];
+    if (model.best !== null) {
+      notes.push(
+        model.newBest
+          ? `New best: ${model.best} trips`
+          : `Best on this map: ${model.best} trips`,
+      );
+    }
+    if (model.next?.open) notes.push(`Next map open: ${model.next.name}`);
+    if (model.next && model.next.hint) notes.push(model.next.hint);
+
+    const actions: RunEndAction[] = [
+      { label: 'Play again', run: () => this.scene.restart() },
+    ];
+    if (model.next?.open) {
+      const next = model.next;
+      actions.push({
+        label: `Play ${next.name}`,
+        run: () => runActions()?.play({ kind: 'campaign', id: next.id }),
+      });
+    }
+    actions.push({ label: 'Menu', run: () => runActions()?.menu() });
+
+    this.endPanel = showRunEnd(endLines(summary), notes, actions);
   }
 
   /** Keys 1 to 4 pick a speed, when the key matches one of the speed options. */
@@ -1437,6 +1479,8 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown-P', this.togglePause);
     this.offerPanel.destroy();
     this.speedBar.destroy();
+    this.endPanel?.destroy();
+    this.endPanel = null;
     this.settingsScreen?.destroy();
     this.settingsScreen = null;
     this.input.keyboard?.off('keydown', this.onKey);

@@ -1,19 +1,37 @@
 import Phaser from 'phaser';
 import './style.css';
-import type { CompiledMap } from '@overpass-game/map-schema';
 import { GameScene } from './game/game-scene.ts';
 import { loadPlayableMap, mapIdFromSearch } from './game/map-source.ts';
 import { currentBest } from './game/progress.ts';
+import { setRunActions } from './game/run-actions.ts';
 import { currentSettings, saveSettings } from './game/settings.ts';
 import { setActiveMap } from './game/test-map.ts';
-import { showMenu, type MenuChoice } from './ui/menu.ts';
+import { showMenu, type Menu, type MenuChoice } from './ui/menu.ts';
 import { showSettings, type SettingsScreen } from './ui/settings-screen.ts';
 
 const root = document.querySelector<HTMLDivElement>('#app');
 if (!root) throw new Error('#app element not found');
 
+let game: Phaser.Game | null = null;
+let menu: Menu | null = null;
+let settingsScreen: SettingsScreen | null = null;
+let loading = false;
+
+/**
+ * Removes the overlays a run leaves on the page. The scene tears them down on shutdown, but
+ * destroying the game does not promise that, so the app clears them itself.
+ */
+function clearRunOverlays(): void {
+  for (const id of ['speed-bar', 'settings', 'run-end']) {
+    document.getElementById(id)?.remove();
+  }
+}
+
+/** Starts the game with the map set in `setActiveMap`. Any game already running is stopped first. */
 function startGame(): void {
-  new Phaser.Game({
+  game?.destroy(true);
+  clearRunOverlays();
+  game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: root,
     banner: false,
@@ -42,8 +60,6 @@ async function startFromQuery(id: string): Promise<void> {
   startGame();
 }
 
-let settingsScreen: SettingsScreen | null = null;
-
 /** Opens the settings from the menu. Changes are kept for the game that starts next. */
 function openMenuSettings(): void {
   if (settingsScreen) return;
@@ -53,37 +69,49 @@ function openMenuSettings(): void {
   });
 }
 
-/** Shows the start menu. The chosen map loads, then the game starts in its place. */
-function startFromMenu(): void {
-  let picked = false;
-  const menu = showMenu(
+/** Loads the chosen map (or the test map), then plays it. A failed load stays on the menu with a message. */
+async function playChoice(choice: MenuChoice): Promise<void> {
+  if (loading) return;
+  loading = true;
+  try {
+    setActiveMap(
+      choice.kind === 'test' ? null : await loadPlayableMap(choice.id),
+    );
+  } catch (err) {
+    console.error(err);
+    menu?.setError(failureText(err));
+    return;
+  } finally {
+    loading = false;
+  }
+  menu?.destroy();
+  menu = null;
+  startGame();
+}
+
+/** Shows the start menu, with any game stopped. */
+function showMainMenu(): void {
+  game?.destroy(true);
+  game = null;
+  clearRunOverlays();
+  menu?.destroy();
+  menu = showMenu(
     currentBest(),
-    (choice: MenuChoice) => {
-      if (picked) return;
-      picked = true;
-      const load: Promise<CompiledMap | null> =
-        choice.kind === 'test'
-          ? Promise.resolve(null)
-          : loadPlayableMap(choice.id);
-      load
-        .then((map) => {
-          setActiveMap(map);
-          menu.destroy();
-          startGame();
-        })
-        .catch((err: unknown) => {
-          picked = false;
-          menu.setError(failureText(err));
-        });
-    },
+    (choice) => void playChoice(choice),
     openMenuSettings,
   );
 }
 
+// The end-of-run screen goes back to the menu, or plays the next map, through these.
+setRunActions({
+  menu: showMainMenu,
+  play: (choice) => void playChoice(choice),
+});
+
 // `root.dataset.booted` marks the app as up: the menu is on screen, or the game has started.
 const queryMap = mapIdFromSearch(window.location.search);
 if (queryMap === null) {
-  startFromMenu();
+  showMainMenu();
   root.dataset.booted = 'true';
 } else {
   void startFromQuery(queryMap).then(() => {
