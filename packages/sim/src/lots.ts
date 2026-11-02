@@ -190,16 +190,17 @@ export const DRIVING_LANE: FramePoint[] = [
 
 /**
  * Parking spaces for `count` diagonal spaces, stacked along the strip with a gap between them.
- * Each is a parallelogram between a = 0.5 and a = 1.5, sloping (1, 0.25) per tile.
+ * Each is a parallelogram between a = 0.75 and a = 1.75, sloping (1, 0.25) per tile. The spaces
+ * sit to the far side of the outbound lane (a = 0.625), so cars leaving never cross a space's corner.
  */
 function makeSpaces(count: number): FramePoint[][] {
   return Array.from({ length: count }, (_, k) => {
     const d0 = 0.45 + k * 0.65;
     return [
-      { a: 0.5, d: d0 },
-      { a: 1.5, d: d0 + 0.25 },
-      { a: 1.5, d: d0 + 0.85 },
-      { a: 0.5, d: d0 + 0.6 },
+      { a: 0.75, d: d0 },
+      { a: 1.75, d: d0 + 0.25 },
+      { a: 1.75, d: d0 + 0.85 },
+      { a: 0.75, d: d0 + 0.6 },
     ];
   });
 }
@@ -277,7 +278,7 @@ export function stripLayout(
 /**
  * The lot-frame points a car drives through: `in` from the road node into space `k`, `out` from
  * space `k` back to the node. The lane sits a quarter of a tile off the inlet's centre, on the
- * right of its travel: the inbound lane at a = 0.375, the outbound at 0.625. It stays in the lot
+ * right of its travel: the inbound lane at a = 0.25, the outbound at 0.625. It stays in the lot
  * until the slope to the space, so the car parks nose-in diagonally along the space's slope.
  */
 export function spacePath(
@@ -289,10 +290,11 @@ export function spacePath(
   if (!space) throw new Error(`no parking space ${k}`);
   const dk = space.reduce((sum, p) => sum + p.d, 0) / space.length;
   const node = { a: 0.5, d: -0.5 };
-  const lane = phase === 'in' ? 0.375 : 0.625;
+  const lane = phase === 'in' ? 0.25 : 0.625;
   const tab = { a: lane, d: 0 };
-  const back = { a: lane, d: dk - (1 - lane) * 0.25 };
-  const centre = { a: 1, d: dk };
+  const centre = { a: 1.25, d: dk };
+  // The back point lies on the space's slope (1, 0.25) back from the centre, so the last leg follows it.
+  const back = { a: lane, d: dk - (centre.a - lane) * 0.25 };
   return phase === 'in' ? [node, tab, back, centre] : [centre, back, tab, node];
 }
 

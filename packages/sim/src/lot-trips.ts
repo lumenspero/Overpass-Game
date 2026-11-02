@@ -109,6 +109,9 @@ function distanceTo(path: LotPoint[], target: LotPoint): number {
  * node, until the lane is free and a space is open. The drive starts on the car's lane of the
  * tile it came from, and turns into the inlet within the lane.
  */
+/** Corner radius where a car turns from the road into its lot, in tiles. */
+const APPROACH_RADIUS = 0.15;
+
 export function startLotTrip(state: SimState, car: Car): LotStart {
   const building = state.buildings[car.destination];
   if (!building || lotPath(state.grid, building, 0, 'in') === null) {
@@ -134,11 +137,11 @@ export function startLotTrip(state: SimState, car: Car): LotStart {
   } else {
     const dir = stepDir(state.grid, prev, node);
     const nodeLane = lanePoint(state.grid, node, dir);
-    path = roundedPath([
-      lanePoint(state.grid, prev, dir),
-      nodeLane,
-      ...lane.slice(1),
-    ]);
+    // A short radius: the turn in from the road is over a short segment, so long corners would overlap.
+    path = roundedPath(
+      [lanePoint(state.grid, prev, dir), nodeLane, ...lane.slice(1)],
+      APPROACH_RADIUS,
+    );
     s = distanceTo(path, nodeLane);
   }
   car.lot = {

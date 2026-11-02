@@ -181,7 +181,7 @@ describe('the driving lane and parking spaces', () => {
     for (let i = 1; i < PARKING_SPACES.length; i++) {
       const prev = PARKING_SPACES[i - 1];
       const next = PARKING_SPACES[i];
-      for (const a of [0.5, 1.5]) {
+      for (const a of [0.75, 1.75]) {
         const far = Math.max(...depthAt(prev, a));
         const near = Math.min(...depthAt(next, a));
         expect(near).toBeGreaterThan(far);
@@ -193,8 +193,8 @@ describe('the driving lane and parking spaces', () => {
     for (const space of PARKING_SPACES) {
       for (const p of space) {
         // The entry lane is at a = 0.25 and the exit lane at a = 1.75, each a quarter tile wide either side.
-        expect(p.a).toBeGreaterThanOrEqual(0.5);
-        expect(p.a).toBeLessThanOrEqual(1.5);
+        expect(p.a).toBeGreaterThanOrEqual(0.75);
+        expect(p.a).toBeLessThanOrEqual(1.75);
         // The return lane is at d = 0.25 and the far lane at d = 2.75, each an eighth of a tile either side.
         expect(p.d).toBeGreaterThan(0.25 + 0.125);
         expect(p.d).toBeLessThan(2.75 - 0.125);
