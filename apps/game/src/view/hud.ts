@@ -15,12 +15,13 @@ import {
 export const OVERFLOW_RING_COLOR = 0xe5484d;
 
 /** The line across the top of the screen: week, time left in it, trips so far. */
-export function hudLine(state: SimState): string {
+export function hudLine(state: SimState, paused = false): string {
   const summary = summaryOf(state);
   const secondsLeft = Math.ceil(
     ticksLeftInWeek(state.tick) / tuning.TICKS_PER_SECOND,
   );
-  return `Week ${summary.week} · ${secondsLeft}s left · Trips ${summary.trips}`;
+  const line = `Week ${summary.week} · ${secondsLeft}s left · Trips ${summary.trips}`;
+  return paused && !state.over ? `${line} · Paused` : line;
 }
 
 /** The lines of the end screen, or none while the game is still on. */

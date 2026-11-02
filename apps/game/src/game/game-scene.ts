@@ -13,6 +13,7 @@ import {
   placeBuilding,
   type Grid,
   SPEED_OPTIONS,
+  setPaused,
   setSpeed,
   type Speed,
   type SimState,
@@ -80,6 +81,7 @@ import {
   type TuningPanel,
 } from '../debug/tuning-panel.ts';
 import { createOfferPanel, type OfferPanel } from '../ui/offer-panel.ts';
+import { createSpeedBar, type SpeedBar } from '../ui/speed-bar.ts';
 import { previewRoads } from '../view/crossing-preview.ts';
 import {
   BADGE_H,
@@ -218,6 +220,7 @@ export class GameScene extends Phaser.Scene {
   private gridGfx!: Phaser.GameObjects.Graphics;
   private debugText!: Phaser.GameObjects.Text;
   private offerPanel!: OfferPanel;
+  private speedBar!: SpeedBar;
   private debugOn = false;
   private overlayDirty = true;
   private meter!: TickMeter;
@@ -250,6 +253,10 @@ export class GameScene extends Phaser.Scene {
     this.mapper = createIntentMapper('select');
     this.controller = createController(this.sim);
     this.offerPanel = createOfferPanel(() => this.sim);
+    this.speedBar = createSpeedBar({
+      onPause: () => this.togglePause(),
+      onSpeed: (s) => this.setGameSpeed(s),
+    });
     this.mapSize = worldSize(grid.cols, grid.rows);
     this.view = createFittedCamera(this.mapSize, this.viewport());
     this.openCount = -1;
@@ -365,6 +372,7 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-O', this.onRoundaboutKey);
     this.input.keyboard?.on('keydown-L', this.onLightKey);
     this.input.keyboard?.on('keydown-F', this.onRoadKey);
+    this.input.keyboard?.on('keydown-P', this.togglePause);
     this.input.keyboard?.on('keydown-G', this.onGuideKey);
     this.input.keyboard?.on('keydown-N', this.onThemeKey);
     this.input.keyboard?.on('keydown', this.onKey);
@@ -398,7 +406,8 @@ export class GameScene extends Phaser.Scene {
     this.drawMotorways();
     this.drawControls();
     this.drawRings();
-    this.hudText.setText(hudLine(this.sim));
+    this.hudText.setText(hudLine(this.sim, this.clock.paused));
+    this.speedBar.sync(this.clock.paused, this.clock.speed, !this.sim.over);
     this.showCrossingLine(time);
     this.offerPanel.sync();
     if (this.sim.over && !this.ended) this.showEnd();
@@ -1199,6 +1208,11 @@ export class GameScene extends Phaser.Scene {
     this.panel?.setSpeed(speed);
   }
 
+  /** P or the Pause button stops and restarts the clock. A speed change leaves the pause as it is. */
+  private togglePause = (): void => {
+    setPaused(this.clock, !this.clock.paused);
+  };
+
   /** Redraws the dimmed land and the buildings when a district opens. */
   private syncDistricts(): void {
     const open = openDistricts(this.sim.tick);
@@ -1325,7 +1339,9 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown-G', this.onGuideKey);
     this.input.keyboard?.off('keydown-N', this.onThemeKey);
     this.input.keyboard?.off('keydown-F', this.onRoadKey);
+    this.input.keyboard?.off('keydown-P', this.togglePause);
     this.offerPanel.destroy();
+    this.speedBar.destroy();
     this.input.keyboard?.off('keydown', this.onKey);
     this.input.keyboard?.off('keydown-SPACE', this.onSpaceDown);
     this.input.keyboard?.off('keyup-SPACE', this.onSpaceUp);

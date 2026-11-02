@@ -115,6 +115,7 @@ Short log of choices and why. Newest at the bottom.
 | 2026-11-02 | Campaign maps unlock on a trips threshold per run (`CAMPAIGN_UNLOCK_TRIPS`, one value for all maps for now); challenge mode is scored by trips, with no extra goal yet; no audio setting until M12 | The plan's M10 checklist sets score thresholds, and the open questions were answered by the author; per-map values wait for the M14 content, and audio does not exist before M12 |
 | 2026-11-02 | Campaign unlock state is derived from best scores, not stored; best scores are kept per mode and map, so challenge runs never open the campaign | Only the best scores need saving at M11; an unlock can't drift from the record it came from |
 | 2026-11-02 | The start menu is plain DOM, shown before the game unless `?map=` is given; the campaign order is game content in `campaign-maps.ts`, and the test map sits under Other | Menus are DOM, as the offer panel is, so no new dependency is added; the plan's Preact is not needed for a menu this small. The order lists only maps that exist until M14, and the test map stays reachable for playtests |
+| 2026-11-02 | Pause is P and a bottom-left button bar, and a speed choice leaves the pause as it is; the bar is DOM over the canvas with its buttons blurred after a press | Touch players have no keys, so the buttons are needed. Blurring keeps Space for panning, since a focused button takes Space. Placement may collide with the offer panel on narrow screens, to check at M13 |
 
 ## M9 · Palette and labels
 

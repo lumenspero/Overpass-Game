@@ -2,6 +2,7 @@ import {
   createSim,
   createGrid,
   summaryOf,
+  Terrain,
   WEEK_TICKS,
   type GameSummary,
 } from '@overpass-game/sim';
@@ -37,5 +38,14 @@ describe('endLines', () => {
       'Trips completed: 7',
       'Tap or press R to play again',
     ]);
+  });
+});
+
+describe('hudLine paused marker', () => {
+  it('adds a Paused marker only while the game runs paused', () => {
+    const sim = createSim({ seed: 1, grid: createGrid(4, 4, Terrain.Land) });
+    expect(hudLine(sim)).not.toContain('Paused');
+    expect(hudLine(sim, true)).toMatch(/ · Paused$/);
+    expect(hudLine(sim, false)).not.toContain('Paused');
   });
 });

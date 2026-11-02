@@ -14,6 +14,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 - **Tick rate:** 30 ticks per second of game time, `TICKS_PER_SECOND` in `config.ts`. `approximated`
 - **Speeds:** 1×, 2×, 4×, 8×. Pausing stops ticks without losing time. `approximated`
+- **Pause control:** P, or the Pause button, stops and restarts the clock. A speed key or button changes the speed and leaves the pause as it is. The HUD shows Paused while the clock is stopped, and the buttons are disabled once the game is over. `approximated`
 - **Catch-up cap:** at most 15 ticks run for one frame, so a stall can't freeze the game. `MAX_CATCHUP_TICKS`. `approximated`
 
 ### Grid and terrain
