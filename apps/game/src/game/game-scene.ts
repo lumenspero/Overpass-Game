@@ -134,6 +134,8 @@ import {
   motorwayMessage,
 } from '../view/crossing-message.ts';
 import { overflowRings } from '../view/overflow.ts';
+import { audio } from '../audio/shared.ts';
+import { soundForSimEvent } from '../audio/sim-sounds.ts';
 import {
   createTickMeter,
   sampleTickRate,
@@ -324,8 +326,6 @@ export class GameScene extends Phaser.Scene {
     }
     const grid: Grid = this.sim.grid;
     this.clock = createClock();
-    // A resumed run waits for the player to start it, so they see the board first.
-    if (resumed) setPaused(this.clock, true);
     this.mapper = createIntentMapper('select');
     setInputOptions(this.mapper, {
       drawMode: this.settings.drawMode,
@@ -470,7 +470,12 @@ export class GameScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     const ticks = advanceClock(this.clock, delta);
-    for (let i = 0; i < ticks; i++) step(this.sim);
+    for (let i = 0; i < ticks; i++) {
+      for (const event of step(this.sim)) {
+        const sound = soundForSimEvent(event);
+        if (sound) audio.playEffect(sound);
+      }
+    }
     // Once each week the run is saved, so a reload resumes from the start of that week.
     if (ticks > 0 && weekOf(this.sim.tick) > this.lastSavedWeek) this.saveNow();
 

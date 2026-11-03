@@ -1,4 +1,5 @@
 import type { Speed } from '@overpass-game/sim';
+import { audio } from '../audio/shared.ts';
 import { clockAngle, dayName, isPm } from '../view/calendar.ts';
 import { choiceOf, type PlayChoice } from './top-bar-model.ts';
 
@@ -123,7 +124,10 @@ export function createTopBar(handlers: TopBarHandlers): TopBar {
     'border-radius:10px;background:rgba(20,24,30,0.22);pointer-events:auto';
   const buttons = new Map<PlayChoice, HTMLButtonElement>();
   const choose = (label: string, markup: string, choice: PlayChoice): void => {
-    const b = iconButton(label, markup, () => handlers.onChoice(choice));
+    const b = iconButton(label, markup, () => {
+      audio.playEffect('clock.select');
+      handlers.onChoice(choice);
+    });
     b.style.background = 'transparent';
     b.style.border = '1px solid transparent';
     buttons.set(choice, b);

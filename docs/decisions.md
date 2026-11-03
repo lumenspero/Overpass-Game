@@ -134,6 +134,8 @@ Short log of choices and why. Newest at the bottom.
 | 2026-11-02 | The clock menu offers play (1×), pause and fast-forward (2×) as a transparent row under the clock; 4× and 8× are not offered, though the keys still set them | The author asked for a simple 2× fast-forward. The keys stay for playtesting |
 | 2026-11-02 | Day and clock are display only: seven equal days per week (Mon first), the dial turns twice a day, and the second half of the day is inverted | Matches the author's design. Keeps the week and the sim rules unchanged |
 | 2026-11-02 | The top-centre line (week, seconds left, trips) is replaced by the top-right trips counter; the week number is no longer shown on screen | The author's layout lists trips, pin, day and clock only. The end screen still shows the week |
+| 2026-11-03 | A game week lasts 2700 ticks, 90 seconds at 1× (was 1800, 60 seconds) | The clock dial and the week ran too fast against the original. Lengthening the week keeps car speed; it changes pins per week, so balance is checked at Checkpoint A |
+| 2026-11-03 | A resumed game runs at once at 1×, as a new game does, rather than starting paused | Asked by the author; the pause on resume gave the impression the clock was broken |
 
 ## M9 · Palette and labels
 

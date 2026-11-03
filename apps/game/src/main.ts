@@ -21,7 +21,8 @@ import {
 import { setActiveMap } from './game/test-map.ts';
 import { showMenu, type Menu, type MenuChoice } from './ui/menu.ts';
 import { showOptions, type OptionsScreen } from './ui/options-screen.ts';
-import { AudioManager, type AudioLevels } from './audio/audio-manager.ts';
+import type { AudioLevels } from './audio/audio-manager.ts';
+import { audio } from './audio/shared.ts';
 import { MUSIC_TRACKS } from './audio/catalog.ts';
 
 const root = document.querySelector<HTMLDivElement>('#app');
@@ -40,11 +41,6 @@ function levelsOf(settings: GameSettings): AudioLevels {
   };
 }
 
-const audio = new AudioManager(
-  import.meta.env.BASE_URL,
-  levelsOf(currentSettings()),
-);
-
 /**
  * Removes the overlays a run leaves on the page. The scene tears them down on shutdown, but
  * destroying the game does not promise that, so the app clears them itself.
@@ -59,7 +55,6 @@ function clearRunOverlays(): void {
 function startGame(): void {
   game?.destroy(true);
   clearRunOverlays();
-  audio.playEffect('game.open');
   game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: root,

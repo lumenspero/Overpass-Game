@@ -1,4 +1,5 @@
 import { type ControlKind, dropControlsAt } from './controls.ts';
+import { type SimEvent, takeEvents } from './events.ts';
 import type { CrossingRun } from './crossings.ts';
 import { dropMotorwaysAt } from './motorway-placement.ts';
 import type { Motorway } from './motorways.ts';
@@ -208,9 +209,13 @@ export function unlinkTiles(state: SimState, a: number, b: number): boolean {
   return true;
 }
 
-/** Advances the simulation by one fixed tick. Systems are added in later milestones. */
-export function step(state: SimState): void {
-  if (state.over) return;
+/**
+ * Advances the simulation by one fixed tick. Returns what happened during the tick, such as a new
+ * building or the end of the game. Systems are added in later milestones.
+ */
+export function step(state: SimState): SimEvent[] {
+  takeEvents();
+  if (state.over) return [];
   state.tick += 1;
   if (state.tick % tuning.WEEK_TICKS === 0) {
     grantWeeklyReward(state);
@@ -219,8 +224,9 @@ export function step(state: SimState): void {
   }
   generateDemand(state);
   updateOverflow(state);
-  if (state.over) return;
+  if (state.over) return takeEvents();
   spawnCars(state);
   moveCars(state);
   updateTrips(state);
+  return takeEvents();
 }

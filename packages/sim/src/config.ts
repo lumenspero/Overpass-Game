@@ -40,7 +40,7 @@ export const DEFAULT_TUNING = {
   /** Ticks an overflowing destination has before the game ends. Serving a pin resets it. */
   OVERFLOW_TICKS: 900, // approximated
   /** Ticks in one week. The clock counts weeks; the first week is week 1. */
-  WEEK_TICKS: 1800, // approximated
+  WEEK_TICKS: 2700, // approximated: 90 seconds at 1x (30 ticks a second)
   /** Week at which district 1 opens. District 0 is open from the start. */
   EXPANSION_WEEK_1: 3, // approximated
   /** Week at which district 2 opens. Districts beyond it stay locked (for example, land across a river until bridges). */

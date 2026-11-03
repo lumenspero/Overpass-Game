@@ -77,7 +77,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 ### Score and clock
 
 - **Score:** trips completed. A trip counts when a car reaches its destination and uses up a pin. A car sent home without arriving doesn't count. `approximated`
-- **Weeks:** the clock counts weeks of `WEEK_TICKS` ticks from week 1. A finished game reports the week it ended in. `approximated`
+- **Weeks:** the clock counts weeks of `WEEK_TICKS` ticks from week 1. A week is 2700 ticks, which is 90 seconds at 1× (30 ticks a second). Car speed is unchanged, so weeks are longer rather than the game slowed. A finished game reports the week it ended in. `approximated`
 - **End screen:** shows the week reached and trips completed. Pins served are the same number as trips, so they aren't shown separately. Roads placed is not shown, since the original doesn't report it.
 - **End-of-run screen:** shows the week, trips, and the map's best ("New best" when the run beat it). For a campaign map it says whether the next map is open, or what would open it, and offers Play again, Play next (when open) and Menu. Demos and the test map keep no best and have no next map. Each campaign run's trips are recorded once, when the run ends. `approximated`
 - **Weekly rewards:** see Upgrades.
@@ -195,7 +195,7 @@ These are rules for saving, not gameplay numbers, so they carry no tag.
 
 - **What is saved:** the best trips per play, the settings, and the run in progress on each campaign map. The test map and demos keep nothing.
 - **When a run is saved:** at the start of each week of a campaign run, when the page is hidden, and when the player leaves a game for the menu. A run that has ended is removed, so a finished run never resumes.
-- **Resuming:** the menu offers Resume on a map with a saved run, at the week it was saved. The resumed game starts paused, at 1×, so the player sees the board before the clock moves.
+- **Resuming:** the menu offers Resume on a map with a saved run, at the week it was saved. The resumed game runs at once, at 1×, as a new game does. The clock menu and P pause it.
 - **Map check:** a saved run resumes only on a map with the same content hash. If the map changed since the save, the run is discarded and the menu says why.
 - **Export and import:** a save can be downloaded as a JSON file, or copied as a text code (`OG1.` followed by the compressed save). Importing either replaces the progress in this browser, after the player confirms.
 - **Blocked storage:** when browser storage can't be opened or read, or fails later, the game plays on from memory and the menu says progress lasts only until the page is closed. Export offers the way to keep it.

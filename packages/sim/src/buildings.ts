@@ -1,6 +1,7 @@
 import { tuning, demandIntervalFor } from './config.ts';
 import { colourUnlocked } from './rules.ts';
 import { type Grid, isBuildable, isInBounds } from './grid.ts';
+import { emitEvent } from './events.ts';
 import type { SimState } from './sim.ts';
 import {
   destinationLot,
@@ -284,6 +285,7 @@ export function addSecondBuildings(state: SimState): void {
       overflow: 0,
       growth: state.demand[near.id]?.growth ?? 0,
     };
+    emitEvent({ kind: 'building-spawned', building: id });
   }
 }
 

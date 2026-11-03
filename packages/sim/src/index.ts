@@ -9,6 +9,7 @@ export * from './rules.ts';
 export * from './config.ts';
 export * from './controls.ts';
 export * from './demand.ts';
+export * from './events.ts';
 export * from './expansion.ts';
 export * from './graph.ts';
 export * from './movement.ts';

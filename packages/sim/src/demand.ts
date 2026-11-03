@@ -1,6 +1,7 @@
 import { tuning, demandIntervalFor } from './config.ts';
 import { isOpenTile } from './expansion.ts';
 import type { Demand } from './buildings.ts';
+import { emitEvent } from './events.ts';
 import type { SimState } from './sim.ts';
 
 /**
@@ -75,6 +76,7 @@ export function updateOverflow(state: SimState): void {
     demand.overflow -= 1;
     if (demand.overflow === 0 && state.over === null) {
       state.over = { tick: state.tick, destination: b.id };
+      emitEvent({ kind: 'game-over', destination: b.id });
     }
   }
 }
