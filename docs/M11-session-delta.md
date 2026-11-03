@@ -1,5 +1,7 @@
 # M11 · Persistence: session delta
 
+**Status: complete**, signed off by the author on 2026-11-02. Confirmed in the browser: a run resumes after a reload mid-game. Not recorded at sign-off: an export on one host imported on the other.
+
 Covers M11 from the M10 close. Progress, best scores and settings are saved, a campaign run is saved and can be resumed, and a save can be exported and imported. Storage that is blocked falls back to memory.
 
 ## Done
@@ -29,9 +31,9 @@ Covers M11 from the M10 close. Progress, best scores and settings are saved, a c
 - Game production build: passes.
 - Not run: the Playwright boot tests (no browser in the build sandbox), and `pnpm check` itself (the sandbox's disk was full, so the same steps were run directly).
 
-## Not verified in a browser
+## Not verified in a browser at sign-off
 
-- A reload mid-game resumes the run, paused, at the saved week.
+- (Confirmed) A reload mid-game resumes the run.
 - An export made on one host imports on the other (itch.io and the domain).
 - Blocked storage in private browsing, and in the itch.io iframe.
 - Save-and-leave to the menu, and the pagehide save, in a real page.

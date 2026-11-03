@@ -320,7 +320,7 @@ Done when: you can build a complete map from import to playable export without e
 - [x] Save export/import as a file and as a compressed text code (needed because itch.io and your domain keep separate storage)
 - [x] Graceful fallback when storage is blocked (private browsing, itch.io iframe edge cases)
 
-> **Status (built, live check pending):** progress, best scores and settings save to IndexedDB as one `schemaVersion`ed bundle, and a campaign run saves at each week and when the page hides. The menu resumes a saved run on the same map (checked by content hash), and a run that finishes is removed. Export and import go through a JSON file or a compressed `OG1.` code, and an import asks before it replaces progress. Storage that is blocked or fails falls back to memory with a note on the menu. The sim, schema and storage unit tests pass; the browser checks (a reload mid-game, and an export that imports on the other host) need your machine. Details are in `docs/M11-session-delta.md`.
+> **Status (complete):** progress, best scores and settings save to IndexedDB as one `schemaVersion`ed bundle. A campaign run saves each week and when the page hides, and the back button saves before returning to the menu. Resume is offered on the map select, and a run that finishes is removed. Export and import use a JSON file or a compressed `OG1.` code, and an import asks before it replaces progress. Storage that is blocked or fails falls back to memory with a note on the menu. Sign-off: a reload mid-game resumes the run (confirmed by the author). The cross-host export and import was not recorded at sign-off. Details are in `docs/M11-session-delta.md`.
 
 Done when: a run survives a reload mid-game, and a save exported on one host imports on the other.
 
