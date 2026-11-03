@@ -3,6 +3,10 @@ import type { ThemeMode } from '@overpass-game/render-style';
 import { savedSettings, setSavedSettings } from './progress.ts';
 
 export type RenderScale = SettingsSave['renderScale'];
+export type ZoomLevel = SettingsSave['zoomLevel'];
+
+/** The zoom levels the Game tab offers, as multiples of the fit-to-screen zoom. */
+export const ZOOM_LEVELS: readonly ZoomLevel[] = [1, 1.5, 2];
 
 /** The render scales the Display tab offers, as percentages of the screen's pixels. */
 export const RENDER_SCALES: readonly RenderScale[] = [75, 100, 150];
@@ -22,6 +26,14 @@ export interface GameSettings {
   antiAliasing: boolean;
   /** Fades the menu screens in and out. */
   menuTransitions: boolean;
+  /** 'waypoints' lays road between clicks; 'drag' draws as the pointer moves. */
+  drawMode: SettingsSave['drawMode'];
+  /** On: a touch held still erases. Off: it places a tile. */
+  holdToErase: boolean;
+  /** After a touch stroke, the camera zooms so the whole stroke is in view. */
+  touchAutoZoom: boolean;
+  /** The zoom each game opens at, as a multiple of fit-to-screen. */
+  zoomLevel: ZoomLevel;
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -31,6 +43,10 @@ export const DEFAULT_SETTINGS: GameSettings = {
   renderScale: 100,
   antiAliasing: true,
   menuTransitions: true,
+  drawMode: 'drag',
+  holdToErase: true,
+  touchAutoZoom: false,
+  zoomLevel: 1,
 };
 
 /** Returns a copy with the motorway guide switched on or off. */
@@ -54,6 +70,32 @@ export function setRenderScale(
   renderScale: RenderScale,
 ): GameSettings {
   return { ...settings, renderScale };
+}
+
+/** Returns a copy with click-to-draw waypoints switched on or off. */
+export function toggleDrawMode(settings: GameSettings): GameSettings {
+  return {
+    ...settings,
+    drawMode: settings.drawMode === 'waypoints' ? 'drag' : 'waypoints',
+  };
+}
+
+/** Returns a copy with hold-to-erase switched on or off. */
+export function toggleHoldToErase(settings: GameSettings): GameSettings {
+  return { ...settings, holdToErase: !settings.holdToErase };
+}
+
+/** Returns a copy with touch auto-zoom switched on or off. */
+export function toggleTouchAutoZoom(settings: GameSettings): GameSettings {
+  return { ...settings, touchAutoZoom: !settings.touchAutoZoom };
+}
+
+/** Returns a copy with the zoom level set. */
+export function setZoomLevel(
+  settings: GameSettings,
+  zoomLevel: ZoomLevel,
+): GameSettings {
+  return { ...settings, zoomLevel };
 }
 
 /** Returns a copy with anti-aliasing switched on or off. */

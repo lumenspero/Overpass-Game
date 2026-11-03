@@ -29,6 +29,10 @@ function sampleBundle(): SaveBundle {
       renderScale: 100,
       antiAliasing: true,
       menuTransitions: true,
+      drawMode: 'drag',
+      holdToErase: true,
+      touchAutoZoom: false,
+      zoomLevel: 1,
     },
     best: { [KEY]: 12 },
     runs: {

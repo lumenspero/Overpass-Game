@@ -3,6 +3,12 @@ import {
   toggleSymbols,
   toggleTheme,
   toggleAntiAliasing,
+  toggleDrawMode,
+  toggleHoldToErase,
+  toggleTouchAutoZoom,
+  setZoomLevel,
+  ZOOM_LEVELS,
+  type ZoomLevel,
   toggleMenuTransitions,
   type GameSettings,
 } from '../game/settings.ts';
@@ -135,6 +141,29 @@ function controlLines(title: string, lines: readonly string[]): HTMLElement {
   return section;
 }
 
+/** A row of choices, with the current one highlighted. */
+function choiceRow(
+  label: string,
+  choices: readonly { value: number; text: string }[],
+  current: number,
+  onPick: (value: number) => void,
+  note?: string,
+): HTMLElement {
+  const group = el('div', 'display:flex;gap:6px');
+  for (const choice of choices) {
+    const on = choice.value === current;
+    group.append(
+      button(
+        choice.text,
+        `width:auto;min-height:40px;padding:6px 10px;font:600 15px sans-serif;border:0;border-radius:4px;` +
+          `background:${on ? TEAL : OFF};color:${on ? INK : '#eee'}`,
+        () => onPick(choice.value),
+      ),
+    );
+  }
+  return row(label, group, note);
+}
+
 function toggleFullscreen(): void {
   // Needs a user gesture, and a host that allows it. A refusal leaves the setting as it was.
   const change: Promise<void> = document.fullscreenElement
@@ -209,13 +238,34 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
             ),
             'Faint outline of real motorways. Also on the G key.',
           ),
-          pendingRow(
-            'Draw mode toggle',
-            'Click to draw, alongside hold to draw. Needs a setting.',
+          row(
+            'Click to draw waypoints',
+            switchButton(s.drawMode === 'waypoints', () =>
+              change(toggleDrawMode(deps.getSettings())),
+            ),
+            'Click points in turn and the road runs through them. Right-click or Esc finishes. Dragging still draws.',
           ),
-          pendingRow('Hold to draw and delete', 'Needs a setting.'),
-          pendingRow('Touch screen auto-zoom', 'Needs a setting.'),
-          pendingRow('Zoom level', 'Needs a setting.'),
+          row(
+            'Hold to draw/delete',
+            switchButton(s.holdToErase, () =>
+              change(toggleHoldToErase(deps.getSettings())),
+            ),
+            'On: holding a touch still erases. Off: it places a tile.',
+          ),
+          row(
+            'Touch screen auto-zoom',
+            switchButton(s.touchAutoZoom, () =>
+              change(toggleTouchAutoZoom(deps.getSettings())),
+            ),
+            'After a touch stroke, zoom so the whole stroke is in view.',
+          ),
+          choiceRow(
+            'Zoom level',
+            ZOOM_LEVELS.map((v) => ({ value: v, text: `${v}x` })),
+            s.zoomLevel,
+            (v) => change(setZoomLevel(deps.getSettings(), v as ZoomLevel)),
+            'The zoom each game opens at, as a multiple of fit-to-screen. Applies from the next game.',
+          ),
         );
         break;
       case 'audio':
@@ -277,6 +327,7 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
             'Left button: draw roads. Right button: erase.',
             'Middle button drag, or Space and a left drag: pan.',
             'Wheel: zoom.',
+            'With click to draw waypoints on: click points in turn. Right-click or Esc finishes.',
           ]),
           controlLines('Touch', [
             'One finger: draw. Two fingers: pan, and pinch to zoom.',

@@ -95,6 +95,10 @@ describe('save bundle', () => {
             renderScale: 100,
             antiAliasing: true,
             menuTransitions: true,
+            drawMode: 'drag',
+            holdToErase: true,
+            touchAutoZoom: false,
+            zoomLevel: 1,
           },
         }),
       ),
@@ -152,7 +156,7 @@ describe('save migration to version 2', () => {
       runs: {},
     };
     const parsed = parseSaveBundle(v1);
-    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.schemaVersion).toBe(3);
     expect(parsed.settings).toEqual({
       motorwayGuide: false,
       theme: 'dark',
@@ -160,6 +164,10 @@ describe('save migration to version 2', () => {
       renderScale: 100,
       antiAliasing: true,
       menuTransitions: true,
+      drawMode: 'drag',
+      holdToErase: true,
+      touchAutoZoom: false,
+      zoomLevel: 1,
     });
   });
 

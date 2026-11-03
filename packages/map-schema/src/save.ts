@@ -11,7 +11,7 @@ import { MapFormatError, parseWith } from './errors.ts';
 export const SAVE_FORMAT = 'overpass-game-save' as const;
 
 /** Version of the save format. Bump it with a migration whenever the shape changes. */
-export const SAVE_SCHEMA_VERSION = 2 as const;
+export const SAVE_SCHEMA_VERSION = 3 as const;
 
 /** Content hashes are eight lower-case hex digits (see map-compiler's contentHash). */
 const HASH = /^[0-9a-f]{8}$/;
@@ -125,6 +125,14 @@ export const SettingsSaveSchema = z.object({
   antiAliasing: z.boolean(),
   /** Fades the menu screens in and out. */
   menuTransitions: z.boolean(),
+  /** 'waypoints' lays road between clicks; 'drag' draws as the pointer moves. */
+  drawMode: z.enum(['drag', 'waypoints']),
+  /** On: a touch held still erases. Off: it places a tile. */
+  holdToErase: z.boolean(),
+  /** After a touch stroke, the camera zooms so the whole stroke is in view. */
+  touchAutoZoom: z.boolean(),
+  /** The zoom each game opens at, as a multiple of fit-to-screen. */
+  zoomLevel: z.union([z.literal(1), z.literal(1.5), z.literal(2)]),
 });
 
 export const SaveBundleSchema = z
@@ -178,9 +186,29 @@ const ADD_DISPLAY_SETTINGS: SaveMigration = (save) => {
   };
 };
 
+/**
+ * Version 3 adds the input and zoom settings. Defaults match the version 2 game: drag to draw,
+ * hold to erase on, no auto-zoom, and the fit-to-screen zoom.
+ */
+const ADD_INPUT_SETTINGS: SaveMigration = (save) => {
+  const settings = save.settings;
+  if (typeof settings !== 'object' || settings === null) return save;
+  return {
+    ...save,
+    settings: {
+      drawMode: 'drag',
+      holdToErase: true,
+      touchAutoZoom: false,
+      zoomLevel: 1,
+      ...settings,
+    },
+  };
+};
+
 /** Migrations keyed by the version they upgrade from. */
 export const SAVE_MIGRATIONS: Readonly<Record<number, SaveMigration>> = {
   1: ADD_DISPLAY_SETTINGS,
+  2: ADD_INPUT_SETTINGS,
 };
 
 /**

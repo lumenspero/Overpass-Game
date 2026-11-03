@@ -2,6 +2,7 @@ import { TILE_SIZE } from '@overpass-game/render-style';
 import { describe, expect, it } from 'vitest';
 import {
   createFittedCamera,
+  fitBox,
   fitZoom,
   panCamera,
   resizeCamera,
@@ -139,5 +140,48 @@ describe('resize', () => {
     expect(next.zoom).toBeGreaterThanOrEqual(next.minZoom);
     expect(next.zoom).toBeLessThanOrEqual(next.maxZoom);
     expect(next.moved).toBe(true);
+  });
+});
+
+describe('zoom level', () => {
+  it('opens at the fit zoom at level 1, and multiplies it at 1.5 and 2', () => {
+    const fit = fitZoom(world, landscape);
+    expect(createFittedCamera(world, landscape, 1).zoom).toBeCloseTo(fit);
+    expect(createFittedCamera(world, landscape, 1.5).zoom).toBeCloseTo(
+      fit * 1.5,
+    );
+    expect(createFittedCamera(world, landscape, 2).zoom).toBeCloseTo(fit * 2);
+  });
+
+  it('keeps the zoom within the limits', () => {
+    const cam = createFittedCamera(world, landscape, 2);
+    expect(cam.zoom).toBeLessThanOrEqual(cam.maxZoom);
+    expect(cam.zoom).toBeGreaterThanOrEqual(cam.minZoom);
+  });
+});
+
+describe('fitBox', () => {
+  it('centres on the box and fills the viewport with it', () => {
+    const cam = createFittedCamera(world, landscape);
+    const box = { minX: 100, minY: 100, maxX: 300, maxY: 200 };
+    const next = fitBox(cam, world, landscape, box);
+    expect(next.moved).toBe(true);
+    expect(next.center.x).toBeCloseTo(200);
+    expect(next.center.y).toBeCloseTo(150);
+    expect(next.zoom).toBeGreaterThan(cam.zoom);
+    expect(next.zoom).toBeLessThanOrEqual(next.maxZoom);
+  });
+
+  it('treats a box smaller than a tile as one tile', () => {
+    const cam = createFittedCamera(world, landscape);
+    const point = { minX: 50, minY: 50, maxX: 50, maxY: 50 };
+    const next = fitBox(cam, world, landscape, point);
+    const tile = {
+      minX: 50,
+      minY: 50,
+      maxX: 50 + TILE_SIZE,
+      maxY: 50 + TILE_SIZE,
+    };
+    expect(next.zoom).toBeCloseTo(fitBox(cam, world, landscape, tile).zoom);
   });
 });

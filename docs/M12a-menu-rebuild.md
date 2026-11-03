@@ -1,6 +1,6 @@
 # M12a · Menu rebuild (sub-milestone)
 
-**Status: in progress.** Step 1 (main menu and carousel) is built. Step 2 (tabbed Options) is built with the settings the game already has. Step 3 is split: 3a (display and menu settings, save schema v2) is built; 3b (draw mode, hold to draw/delete, touch auto-zoom, zoom level) is next. Sub-milestone of M12 (audio), sitting beside it. Volume and soundscape controls depend on M12's audio buses, so they stay as placeholders until M12 lands.
+**Status: in progress.** Step 1 (main menu and carousel) is built. Step 2 (tabbed Options) is built with the settings the game already has. Step 3 is split: 3a (display and menu settings, save schema v2) and 3b (waypoints, hold to erase, touch auto-zoom, zoom level, save schema v3) are built. Render scale is blocked (see 3a). Sub-milestone of M12 (audio), sitting beside it. Volume and soundscape controls depend on M12's audio buses, so they stay as placeholders until M12 lands.
 
 Goal: rebuild the start menu to match the reference's layout and feel, using original art and our own wordmark. Daily challenges, leaderboards, and the Endless, Expert and Creative modes are out of scope.
 
@@ -64,6 +64,16 @@ Goal: rebuild the start menu to match the reference's layout and feel, using ori
 - Menu transitions fade the menu screens in when on. The menu reads the setting each time a screen opens.
 - Render scale is blocked. Phaser 4.2.1's game config has no render-resolution option, so the Display tab shows it disabled. The saved field is kept. Options that could work: a canvas-scaling change in the game scene, or dropping the control. Needs your decision.
 - Still disabled, for 3b: draw mode toggle, hold to draw/delete, touch auto-zoom, zoom level. Still disabled, for M12: volume and soundscape.
+
+## Step 3b notes
+
+- Save schema is now version 3. Settings gain `drawMode`, `holdToErase`, `touchAutoZoom` and `zoomLevel`. The v2 to v3 migration keeps the old behaviour: drag to draw, hold to erase on, no auto-zoom, zoom 1x.
+- Click to draw waypoints (`input/intents.ts`): on the road tool, a click sets the start, then each click lays road from the previous point. A drag still draws and ends the chain. Right-click, Esc, and any pan or zoom also end it. Esc and wheel are handled in `game-scene.ts`.
+- Hold to draw/delete: a switch, on by default. Off, a still touch places a tile instead of erasing.
+- Touch auto-zoom: after a touch stroke, the camera fits the stroke's screen extent (`fitBox` in `view/camera.ts`). Strokes shorter than 24 px are taps and do not zoom. Default is off, which keeps the old behaviour.
+- Zoom level: 1x, 1.5x or 2x the fit-to-screen zoom, applied when the camera fits. Applies from the next game.
+- Tests: `input/waypoints.test.ts`, camera zoom and `fitBox` tests, and settings and save fixtures. The waypoint and hold rules also passed a direct Node run. Vitest and a browser check are still to do.
+- Decision for you: auto-zoom is off by default, which differs from the reference (checked there). Say if it should be on by default.
 
 ## Decisions
 

@@ -111,6 +111,10 @@ describe('progress', () => {
       renderScale: 100 as const,
       antiAliasing: true,
       menuTransitions: true,
+      drawMode: 'drag' as const,
+      holdToErase: true,
+      touchAutoZoom: false,
+      zoomLevel: 1 as const,
     };
     setSavedSettings(chosen);
     expect(savedSettings()).toEqual(chosen);

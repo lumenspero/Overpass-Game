@@ -41,6 +41,8 @@ import {
 } from '@overpass-game/render-style';
 import {
   createIntentMapper,
+  finishChain,
+  setInputOptions,
   type Intent,
   type IntentMapper,
   type PointerKind,
@@ -57,6 +59,7 @@ import {
 import type { TileXY } from '../input/path.ts';
 import {
   createFittedCamera,
+  fitBox,
   type CameraState,
   panCamera,
   resizeCamera,
@@ -152,6 +155,9 @@ import {
 
 /** Roundabout ring and the two light colours. */
 const CONTROL_OUTLINE_COLOUR = 0x3a4150;
+/** A touch stroke shorter than this, in screen pixels, is a tap, and does not auto-zoom. */
+const STROKE_FIT_MIN_PX = 24;
+
 /** Speed of arrow-key panning, in screen pixels per second. */
 const PAN_KEY_PX_PER_SEC = 600;
 const LIGHT_GREEN_COLOUR = 0x5cb85c;
@@ -222,6 +228,15 @@ export class GameScene extends Phaser.Scene {
   private sim!: SimState;
   private clock!: Clock;
   private mapper!: IntentMapper;
+  /** Whether the pointer now down is a touch, and the screen extent of the stroke in progress. */
+  private downIsTouch = false;
+  private strokeFromTouch = false;
+  private strokeBox: {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  } | null = null;
   private controller!: Controller;
   private view!: CameraState;
   private mapSize!: Size;
@@ -308,6 +323,10 @@ export class GameScene extends Phaser.Scene {
     // A resumed run waits for the player to start it, so they see the board first.
     if (resumed) setPaused(this.clock, true);
     this.mapper = createIntentMapper('select');
+    setInputOptions(this.mapper, {
+      drawMode: this.settings.drawMode,
+      holdToErase: this.settings.holdToErase,
+    });
     this.controller = createController(this.sim);
     this.offerPanel = createOfferPanel(() => this.sim);
     this.topBar = createTopBar({
@@ -315,7 +334,11 @@ export class GameScene extends Phaser.Scene {
       onChoice: this.onPlayChoice,
     });
     this.mapSize = worldSize(grid.cols, grid.rows);
-    this.view = createFittedCamera(this.mapSize, this.viewport());
+    this.view = createFittedCamera(
+      this.mapSize,
+      this.viewport(),
+      this.settings.zoomLevel,
+    );
     this.openCount = -1;
     this.debugOn = false;
 
@@ -433,6 +456,7 @@ export class GameScene extends Phaser.Scene {
     // Holding Space and dragging with the left button pans. Capture stops the page from scrolling.
     this.input.keyboard?.addCapture('SPACE');
     this.input.keyboard?.on('keydown-SPACE', this.onSpaceDown);
+    this.input.keyboard?.on('keydown-ESC', this.onEscKey);
     this.input.keyboard?.on('keyup-SPACE', this.onSpaceUp);
     this.scale.on('resize', this.onResize);
     this.events.once('shutdown', this.teardown);
@@ -564,6 +588,7 @@ export class GameScene extends Phaser.Scene {
     } catch {
       // Some trackpad pointers can't be captured. Input still works without capture.
     }
+    this.downIsTouch = e.pointerType === 'touch';
     this.dispatch(pointerDown(this.mapper, sample));
   };
 
@@ -582,6 +607,8 @@ export class GameScene extends Phaser.Scene {
   private onWheel = (e: WheelEvent): void => {
     e.preventDefault();
     const lineScale = e.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 : 1;
+    // A wheel zoom or pan moves the view, so an open waypoint chain no longer lines up.
+    finishChain(this.mapper);
     this.dispatch(wheel(e.deltaY * lineScale, this.canvasPoint(e)));
   };
 
@@ -656,7 +683,12 @@ export class GameScene extends Phaser.Scene {
   };
 
   private onResize = (): void => {
-    this.view = resizeCamera(this.view, this.mapSize, this.viewport());
+    this.view = resizeCamera(
+      this.view,
+      this.mapSize,
+      this.viewport(),
+      this.settings.zoomLevel,
+    );
     this.crossingText.setX(this.scale.width / 2);
     if (this.ended) this.showEnd();
     this.applyTransform();
@@ -673,12 +705,74 @@ export class GameScene extends Phaser.Scene {
     return { x: w.x / TILE_SIZE, y: w.y / TILE_SIZE };
   };
 
+  /** Follows the screen extent of a stroke, so a finished touch stroke can auto-zoom to it. */
+  private trackStroke(intent: Intent): void {
+    if (intent.type === 'stroke-begin') {
+      this.strokeFromTouch = this.downIsTouch;
+      this.strokeBox = null;
+      this.extendStroke(intent.at);
+    } else if (intent.type === 'stroke-move') {
+      this.extendStroke(intent.at);
+    } else if (intent.type === 'stroke-end') {
+      if (intent.at) this.extendStroke(intent.at);
+      const box = this.strokeBox;
+      this.strokeBox = null;
+      if (this.settings.touchAutoZoom && this.strokeFromTouch && box) {
+        this.fitStroke(box);
+      }
+    } else if (intent.type === 'stroke-cancel') {
+      this.strokeBox = null;
+    }
+  }
+
+  private extendStroke(at: Vec2): void {
+    const b = this.strokeBox;
+    this.strokeBox = b
+      ? {
+          minX: Math.min(b.minX, at.x),
+          minY: Math.min(b.minY, at.y),
+          maxX: Math.max(b.maxX, at.x),
+          maxY: Math.max(b.maxY, at.y),
+        }
+      : { minX: at.x, minY: at.y, maxX: at.x, maxY: at.y };
+  }
+
+  /** Zooms so a stroke's screen extent fills the view. A tap is too short to zoom to. */
+  private fitStroke(screenBox: {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  }): void {
+    const span = Math.hypot(
+      screenBox.maxX - screenBox.minX,
+      screenBox.maxY - screenBox.minY,
+    );
+    if (span < STROKE_FIT_MIN_PX) return;
+    const a = screenToWorld(this.view, this.viewport(), {
+      x: screenBox.minX,
+      y: screenBox.minY,
+    });
+    const b = screenToWorld(this.view, this.viewport(), {
+      x: screenBox.maxX,
+      y: screenBox.maxY,
+    });
+    this.view = fitBox(this.view, this.mapSize, this.viewport(), {
+      minX: Math.min(a.x, b.x),
+      minY: Math.min(a.y, b.y),
+      maxX: Math.max(a.x, b.x),
+      maxY: Math.max(a.y, b.y),
+    });
+    this.applyTransform();
+  }
+
   private dispatch(intents: Intent[]): void {
     for (const intent of intents) {
       // Once the game is over the board is frozen. Only the view can still move.
       if (this.sim.over && intent.type !== 'pan' && intent.type !== 'zoom') {
         continue;
       }
+      this.trackStroke(intent);
       if (intent.type === 'pan') {
         panCamera(this.view, this.mapSize, intent.dx, intent.dy);
       } else if (intent.type === 'zoom') {
@@ -1326,6 +1420,9 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Esc ends an open waypoint chain. */
+  private onEscKey = (): void => finishChain(this.mapper);
+
   private onSpaceDown = (): void => {
     this.mapper.panHeld = true;
   };
@@ -1489,6 +1586,7 @@ export class GameScene extends Phaser.Scene {
     this.endPanel = null;
     this.input.keyboard?.off('keydown', this.onKey);
     this.input.keyboard?.off('keydown-SPACE', this.onSpaceDown);
+    this.input.keyboard?.off('keydown-ESC', this.onEscKey);
     this.input.keyboard?.off('keyup-SPACE', this.onSpaceUp);
     this.panel?.destroy();
     this.panel = null;

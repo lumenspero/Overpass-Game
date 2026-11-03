@@ -13,6 +13,10 @@ import { LONG_PRESS_MS, TOUCH_SLOP_PX, WHEEL_ZOOM_RATE } from './config.ts';
  * - The erase tool turns every draw stroke into an erase stroke.
  * - The bridge and tunnel tools turn a draw stroke into a crossing: built on release, from
  *   along the path the drag took. Nothing is laid during the drag; the path is shown translucent.
+ * - Waypoints (road tool, draw mode 'waypoints'): a click adds a point, and each click after the
+ *   first lays road from the previous point. A drag still draws, and ends the chain. Right button,
+ *   Esc (via finishChain), and any pan or zoom also end the chain.
+ * - Hold to erase (on by default): a touch held still past LONG_PRESS_MS erases. Off, it is a tap.
  */
 
 export type PointerKind = 'mouse' | 'touch' | 'pen';
@@ -77,20 +81,70 @@ type Mode =
   /** A gesture ended with fingers still down; ignore them until all lift. */
   | { kind: 'drain' };
 
+/** 'drag' draws as the pointer moves. 'waypoints' lays road between clicks. */
+export type DrawMode = 'drag' | 'waypoints';
+
 export interface IntentMapper {
   tool: Tool;
   pointers: Map<number, TrackedPointer>;
   mode: Mode;
   /** Space is held: a left drag pans instead of drawing. */
   panHeld: boolean;
+  drawMode: DrawMode;
+  /** Off: a touch held still places a tile instead of erasing. */
+  holdToErase: boolean;
+  /** Where the last waypoint click was, while a waypoint chain is open. */
+  chainStart: Vec2 | null;
 }
 
 export function createIntentMapper(tool: Tool = 'draw'): IntentMapper {
-  return { tool, pointers: new Map(), mode: { kind: 'idle' }, panHeld: false };
+  return {
+    tool,
+    pointers: new Map(),
+    mode: { kind: 'idle' },
+    panHeld: false,
+    drawMode: 'drag',
+    holdToErase: true,
+    chainStart: null,
+  };
 }
 
 export function setTool(mapper: IntentMapper, tool: Tool): void {
   mapper.tool = tool;
+}
+
+/** Sets the input options. Changing the draw mode ends any open waypoint chain. */
+export function setInputOptions(
+  mapper: IntentMapper,
+  options: { drawMode?: DrawMode; holdToErase?: boolean },
+): void {
+  if (options.drawMode !== undefined && options.drawMode !== mapper.drawMode) {
+    mapper.chainStart = null;
+  }
+  mapper.drawMode = options.drawMode ?? mapper.drawMode;
+  mapper.holdToErase = options.holdToErase ?? mapper.holdToErase;
+}
+
+/** Ends the open waypoint chain, so the next click starts a new road. Esc and pans call this. */
+export function finishChain(mapper: IntentMapper): void {
+  mapper.chainStart = null;
+}
+
+/** The road tool in waypoint mode: clicks lay road, instead of a press drawing as it moves. */
+function isWaypointTool(mapper: IntentMapper): boolean {
+  return mapper.drawMode === 'waypoints' && mapper.tool === 'draw';
+}
+
+/** One waypoint click. The first click only sets the start; each later one lays road to it. */
+function waypointClick(mapper: IntentMapper, at: Vec2): Intent[] {
+  const from = mapper.chainStart;
+  mapper.chainStart = at;
+  if (!from) return [];
+  return [
+    { type: 'stroke-begin', mode: strokeMode(mapper, 'draw'), at: from },
+    { type: 'stroke-move', at },
+    { type: 'stroke-end', at },
+  ];
 }
 
 function strokeMode(mapper: IntentMapper, wanted: StrokeMode): StrokeMode {
@@ -161,6 +215,16 @@ export function pointerDown(mapper: IntentMapper, p: PointerSample): Intent[] {
     mapper.mode = { kind: 'mouse-pan', id: p.id };
     return out;
   }
+  if (isWaypointTool(mapper)) {
+    if (p.button === 2) {
+      mapper.chainStart = null;
+      return out;
+    }
+    if (p.button === 0) {
+      mapper.mode = { kind: 'pending', id: p.id };
+      return out;
+    }
+  }
   const wanted: StrokeMode =
     p.button === 2 || p.button === 5 ? 'erase' : 'draw';
   if (p.button !== 0 && p.button !== 2 && p.button !== 5) return out;
@@ -181,6 +245,8 @@ export function pointerMove(mapper: IntentMapper, p: PointerSample): Intent[] {
     case 'pending': {
       if (mode.id !== p.id) return [];
       if (distance(tracked.start, at) <= TOUCH_SLOP_PX) return [];
+      // A drag draws instead, so the chain it would continue no longer applies.
+      mapper.chainStart = null;
       mapper.mode = { kind: 'stroke', id: p.id };
       return [
         {
@@ -194,12 +260,14 @@ export function pointerMove(mapper: IntentMapper, p: PointerSample): Intent[] {
     case 'stroke':
       return mode.id === p.id ? [{ type: 'stroke-move', at }] : [];
     case 'mouse-pan':
+      mapper.chainStart = null;
       return mode.id === p.id
         ? [{ type: 'pan', dx: at.x - prev.x, dy: at.y - prev.y }]
         : [];
     case 'gesture': {
       const pair = touchPair(mapper);
       if (!pair) return [];
+      mapper.chainStart = null;
       const c = centroid(pair[0], pair[1]);
       const d = distance(pair[0], pair[1]);
       const out: Intent[] = [];
@@ -228,6 +296,11 @@ export function pointerUp(mapper: IntentMapper, p: PointerSample): Intent[] {
   switch (mode.kind) {
     case 'pending':
       if (mode.id === p.id) {
+        if (isWaypointTool(mapper)) {
+          out = waypointClick(mapper, tracked.start);
+          mapper.mode = { kind: 'idle' };
+          break;
+        }
         // A tap: place one tile where the finger went down.
         out = [
           {
@@ -289,7 +362,7 @@ export function pointerCancel(
 /** Call every frame so a held, still touch can become an erase stroke. */
 export function updateTimers(mapper: IntentMapper, now: number): Intent[] {
   const mode = mapper.mode;
-  if (mode.kind !== 'pending') return [];
+  if (mode.kind !== 'pending' || !mapper.holdToErase) return [];
   const tracked = mapper.pointers.get(mode.id);
   if (!tracked || now - tracked.downTime < LONG_PRESS_MS) return [];
   mapper.mode = { kind: 'stroke', id: mode.id };
