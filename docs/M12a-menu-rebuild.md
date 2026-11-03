@@ -51,7 +51,7 @@ Goal: rebuild the start menu to match the reference's layout and feel, using ori
 
 ## Step 2 notes
 
-- Built: `ui/options-screen.ts`, which replaces the old settings modal (`settings-screen.ts`, to be deleted). The menu's save section moved to Options > Privacy.
+- Built: `ui/options-screen.ts`, which replaces the old settings modal (`settings-screen.ts`, now deleted; nothing imports it). The menu's save section moved to Options > Privacy.
 - Real now: motorway guide, night mode, colourblind mode, fullscreen (browser API; the host may refuse it).
 - Shown disabled, for step 3 or M12: draw mode toggle, hold to draw/delete, touch auto-zoom, zoom level, menu transitions, render scale, anti-aliasing, volume and soundscape (M12), tutorial button.
 - Controls lists the controls from `input/intents.ts` and the keyboard handlers in `game-scene.ts`.
