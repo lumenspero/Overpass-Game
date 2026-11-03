@@ -11,7 +11,7 @@ import { MapFormatError, parseWith } from './errors.ts';
 export const SAVE_FORMAT = 'overpass-game-save' as const;
 
 /** Version of the save format. Bump it with a migration whenever the shape changes. */
-export const SAVE_SCHEMA_VERSION = 4 as const;
+export const SAVE_SCHEMA_VERSION = 5 as const;
 
 /** Content hashes are eight lower-case hex digits (see map-compiler's contentHash). */
 const HASH = /^[0-9a-f]{8}$/;
@@ -131,6 +131,10 @@ export const SettingsSaveSchema = z.object({
   touchAutoZoom: z.boolean(),
   /** The zoom each game opens at, as a multiple of fit-to-screen. */
   zoomLevel: z.union([z.literal(1), z.literal(1.5), z.literal(2)]),
+  /** Volume of each bus, from 0 (silent) to 10. */
+  musicVolume: z.number().int().min(0).max(10),
+  effectsVolume: z.number().int().min(0).max(10),
+  ambienceVolume: z.number().int().min(0).max(10),
 });
 
 export const SaveBundleSchema = z
@@ -212,11 +216,30 @@ const DROP_RENDER_SCALE: SaveMigration = (save) => {
   return { ...save, settings: next };
 };
 
+/**
+ * Version 5 adds the volume levels for music, effects and the soundscape. The defaults are the
+ * first-draft mix: music a little under the effects, and the soundscape quieter still.
+ */
+const ADD_AUDIO_SETTINGS: SaveMigration = (save) => {
+  const settings = save.settings;
+  if (typeof settings !== 'object' || settings === null) return save;
+  return {
+    ...save,
+    settings: {
+      musicVolume: 7,
+      effectsVolume: 8,
+      ambienceVolume: 5,
+      ...settings,
+    },
+  };
+};
+
 /** Migrations keyed by the version they upgrade from. */
 export const SAVE_MIGRATIONS: Readonly<Record<number, SaveMigration>> = {
   1: ADD_DISPLAY_SETTINGS,
   2: ADD_INPUT_SETTINGS,
   3: DROP_RENDER_SCALE,
+  4: ADD_AUDIO_SETTINGS,
 };
 
 /**

@@ -1,4 +1,5 @@
 import type { BestScores } from '@overpass-game/sim';
+import type { SoundEvent } from '../audio/catalog.ts';
 import type { ThemeMode } from '@overpass-game/render-style';
 import { DEV_FLAGS } from '../dev-flags.ts';
 import { CAMPAIGN_MAPS } from '../game/campaign-maps.ts';
@@ -29,6 +30,8 @@ export interface MenuOptions {
   menuTransitions: () => boolean;
   onPick: (choice: MenuChoice) => void;
   onSettings: () => void;
+  /** Plays a menu sound. Optional, so the menu works without audio. */
+  sound?: (event: SoundEvent) => void;
 }
 
 export interface Menu {
@@ -160,7 +163,12 @@ export function showMenu(options: MenuOptions): Menu {
       cardSubtitle(row),
     );
     card.append(canvas, name, sub);
-    card.addEventListener('click', () => choose(index, 'smooth'));
+    card.addEventListener('click', () => {
+      if (index !== selected) {
+        options.sound?.(index > selected ? 'menu.next' : 'menu.previous');
+      }
+      choose(index, 'smooth');
+    });
     track.append(card);
     return { card, canvas, row };
   });
@@ -293,12 +301,18 @@ export function showMenu(options: MenuOptions): Menu {
     choose(selected, 'auto');
   }
 
+  /** Moves the selection one card from a key press, with the matching menu sound. */
+  function move(delta: number): void {
+    const next = stepIndex(selected, delta, rows.length);
+    if (next === selected) return;
+    options.sound?.(delta > 0 ? 'menu.next' : 'menu.previous');
+    choose(next, 'smooth');
+  }
+
   const onKey = (e: KeyboardEvent): void => {
     if (select.style.display === 'none') return;
-    if (e.key === 'ArrowLeft')
-      choose(stepIndex(selected, -1, rows.length), 'smooth');
-    else if (e.key === 'ArrowRight')
-      choose(stepIndex(selected, 1, rows.length), 'smooth');
+    if (e.key === 'ArrowLeft') move(-1);
+    else if (e.key === 'ArrowRight') move(1);
     else if (e.key === 'Escape') showMain();
   };
   document.addEventListener('keydown', onKey);

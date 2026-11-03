@@ -4,6 +4,7 @@ import {
   MapFormatError,
   migrateSave,
   parseSaveBundle,
+  SAVE_MIGRATIONS,
   SAVE_SCHEMA_VERSION,
   SIM_STATE_KEYS,
 } from '../src/index.ts';
@@ -98,6 +99,9 @@ describe('save bundle', () => {
             holdToErase: true,
             touchAutoZoom: false,
             zoomLevel: 1,
+            musicVolume: 7,
+            effectsVolume: 8,
+            ambienceVolume: 5,
           },
         }),
       ),
@@ -126,7 +130,8 @@ describe('save bundle', () => {
     const migrations = {
       0: (save: Record<string, unknown>) => ({ ...save, settings: null }),
     };
-    const parsed = parseSaveBundle(old, migrations);
+    // Version 0 gets the test's own step; the rest of the chain is the real one.
+    const parsed = parseSaveBundle(old, { ...SAVE_MIGRATIONS, ...migrations });
     expect(parsed.schemaVersion).toBe(SAVE_SCHEMA_VERSION);
     expect(parsed.settings).toBeNull();
     expect(() => parseSaveBundle(old)).toThrow(/no migration from 0/);
@@ -155,7 +160,7 @@ describe('save migration to version 2', () => {
       runs: {},
     };
     const parsed = parseSaveBundle(v1);
-    expect(parsed.schemaVersion).toBe(4);
+    expect(parsed.schemaVersion).toBe(SAVE_SCHEMA_VERSION);
     expect(parsed.settings).toEqual({
       motorwayGuide: false,
       theme: 'dark',
@@ -166,6 +171,9 @@ describe('save migration to version 2', () => {
       holdToErase: true,
       touchAutoZoom: false,
       zoomLevel: 1,
+      musicVolume: 7,
+      effectsVolume: 8,
+      ambienceVolume: 5,
     });
   });
 
@@ -178,5 +186,41 @@ describe('save migration to version 2', () => {
       runs: {},
     };
     expect(parseSaveBundle(v1).settings).toBeNull();
+  });
+});
+
+describe('save migration to version 5', () => {
+  it('adds the volume levels to a version 4 save', () => {
+    const v4 = {
+      format: 'overpass-game-save',
+      schemaVersion: 4,
+      settings: {
+        motorwayGuide: true,
+        theme: 'light',
+        buildingSymbols: false,
+        antiAliasing: true,
+        menuTransitions: true,
+        drawMode: 'drag',
+        holdToErase: true,
+        touchAutoZoom: false,
+        zoomLevel: 1,
+      },
+      best: {},
+      runs: {},
+    };
+    expect(parseSaveBundle(v4).settings).toEqual({
+      motorwayGuide: true,
+      theme: 'light',
+      buildingSymbols: false,
+      antiAliasing: true,
+      menuTransitions: true,
+      drawMode: 'drag',
+      holdToErase: true,
+      touchAutoZoom: false,
+      zoomLevel: 1,
+      musicVolume: 7,
+      effectsVolume: 8,
+      ambienceVolume: 5,
+    });
   });
 });

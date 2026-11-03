@@ -32,6 +32,9 @@ function sampleBundle(): SaveBundle {
       holdToErase: true,
       touchAutoZoom: false,
       zoomLevel: 1,
+      musicVolume: 7,
+      effectsVolume: 8,
+      ambienceVolume: 5,
     },
     best: { [KEY]: 12 },
     runs: {

@@ -187,7 +187,7 @@ Elevated links for faster travel between two points on the ground network. `appr
 - **Dark mode:** light by default. Toggled with N or in Settings. `approximated`
 - **Building symbols:** off by default. When on, each building colour draws one symbol: circle, square, triangle, then diamond, in the building palette's order, repeating past four colours. The symbol is black or white, whichever has the higher contrast with the colour. Houses and destinations both carry it. Cars and pins are not symbol-coded yet. `approximated`
 - **Settings screen:** reached from the main menu only. It is not in play; the G and N keys still toggle the guide and dark mode during a game.
-- **Storage:** settings are saved with the rest of the progress (see Persistence). No audio setting until M12.
+- **Storage:** settings are saved with the rest of the progress (see Persistence). Audio levels (music, effects and soundscape, 0 to 10) are saved too.
 
 ### Persistence
 

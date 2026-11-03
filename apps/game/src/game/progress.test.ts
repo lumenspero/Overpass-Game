@@ -114,6 +114,9 @@ describe('progress', () => {
       holdToErase: true,
       touchAutoZoom: false,
       zoomLevel: 1 as const,
+      musicVolume: 7,
+      effectsVolume: 8,
+      ambienceVolume: 5,
     };
     setSavedSettings(chosen);
     expect(savedSettings()).toEqual(chosen);

@@ -11,8 +11,11 @@ import {
   type ZoomLevel,
   toggleMenuTransitions,
   type GameSettings,
+  setVolume,
 } from '../game/settings.ts';
+import { MAX_LEVEL } from '../audio/levels.ts';
 import { buildSavePanel } from './save-panel.ts';
+import { soundCreditLines } from '../audio/catalog.ts';
 import { showTutorial, type TutorialScreen } from './tutorial.ts';
 
 /**
@@ -113,14 +116,26 @@ function switchButton(on: boolean, onClick: () => void): HTMLButtonElement {
 }
 
 /** A setting that a later step adds: shown, but disabled. */
-function pendingRow(label: string, note: string): HTMLElement {
-  const b = button(
-    'Soon',
-    `width:auto;min-width:72px;min-height:40px;font:16px sans-serif;border:0;border-radius:4px;background:${OFF};color:#eee;opacity:0.4`,
-    () => undefined,
-  );
-  b.disabled = true;
-  return row(label, b, note);
+const STEP_CSS =
+  'width:44px;height:44px;padding:0;border:0;border-radius:4px;font:600 20px sans-serif;cursor:pointer;background:#3b4654;color:#eee;';
+
+/** A row with minus and plus buttons for a level from 0 to MAX_LEVEL. */
+function levelRow(
+  label: string,
+  level: number,
+  change: (next: number) => void,
+  note?: string,
+): HTMLElement {
+  const minus = button('−', STEP_CSS, () => change(level - 1));
+  const plus = button('+', STEP_CSS, () => change(level + 1));
+  minus.disabled = level <= 0;
+  plus.disabled = level >= MAX_LEVEL;
+  minus.setAttribute('aria-label', `Lower ${label}`);
+  plus.setAttribute('aria-label', `Raise ${label}`);
+  const value = el('span', 'min-width:2.5ch;text-align:center', String(level));
+  const group = el('div', 'display:flex;gap:8px;align-items:center');
+  group.append(minus, value, plus);
+  return row(label, group, note);
 }
 
 function heading(text: string): HTMLElement {
@@ -271,8 +286,18 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
         break;
       case 'audio':
         page.append(
-          pendingRow('Volume', 'Needs the audio manager (M12).'),
-          pendingRow('Soundscape', 'Needs the audio manager (M12).'),
+          levelRow('Music', s.musicVolume, (level) =>
+            change(setVolume(deps.getSettings(), 'music', level)),
+          ),
+          levelRow('Effects', s.effectsVolume, (level) =>
+            change(setVolume(deps.getSettings(), 'effects', level)),
+          ),
+          levelRow(
+            'Soundscape',
+            s.ambienceVolume,
+            (level) => change(setVolume(deps.getSettings(), 'ambience', level)),
+            'Ambience sounds arrive with the soundscape stems.',
+          ),
           row(
             'Menu transitions',
             switchButton(s.menuTransitions, () =>
@@ -352,9 +377,7 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
           heading('Team'),
           paragraph('Team credits to be added.'),
           heading('Sounds'),
-          paragraph(
-            'Sound credits will be listed here once audio is added (M12).',
-          ),
+          ...soundCreditLines().map((line) => paragraph(line)),
         );
         break;
       case 'tutorial':

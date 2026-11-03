@@ -13,10 +13,16 @@ import {
 } from './game/progress.ts';
 import { setRunActions } from './game/run-actions.ts';
 import { saveActiveRun, setPendingResume } from './game/run-resume.ts';
-import { currentSettings, saveSettings } from './game/settings.ts';
+import {
+  currentSettings,
+  saveSettings,
+  type GameSettings,
+} from './game/settings.ts';
 import { setActiveMap } from './game/test-map.ts';
 import { showMenu, type Menu, type MenuChoice } from './ui/menu.ts';
 import { showOptions, type OptionsScreen } from './ui/options-screen.ts';
+import { AudioManager, type AudioLevels } from './audio/audio-manager.ts';
+import { MUSIC_TRACKS } from './audio/catalog.ts';
 
 const root = document.querySelector<HTMLDivElement>('#app');
 if (!root) throw new Error('#app element not found');
@@ -25,6 +31,19 @@ let game: Phaser.Game | null = null;
 let menu: Menu | null = null;
 let optionsScreen: OptionsScreen | null = null;
 let loading = false;
+
+function levelsOf(settings: GameSettings): AudioLevels {
+  return {
+    music: settings.musicVolume,
+    effects: settings.effectsVolume,
+    ambience: settings.ambienceVolume,
+  };
+}
+
+const audio = new AudioManager(
+  import.meta.env.BASE_URL,
+  levelsOf(currentSettings()),
+);
 
 /**
  * Removes the overlays a run leaves on the page. The scene tears them down on shutdown, but
@@ -40,6 +59,7 @@ function clearRunOverlays(): void {
 function startGame(): void {
   game?.destroy(true);
   clearRunOverlays();
+  audio.playEffect('game.open');
   game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: root,
@@ -76,7 +96,10 @@ function openOptions(): void {
   if (optionsScreen) return;
   optionsScreen = showOptions({
     getSettings: currentSettings,
-    onChange: saveSettings,
+    onChange: (next) => {
+      saveSettings(next);
+      audio.setLevels(levelsOf(next));
+    },
     onClose: () => {
       optionsScreen?.destroy();
       optionsScreen = null;
@@ -91,6 +114,9 @@ function openOptions(): void {
  */
 async function playChoice(choice: MenuChoice): Promise<void> {
   if (loading) return;
+  if (choice.kind === 'campaign' && !choice.resume) {
+    audio.playEffect('menu.level-select');
+  }
   loading = true;
   let resume: SimState | null = null;
   try {
@@ -145,7 +171,9 @@ function showMainMenu(): void {
     menuTransitions: () => currentSettings().menuTransitions,
     onPick: (choice) => void playChoice(choice),
     onSettings: openOptions,
+    sound: (event) => audio.playEffect(event),
   });
+  audio.playMusic(MUSIC_TRACKS[0]);
 }
 
 // The end-of-run screen goes back to the menu, or plays the next map, through these.
@@ -158,6 +186,11 @@ setRunActions({
 // if browser storage is unavailable the game starts from memory and the menu says so.
 // `root.dataset.booted` marks the app as up: the menu is on screen, or the game has started.
 const ready = initProgress();
+void ready.then(() => audio.setLevels(levelsOf(currentSettings())));
+// Browsers keep audio off until the first tap or key press; the first one unlocks it.
+for (const type of ['pointerdown', 'keydown'] as const) {
+  document.addEventListener(type, () => audio.unlock());
+}
 const queryMap = mapIdFromSearch(window.location.search);
 if (queryMap === null) {
   void ready.then(() => {
