@@ -7,7 +7,6 @@ import type { StorageStatus } from '../game/progress.ts';
 import { clampIndex, startIndex, stepIndex } from './carousel-model.ts';
 import { campaignRows, type MenuRow } from './menu-model.ts';
 import { drawThumbnail, THUMB_SIZE } from './map-thumbnail.ts';
-import { buildSavePanel } from './save-panel.ts';
 
 /**
  * The start menu. The main screen has Play and Options. Play opens the map select, a carousel of
@@ -28,8 +27,6 @@ export interface MenuOptions {
   theme: ThemeMode;
   onPick: (choice: MenuChoice) => void;
   onSettings: () => void;
-  /** Called after an import replaces the progress, so the menu is built again to show it. */
-  onImported: () => void;
 }
 
 export interface Menu {
@@ -88,8 +85,7 @@ interface CardView {
 }
 
 export function showMenu(options: MenuOptions): Menu {
-  const { best, savedWeeks, storage, theme, onPick, onSettings, onImported } =
-    options;
+  const { best, savedWeeks, storage, theme, onPick, onSettings } = options;
   const rows = campaignRows(CAMPAIGN_MAPS, best, savedWeeks, {
     showAll: DEV_FLAGS.showAllMaps,
   });
@@ -100,7 +96,7 @@ export function showMenu(options: MenuOptions): Menu {
   );
   root.id = 'menu';
 
-  // Main screen: the wordmark, Play, Options, and the save section until it moves to Options.
+  // Main screen: the wordmark, Play and Options.
   const main = el(
     'div',
     'position:absolute;inset:0;overflow:auto;padding:16px;box-sizing:border-box',
@@ -117,7 +113,7 @@ export function showMenu(options: MenuOptions): Menu {
   }
   const playMain = button('Play', '', () => showSelect());
   const optionsMain = button('Options', SECONDARY_CSS, () => onSettings());
-  mainInner.append(playMain, optionsMain, buildSavePanel(onImported));
+  mainInner.append(playMain, optionsMain);
   main.append(mainInner);
 
   // Select screen: back arrow, the carousel, and the actions for the selected card.

@@ -1,6 +1,6 @@
 # M12a · Menu rebuild (sub-milestone)
 
-**Status: in progress.** Step 1 (main menu and carousel) is built; Options tabs are next. Sub-milestone of M12 (audio), sitting beside it. Volume and soundscape controls depend on M12's audio buses, so they stay as placeholders until M12 lands.
+**Status: in progress.** Step 1 (main menu and carousel) is built. Step 2 (tabbed Options) is built with the settings the game already has. Step 3 adds the new settings, with their schema migration. Sub-milestone of M12 (audio), sitting beside it. Volume and soundscape controls depend on M12's audio buses, so they stay as placeholders until M12 lands.
 
 Goal: rebuild the start menu to match the reference's layout and feel, using original art and our own wordmark. Daily challenges, leaderboards, and the Endless, Expert and Creative modes are out of scope.
 
@@ -17,7 +17,7 @@ Goal: rebuild the start menu to match the reference's layout and feel, using ori
 
 - [x] **Main menu:** our own wordmark, Play and Options. No Exit button on the web build.
 - [x] **Map select as a carousel:** horizontal cards, each with a round thumbnail drawn from the compiled map, the map name, best score, a short description, and a locked state. The selected card is centred and highlighted, with a Play button below. Keeps the unlock rules, resume and best scores from M10 and M11.
-- [ ] **Options as tabs:** Game, Audio & Video, Display, Language, Controls, Privacy, Credits, with a back arrow top left.
+- [x] **Options as tabs:** Game, Audio & Video, Display, Language, Controls, Privacy, Credits, with a back arrow top left.
   - [ ] **Game:** motorway guide (G), touch auto-zoom, zoom level, hold to draw/delete, draw mode toggle (click-to-draw alongside hold-to-draw).
   - [ ] **Audio & Video:** Volume and Soundscape (music, effects and ambience buses, after M12's audio manager), Menu Transitions (on/off), Night Mode (dark mode), Colorblind Mode (building symbols).
   - [ ] **Display:** Fullscreen (on/off, via the browser fullscreen API, which needs a tap or click), Render scale (the reference's Resolution, since a browser can't set a screen resolution; changes the canvas size only, not the sim), Anti-aliasing (levels to confirm; the renderer reads this at boot, so a change takes effect after a reload).
@@ -48,6 +48,14 @@ Goal: rebuild the start menu to match the reference's layout and feel, using ori
 - Test maps: Los Angeles is in the campaign list after Tulsa, from the Studio export. `apps/game/src/dev-flags.ts` has `showAllMaps`, which is on in dev so every card opens for layout checks. It is off in production builds.
 - Checked: `tsc --noEmit` passes, Prettier and ESLint pass on the changed files, and the carousel rules pass a direct run.
 - Not yet checked: the Vitest suites (the sandbox lacks the rolldown native binding), and the layout and touch behaviour in a browser.
+
+## Step 2 notes
+
+- Built: `ui/options-screen.ts`, which replaces the old settings modal (`settings-screen.ts`, to be deleted). The menu's save section moved to Options > Privacy.
+- Real now: motorway guide, night mode, colourblind mode, fullscreen (browser API; the host may refuse it).
+- Shown disabled, for step 3 or M12: draw mode toggle, hold to draw/delete, touch auto-zoom, zoom level, menu transitions, render scale, anti-aliasing, volume and soundscape (M12), tutorial button.
+- Controls lists the controls from `input/intents.ts` and the keyboard handlers in `game-scene.ts`.
+- Credits has placeholders for team names and sound credits.
 
 ## Decisions
 

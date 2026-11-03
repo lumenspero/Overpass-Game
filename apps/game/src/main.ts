@@ -16,14 +16,14 @@ import { saveActiveRun, setPendingResume } from './game/run-resume.ts';
 import { currentSettings, saveSettings } from './game/settings.ts';
 import { setActiveMap } from './game/test-map.ts';
 import { showMenu, type Menu, type MenuChoice } from './ui/menu.ts';
-import { showSettings, type SettingsScreen } from './ui/settings-screen.ts';
+import { showOptions, type OptionsScreen } from './ui/options-screen.ts';
 
 const root = document.querySelector<HTMLDivElement>('#app');
 if (!root) throw new Error('#app element not found');
 
 let game: Phaser.Game | null = null;
 let menu: Menu | null = null;
-let settingsScreen: SettingsScreen | null = null;
+let optionsScreen: OptionsScreen | null = null;
 let loading = false;
 
 /**
@@ -69,12 +69,17 @@ async function startFromQuery(id: string): Promise<void> {
   startGame();
 }
 
-/** Opens the settings from the menu. Changes are saved, and kept for the game that starts next. */
-function openMenuSettings(): void {
-  if (settingsScreen) return;
-  settingsScreen = showSettings(currentSettings, saveSettings, () => {
-    settingsScreen?.destroy();
-    settingsScreen = null;
+/** Opens Options from the menu. Changes are saved, and kept for the game that starts next. */
+function openOptions(): void {
+  if (optionsScreen) return;
+  optionsScreen = showOptions({
+    getSettings: currentSettings,
+    onChange: saveSettings,
+    onClose: () => {
+      optionsScreen?.destroy();
+      optionsScreen = null;
+    },
+    onImported: showMainMenu,
   });
 }
 
@@ -136,8 +141,7 @@ function showMainMenu(): void {
     storage: storageStatus(),
     theme: currentSettings().theme,
     onPick: (choice) => void playChoice(choice),
-    onSettings: openMenuSettings,
-    onImported: showMainMenu,
+    onSettings: openOptions,
   });
 }
 
