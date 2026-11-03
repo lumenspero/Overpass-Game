@@ -108,6 +108,9 @@ describe('progress', () => {
       motorwayGuide: false,
       theme: 'dark' as const,
       buildingSymbols: true,
+      renderScale: 100 as const,
+      antiAliasing: true,
+      menuTransitions: true,
     };
     setSavedSettings(chosen);
     expect(savedSettings()).toEqual(chosen);

@@ -92,6 +92,9 @@ describe('save bundle', () => {
             motorwayGuide: true,
             theme: 'blue',
             buildingSymbols: false,
+            renderScale: 100,
+            antiAliasing: true,
+            menuTransitions: true,
           },
         }),
       ),
@@ -136,5 +139,38 @@ describe('sim state keys', () => {
   it('names every key the sim state has, so a save cannot lose one', () => {
     const simKeys = Object.keys(createSim({ seed: 1, grid: createGrid(2, 2) }));
     expect([...SIM_STATE_KEYS].sort()).toEqual([...simKeys].sort());
+  });
+});
+
+describe('save migration to version 2', () => {
+  it('adds the display and menu settings with the version 1 defaults', () => {
+    const v1 = {
+      format: 'overpass-game-save',
+      schemaVersion: 1,
+      settings: { motorwayGuide: false, theme: 'dark', buildingSymbols: true },
+      best: {},
+      runs: {},
+    };
+    const parsed = parseSaveBundle(v1);
+    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.settings).toEqual({
+      motorwayGuide: false,
+      theme: 'dark',
+      buildingSymbols: true,
+      renderScale: 100,
+      antiAliasing: true,
+      menuTransitions: true,
+    });
+  });
+
+  it('keeps a null settings block null', () => {
+    const v1 = {
+      format: 'overpass-game-save',
+      schemaVersion: 1,
+      settings: null,
+      best: {},
+      runs: {},
+    };
+    expect(parseSaveBundle(v1).settings).toBeNull();
   });
 });

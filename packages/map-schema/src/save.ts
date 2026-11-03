@@ -11,7 +11,7 @@ import { MapFormatError, parseWith } from './errors.ts';
 export const SAVE_FORMAT = 'overpass-game-save' as const;
 
 /** Version of the save format. Bump it with a migration whenever the shape changes. */
-export const SAVE_SCHEMA_VERSION = 1 as const;
+export const SAVE_SCHEMA_VERSION = 2 as const;
 
 /** Content hashes are eight lower-case hex digits (see map-compiler's contentHash). */
 const HASH = /^[0-9a-f]{8}$/;
@@ -119,6 +119,12 @@ export const SettingsSaveSchema = z.object({
   motorwayGuide: z.boolean(),
   theme: z.enum(['light', 'dark']),
   buildingSymbols: z.boolean(),
+  /** The canvas resolution as a percentage of the screen's pixels. Applies from the next game. */
+  renderScale: z.union([z.literal(75), z.literal(100), z.literal(150)]),
+  /** Smooths the edges of drawn shapes. Applies from the next game. */
+  antiAliasing: z.boolean(),
+  /** Fades the menu screens in and out. */
+  menuTransitions: z.boolean(),
 });
 
 export const SaveBundleSchema = z
@@ -154,8 +160,28 @@ export type SaveMigration = (
   save: Record<string, unknown>,
 ) => Record<string, unknown>;
 
-/** Migrations keyed by the version they upgrade from. None are needed before version 2. */
-export const SAVE_MIGRATIONS: Readonly<Record<number, SaveMigration>> = {};
+/**
+ * Version 2 adds the display and menu settings. A version 1 save gets the defaults that match the
+ * version 1 game, so it plays the same until the player changes them.
+ */
+const ADD_DISPLAY_SETTINGS: SaveMigration = (save) => {
+  const settings = save.settings;
+  if (typeof settings !== 'object' || settings === null) return save;
+  return {
+    ...save,
+    settings: {
+      renderScale: 100,
+      antiAliasing: true,
+      menuTransitions: true,
+      ...settings,
+    },
+  };
+};
+
+/** Migrations keyed by the version they upgrade from. */
+export const SAVE_MIGRATIONS: Readonly<Record<number, SaveMigration>> = {
+  1: ADD_DISPLAY_SETTINGS,
+};
 
 /**
  * Brings a save to the current version. A save from a newer version is refused, since guessing

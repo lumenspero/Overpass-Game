@@ -22,7 +22,14 @@ function sampleBundle(): SaveBundle {
   return {
     format: SAVE_FORMAT,
     schemaVersion: SAVE_SCHEMA_VERSION,
-    settings: { motorwayGuide: false, theme: 'dark', buildingSymbols: true },
+    settings: {
+      motorwayGuide: false,
+      theme: 'dark',
+      buildingSymbols: true,
+      renderScale: 100,
+      antiAliasing: true,
+      menuTransitions: true,
+    },
     best: { [KEY]: 12 },
     runs: {
       [KEY]: {

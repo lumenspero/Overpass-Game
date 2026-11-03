@@ -1,6 +1,6 @@
 # M12a · Menu rebuild (sub-milestone)
 
-**Status: in progress.** Step 1 (main menu and carousel) is built. Step 2 (tabbed Options) is built with the settings the game already has. Step 3 adds the new settings, with their schema migration. Sub-milestone of M12 (audio), sitting beside it. Volume and soundscape controls depend on M12's audio buses, so they stay as placeholders until M12 lands.
+**Status: in progress.** Step 1 (main menu and carousel) is built. Step 2 (tabbed Options) is built with the settings the game already has. Step 3 is split: 3a (display and menu settings, save schema v2) is built; 3b (draw mode, hold to draw/delete, touch auto-zoom, zoom level) is next. Sub-milestone of M12 (audio), sitting beside it. Volume and soundscape controls depend on M12's audio buses, so they stay as placeholders until M12 lands.
 
 Goal: rebuild the start menu to match the reference's layout and feel, using original art and our own wordmark. Daily challenges, leaderboards, and the Endless, Expert and Creative modes are out of scope.
 
@@ -56,6 +56,14 @@ Goal: rebuild the start menu to match the reference's layout and feel, using ori
 - Shown disabled, for step 3 or M12: draw mode toggle, hold to draw/delete, touch auto-zoom, zoom level, menu transitions, render scale, anti-aliasing, volume and soundscape (M12), tutorial button.
 - Controls lists the controls from `input/intents.ts` and the keyboard handlers in `game-scene.ts`.
 - Credits has placeholders for team names and sound credits.
+
+## Step 3a notes
+
+- Save schema is now version 2. Settings gain `renderScale`, `antiAliasing` and `menuTransitions`. The v1 to v2 migration gives existing saves the defaults that match the old game (100%, anti-aliasing on, transitions on). Tests cover the migration and a null settings block.
+- Anti-aliasing is wired: the game's `antialias` config reads it at each game start, so it applies from the next game.
+- Menu transitions fade the menu screens in when on. The menu reads the setting each time a screen opens.
+- Render scale is blocked. Phaser 4.2.1's game config has no render-resolution option, so the Display tab shows it disabled. The saved field is kept. Options that could work: a canvas-scaling change in the game scene, or dropping the control. Needs your decision.
+- Still disabled, for 3b: draw mode toggle, hold to draw/delete, touch auto-zoom, zoom level. Still disabled, for M12: volume and soundscape.
 
 ## Decisions
 

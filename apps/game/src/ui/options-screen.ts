@@ -2,6 +2,8 @@ import {
   toggleGuide,
   toggleSymbols,
   toggleTheme,
+  toggleAntiAliasing,
+  toggleMenuTransitions,
   type GameSettings,
 } from '../game/settings.ts';
 import { buildSavePanel } from './save-panel.ts';
@@ -220,7 +222,13 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
         page.append(
           pendingRow('Volume', 'Needs the audio manager (M12).'),
           pendingRow('Soundscape', 'Needs the audio manager (M12).'),
-          pendingRow('Menu transitions', 'Needs a setting.'),
+          row(
+            'Menu transitions',
+            switchButton(s.menuTransitions, () =>
+              change(toggleMenuTransitions(deps.getSettings())),
+            ),
+            'Fades the menu screens in and out.',
+          ),
           row(
             'Night mode',
             switchButton(s.theme === 'dark', () =>
@@ -244,10 +252,16 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
               toggleFullscreen();
             }),
           ),
-          pendingRow('Render scale', 'Needs a setting.'),
           pendingRow(
+            'Render scale',
+            "Phaser 4's game config has no render-resolution option. Needs a renderer change.",
+          ),
+          row(
             'Anti-aliasing',
-            'Needs a setting. Takes effect after a reload.',
+            switchButton(s.antiAliasing, () =>
+              change(toggleAntiAliasing(deps.getSettings())),
+            ),
+            'Smooths the edges of roads and water. Applies from the next game.',
           ),
         );
         break;

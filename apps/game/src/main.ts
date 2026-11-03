@@ -47,6 +47,8 @@ function startGame(): void {
     backgroundColor: '#111111',
     scale: { mode: Phaser.Scale.RESIZE },
     scene: [GameScene],
+    // Read when the game starts, so a change applies from the next game.
+    antialias: currentSettings().antiAliasing,
   });
 }
 
@@ -140,6 +142,7 @@ function showMainMenu(): void {
     savedWeeks: savedWeeks(),
     storage: storageStatus(),
     theme: currentSettings().theme,
+    menuTransitions: () => currentSettings().menuTransitions,
     onPick: (choice) => void playChoice(choice),
     onSettings: openOptions,
   });

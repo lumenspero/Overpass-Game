@@ -25,6 +25,8 @@ export interface MenuOptions {
   storage: StorageStatus;
   /** The player's theme, used to colour the map thumbnails. */
   theme: ThemeMode;
+  /** Read each time a screen opens, so a change made in Options applies at once. */
+  menuTransitions: () => boolean;
   onPick: (choice: MenuChoice) => void;
   onSettings: () => void;
 }
@@ -267,14 +269,27 @@ export function showMenu(options: MenuOptions): Menu {
     });
   });
 
+  /** Fades a screen in when it opens, if menu transitions are on. */
+  function fadeIn(screen: HTMLElement): void {
+    if (!options.menuTransitions()) return;
+    screen.style.transition = 'none';
+    screen.style.opacity = '0';
+    requestAnimationFrame(() => {
+      screen.style.transition = 'opacity 0.2s';
+      screen.style.opacity = '1';
+    });
+  }
+
   function showMain(): void {
     select.style.display = 'none';
     main.style.display = 'block';
+    fadeIn(main);
   }
 
   function showSelect(): void {
     main.style.display = 'none';
     select.style.display = 'flex';
+    fadeIn(select);
     choose(selected, 'auto');
   }
 
