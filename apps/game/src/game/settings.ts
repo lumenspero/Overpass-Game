@@ -2,14 +2,10 @@ import type { SettingsSave } from '@overpass-game/map-schema';
 import type { ThemeMode } from '@overpass-game/render-style';
 import { savedSettings, setSavedSettings } from './progress.ts';
 
-export type RenderScale = SettingsSave['renderScale'];
 export type ZoomLevel = SettingsSave['zoomLevel'];
 
 /** The zoom levels the Game tab offers, as multiples of the fit-to-screen zoom. */
 export const ZOOM_LEVELS: readonly ZoomLevel[] = [1, 1.5, 2];
-
-/** The render scales the Display tab offers, as percentages of the screen's pixels. */
-export const RENDER_SCALES: readonly RenderScale[] = [75, 100, 150];
 
 /**
  * Player settings: the motorway guide, light or dark mode, and the building symbols for
@@ -20,8 +16,6 @@ export interface GameSettings {
   theme: ThemeMode;
   /** Draws a shape on each building, one per colour, so colours can be told apart without hue. */
   buildingSymbols: boolean;
-  /** The canvas resolution as a percentage of the screen's pixels. Applies from the next game. */
-  renderScale: RenderScale;
   /** Smooths the edges of drawn shapes. Applies from the next game. */
   antiAliasing: boolean;
   /** Fades the menu screens in and out. */
@@ -40,7 +34,6 @@ export const DEFAULT_SETTINGS: GameSettings = {
   motorwayGuide: true,
   theme: 'light',
   buildingSymbols: false,
-  renderScale: 100,
   antiAliasing: true,
   menuTransitions: true,
   drawMode: 'drag',
@@ -62,14 +55,6 @@ export function toggleTheme(settings: GameSettings): GameSettings {
 /** Returns a copy with building symbols switched on or off. */
 export function toggleSymbols(settings: GameSettings): GameSettings {
   return { ...settings, buildingSymbols: !settings.buildingSymbols };
-}
-
-/** Returns a copy with the render scale set. */
-export function setRenderScale(
-  settings: GameSettings,
-  renderScale: RenderScale,
-): GameSettings {
-  return { ...settings, renderScale };
 }
 
 /** Returns a copy with click-to-draw waypoints switched on or off. */

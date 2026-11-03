@@ -26,7 +26,6 @@ function sampleBundle(): SaveBundle {
       motorwayGuide: false,
       theme: 'dark',
       buildingSymbols: true,
-      renderScale: 100,
       antiAliasing: true,
       menuTransitions: true,
       drawMode: 'drag',

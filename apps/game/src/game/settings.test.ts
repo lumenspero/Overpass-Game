@@ -2,9 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   currentSettings,
   DEFAULT_SETTINGS,
-  RENDER_SCALES,
   saveSettings,
-  setRenderScale,
   toggleAntiAliasing,
   toggleGuide,
   toggleMenuTransitions,
@@ -54,20 +52,9 @@ describe('settings', () => {
 });
 
 describe('display and menu settings', () => {
-  it('starts at 100% render scale, with anti-aliasing and menu transitions on', () => {
-    expect(DEFAULT_SETTINGS.renderScale).toBe(100);
+  it('starts with anti-aliasing and menu transitions on', () => {
     expect(DEFAULT_SETTINGS.antiAliasing).toBe(true);
     expect(DEFAULT_SETTINGS.menuTransitions).toBe(true);
-  });
-
-  it('offers 75%, 100% and 150% render scales', () => {
-    expect(RENDER_SCALES).toEqual([75, 100, 150]);
-  });
-
-  it('sets the render scale without changing the original', () => {
-    const sharp = setRenderScale(DEFAULT_SETTINGS, 150);
-    expect(sharp.renderScale).toBe(150);
-    expect(DEFAULT_SETTINGS.renderScale).toBe(100);
   });
 
   it('toggles anti-aliasing and menu transitions without changing the original', () => {

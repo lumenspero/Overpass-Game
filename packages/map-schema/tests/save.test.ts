@@ -92,7 +92,6 @@ describe('save bundle', () => {
             motorwayGuide: true,
             theme: 'blue',
             buildingSymbols: false,
-            renderScale: 100,
             antiAliasing: true,
             menuTransitions: true,
             drawMode: 'drag',
@@ -156,12 +155,11 @@ describe('save migration to version 2', () => {
       runs: {},
     };
     const parsed = parseSaveBundle(v1);
-    expect(parsed.schemaVersion).toBe(3);
+    expect(parsed.schemaVersion).toBe(4);
     expect(parsed.settings).toEqual({
       motorwayGuide: false,
       theme: 'dark',
       buildingSymbols: true,
-      renderScale: 100,
       antiAliasing: true,
       menuTransitions: true,
       drawMode: 'drag',

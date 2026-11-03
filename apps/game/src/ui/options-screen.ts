@@ -13,6 +13,7 @@ import {
   type GameSettings,
 } from '../game/settings.ts';
 import { buildSavePanel } from './save-panel.ts';
+import { showTutorial, type TutorialScreen } from './tutorial.ts';
 
 /**
  * The Options screen: a strip of tabs and the chosen tab's settings beneath it. Settings the game
@@ -302,10 +303,6 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
               toggleFullscreen();
             }),
           ),
-          pendingRow(
-            'Render scale',
-            "Phaser 4's game config has no render-resolution option. Needs a renderer change.",
-          ),
           row(
             'Anti-aliasing',
             switchButton(s.antiAliasing, () =>
@@ -365,11 +362,28 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
           paragraph(
             'A short overlay in the game will explain drawing, erasing, panning and zoom.',
           ),
-          pendingRow('Show tutorial', 'Arrives in a later step.'),
+          row(
+            'How to play',
+            button(
+              'Open',
+              `width:auto;min-height:40px;padding:6px 16px;font:600 16px sans-serif;border:0;border-radius:4px;background:${TEAL};color:${INK}`,
+              () => openTutorial(),
+            ),
+            'The same four steps shown during play, with H.',
+          ),
         );
         break;
     }
     return page;
+  }
+
+  let tutorial: TutorialScreen | null = null;
+  /** Opens the tutorial over Options. Closing it returns to Options. */
+  function openTutorial(): void {
+    if (tutorial) return;
+    tutorial = showTutorial(() => {
+      tutorial = null;
+    });
   }
 
   function render(): void {

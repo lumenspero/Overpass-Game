@@ -1,6 +1,6 @@
 # M12a · Menu rebuild (sub-milestone)
 
-**Status: in progress.** Step 1 (main menu and carousel) is built. Step 2 (tabbed Options) is built with the settings the game already has. Step 3 is split: 3a (display and menu settings, save schema v2) and 3b (waypoints, hold to erase, touch auto-zoom, zoom level, save schema v3) are built. Render scale is blocked (see 3a). Sub-milestone of M12 (audio), sitting beside it. Volume and soundscape controls depend on M12's audio buses, so they stay as placeholders until M12 lands.
+**Status: in progress.** Step 1 (main menu and carousel) is built. Step 2 (tabbed Options) is built with the settings the game already has. Step 3 is split: 3a (display and menu settings, save schema v2) and 3b (waypoints, hold to erase, touch auto-zoom, zoom level, save schema v3) are built. Step 3c drops the render scale control, and save schema v4 removes its field. Step 4 (tutorial overlay) is built. Sub-milestone of M12 (audio), sitting beside it. Volume and soundscape controls depend on M12's audio buses, so they stay as placeholders until M12 lands.
 
 Goal: rebuild the start menu to match the reference's layout and feel, using original art and our own wordmark. Daily challenges, leaderboards, and the Endless, Expert and Creative modes are out of scope.
 
@@ -10,7 +10,7 @@ Goal: rebuild the start menu to match the reference's layout and feel, using ori
 - Tutorial is a short in-game overlay.
 - Draw mode toggle sits alongside hold-to-draw, not in place of it.
 - The reference's "Audio & Video" tab has no video settings. Night Mode and Colorblind Mode are on that tab, so we follow that arrangement.
-- Display follows the reference: Fullscreen, Resolution (as render scale) and Anti-aliasing.
+- Display follows the reference: Fullscreen and Anti-aliasing. Render scale is dropped (see 3c).
 - Credits uses our own team and role list, not the reference's names.
 
 ## Scope
@@ -20,12 +20,12 @@ Goal: rebuild the start menu to match the reference's layout and feel, using ori
 - [x] **Options as tabs:** Game, Audio & Video, Display, Language, Controls, Privacy, Credits, with a back arrow top left.
   - [ ] **Game:** motorway guide (G), touch auto-zoom, zoom level, hold to draw/delete, draw mode toggle (click-to-draw alongside hold-to-draw).
   - [ ] **Audio & Video:** Volume and Soundscape (music, effects and ambience buses, after M12's audio manager), Menu Transitions (on/off), Night Mode (dark mode), Colorblind Mode (building symbols).
-  - [ ] **Display:** Fullscreen (on/off, via the browser fullscreen API, which needs a tap or click), Render scale (the reference's Resolution, since a browser can't set a screen resolution; changes the canvas size only, not the sim), Anti-aliasing (levels to confirm; the renderer reads this at boot, so a change takes effect after a reload).
+  - [x] **Display:** Fullscreen (on/off, via the browser fullscreen API, which needs a tap or click) and Anti-aliasing (the renderer reads this at boot, so a change takes effect after a reload). Render scale is dropped.
   - [ ] **Language:** English only for now. Other languages left out.
   - [ ] **Controls:** read-only summary of the mouse layout (Move, Select/Draw, Delete, Toggle zoom, Pan) plus touch and keyboard. No controller support.
   - [ ] **Privacy:** the save-data panel (export, import, storage note), moved from the main menu.
   - [ ] **Credits:** our own team and role list, the licence notices, the "© OpenStreetMap contributors" attribution, and the CC BY and CC0 credits for sounds. Feeds M15.
-  - [ ] **Tutorial:** short in-game overlay that explains drawing, erasing, pan and zoom, and the road budget.
+  - [x] **Tutorial:** short in-game overlay of four steps, opened from Options and with H during play.
 - [ ] Remove `docs/screenshots/` (MM1–MM8, the Mini Motorways reference images) once the new UI is in place. Until then, do not commit them. MM8 duplicates MM5.
 
 ## Sim and save changes
@@ -62,7 +62,7 @@ Goal: rebuild the start menu to match the reference's layout and feel, using ori
 - Save schema is now version 2. Settings gain `renderScale`, `antiAliasing` and `menuTransitions`. The v1 to v2 migration gives existing saves the defaults that match the old game (100%, anti-aliasing on, transitions on). Tests cover the migration and a null settings block.
 - Anti-aliasing is wired: the game's `antialias` config reads it at each game start, so it applies from the next game.
 - Menu transitions fade the menu screens in when on. The menu reads the setting each time a screen opens.
-- Render scale is blocked. Phaser 4.2.1's game config has no render-resolution option, so the Display tab shows it disabled. The saved field is kept. Options that could work: a canvas-scaling change in the game scene, or dropping the control. Needs your decision.
+- Render scale was blocked: Phaser 4.2.1's game config has no render-resolution option. Dropped in 3c (see below).
 - Still disabled, for 3b: draw mode toggle, hold to draw/delete, touch auto-zoom, zoom level. Still disabled, for M12: volume and soundscape.
 
 ## Step 3b notes
@@ -75,12 +75,24 @@ Goal: rebuild the start menu to match the reference's layout and feel, using ori
 - Tests: `input/waypoints.test.ts`, camera zoom and `fitBox` tests, and settings and save fixtures. The waypoint and hold rules also passed a direct Node run. Vitest and a browser check are still to do.
 - Decision for you: auto-zoom is off by default, which differs from the reference (checked there). Say if it should be on by default.
 
+## Step 3c notes
+
+- Render scale is dropped, at your request. The Display tab no longer has the control.
+- Save schema is now version 4. `DROP_RENDER_SCALE` (v3 to v4) removes the `renderScale` field from saved settings. Tests cover the migration and the fixtures.
+- The earlier steps (75%, 100%, 150%) are no longer used.
+
+## Step 4 notes
+
+- Built: `ui/tutorial.ts` is a DOM overlay with four steps (draw roads, connect buildings, pan and zoom, weeks and overflow), with Back, Next, Done and Skip. Escape closes it. Left and right arrows move between steps, and those keys stop at the overlay so the map does not pan behind it.
+- Opened two ways: Options > Tutorial (the disabled row is now an Open button; closing returns to Options), and H during play. Game-scene H pauses the clock and restores it on close only if it was running before.
+- Defaults chosen here, to confirm: the overlay re-opens from Options and H at any time; it does not show on first run; text covers the controls in `input/intents.ts` and the waypoint option.
+- Not yet checked in a browser: layout at phone width, the H pause and resume, and that the overlay closes on Escape with the map behind it still.
+
 ## Decisions
 
-- Render scale steps: 75%, 100%, 150%.
 - A reload after an anti-aliasing change is acceptable.
 - No video settings: the reference has none, so none are planned.
 
 ## Open questions
 
-- [ ] Tutorial: exact steps and how it is dismissed and re-opened.
+- [ ] Tutorial: confirm the default that it does not auto-show on first run.

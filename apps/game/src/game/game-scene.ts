@@ -1,4 +1,5 @@
 import { lotAt, stripLayout, weekOf } from '@overpass-game/sim';
+import { showTutorial, type TutorialScreen } from '../ui/tutorial.ts';
 import { greenIsHorizontal, ROUNDABOUT_RING_TILES } from '@overpass-game/sim';
 import type { CompiledMap, OutlinePath } from '@overpass-game/map-schema';
 import { activeDemo, buildDemo, DEMOS, setActiveDemo } from './demos.ts';
@@ -231,6 +232,9 @@ export class GameScene extends Phaser.Scene {
   /** Whether the pointer now down is a touch, and the screen extent of the stroke in progress. */
   private downIsTouch = false;
   private strokeFromTouch = false;
+  /** The tutorial overlay during play, and whether closing it should un-pause the clock. */
+  private tutorial: TutorialScreen | null = null;
+  private tutorialResumes = false;
   private strokeBox: {
     minX: number;
     minY: number;
@@ -449,6 +453,7 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-L', this.onLightKey);
     this.input.keyboard?.on('keydown-F', this.onRoadKey);
     this.input.keyboard?.on('keydown-P', this.togglePause);
+    this.input.keyboard?.on('keydown-H', this.onTutorialKey);
     this.input.keyboard?.on('keydown-G', this.onGuideKey);
     this.input.keyboard?.on('keydown-N', this.onThemeKey);
     this.input.keyboard?.on('keydown', this.onKey);
@@ -1442,6 +1447,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** P stops and restarts the clock. A speed change leaves the pause as it is. */
+  /** H opens the tutorial, pausing the clock if it was running. Closing it restores the clock. */
+  private onTutorialKey = (): void => {
+    if (this.tutorial) return;
+    this.tutorialResumes = !this.clock.paused;
+    setPaused(this.clock, true);
+    this.tutorial = showTutorial(() => {
+      this.tutorial = null;
+      if (this.tutorialResumes) setPaused(this.clock, false);
+    });
+  };
+
   private togglePause = (): void => {
     setPaused(this.clock, !this.clock.paused);
   };
@@ -1580,6 +1596,9 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown-N', this.onThemeKey);
     this.input.keyboard?.off('keydown-F', this.onRoadKey);
     this.input.keyboard?.off('keydown-P', this.togglePause);
+    this.input.keyboard?.off('keydown-H', this.onTutorialKey);
+    this.tutorial?.destroy();
+    this.tutorial = null;
     this.offerPanel.destroy();
     this.topBar.destroy();
     this.endPanel?.destroy();

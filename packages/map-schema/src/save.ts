@@ -11,7 +11,7 @@ import { MapFormatError, parseWith } from './errors.ts';
 export const SAVE_FORMAT = 'overpass-game-save' as const;
 
 /** Version of the save format. Bump it with a migration whenever the shape changes. */
-export const SAVE_SCHEMA_VERSION = 3 as const;
+export const SAVE_SCHEMA_VERSION = 4 as const;
 
 /** Content hashes are eight lower-case hex digits (see map-compiler's contentHash). */
 const HASH = /^[0-9a-f]{8}$/;
@@ -119,8 +119,6 @@ export const SettingsSaveSchema = z.object({
   motorwayGuide: z.boolean(),
   theme: z.enum(['light', 'dark']),
   buildingSymbols: z.boolean(),
-  /** The canvas resolution as a percentage of the screen's pixels. Applies from the next game. */
-  renderScale: z.union([z.literal(75), z.literal(100), z.literal(150)]),
   /** Smooths the edges of drawn shapes. Applies from the next game. */
   antiAliasing: z.boolean(),
   /** Fades the menu screens in and out. */
@@ -205,10 +203,20 @@ const ADD_INPUT_SETTINGS: SaveMigration = (save) => {
   };
 };
 
+/** Version 4 drops the render scale setting, which the game cannot apply. */
+const DROP_RENDER_SCALE: SaveMigration = (save) => {
+  const settings = save.settings;
+  if (typeof settings !== 'object' || settings === null) return save;
+  const next: Record<string, unknown> = { ...settings };
+  delete next.renderScale;
+  return { ...save, settings: next };
+};
+
 /** Migrations keyed by the version they upgrade from. */
 export const SAVE_MIGRATIONS: Readonly<Record<number, SaveMigration>> = {
   1: ADD_DISPLAY_SETTINGS,
   2: ADD_INPUT_SETTINGS,
+  3: DROP_RENDER_SCALE,
 };
 
 /**
