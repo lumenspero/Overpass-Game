@@ -1,0 +1,60 @@
+# M12a · Menu rebuild (sub-milestone)
+
+**Status: in progress.** Step 1 (main menu and carousel) is built; Options tabs are next. Sub-milestone of M12 (audio), sitting beside it. Volume and soundscape controls depend on M12's audio buses, so they stay as placeholders until M12 lands.
+
+Goal: rebuild the start menu to match the reference's layout and feel, using original art and our own wordmark. Daily challenges, leaderboards, and the Endless, Expert and Creative modes are out of scope.
+
+**Decisions so far**
+
+- Map select is a carousel. Options is tabbed.
+- Tutorial is a short in-game overlay.
+- Draw mode toggle sits alongside hold-to-draw, not in place of it.
+- The reference's "Audio & Video" tab has no video settings. Night Mode and Colorblind Mode are on that tab, so we follow that arrangement.
+- Display follows the reference: Fullscreen, Resolution (as render scale) and Anti-aliasing.
+- Credits uses our own team and role list, not the reference's names.
+
+## Scope
+
+- [x] **Main menu:** our own wordmark, Play and Options. No Exit button on the web build.
+- [x] **Map select as a carousel:** horizontal cards, each with a round thumbnail drawn from the compiled map, the map name, best score, a short description, and a locked state. The selected card is centred and highlighted, with a Play button below. Keeps the unlock rules, resume and best scores from M10 and M11.
+- [ ] **Options as tabs:** Game, Audio & Video, Display, Language, Controls, Privacy, Credits, with a back arrow top left.
+  - [ ] **Game:** motorway guide (G), touch auto-zoom, zoom level, hold to draw/delete, draw mode toggle (click-to-draw alongside hold-to-draw).
+  - [ ] **Audio & Video:** Volume and Soundscape (music, effects and ambience buses, after M12's audio manager), Menu Transitions (on/off), Night Mode (dark mode), Colorblind Mode (building symbols).
+  - [ ] **Display:** Fullscreen (on/off, via the browser fullscreen API, which needs a tap or click), Render scale (the reference's Resolution, since a browser can't set a screen resolution; changes the canvas size only, not the sim), Anti-aliasing (levels to confirm; the renderer reads this at boot, so a change takes effect after a reload).
+  - [ ] **Language:** English only for now. Other languages left out.
+  - [ ] **Controls:** read-only summary of the mouse layout (Move, Select/Draw, Delete, Toggle zoom, Pan) plus touch and keyboard. No controller support.
+  - [ ] **Privacy:** the save-data panel (export, import, storage note), moved from the main menu.
+  - [ ] **Credits:** our own team and role list, the licence notices, the "© OpenStreetMap contributors" attribution, and the CC BY and CC0 credits for sounds. Feeds M15.
+  - [ ] **Tutorial:** short in-game overlay that explains drawing, erasing, pan and zoom, and the road budget.
+- [ ] Remove `docs/screenshots/` (MM1–MM8, the Mini Motorways reference images) once the new UI is in place. Until then, do not commit them. MM8 duplicates MM5.
+
+## Sim and save changes
+
+- New settings (draw mode, touch auto-zoom, zoom level, and later audio volumes) are gameplay-adjacent. Every value that changes behaviour goes in `packages/sim/src/config.ts` and `docs/mechanics-spec.md`, tagged `approximated`.
+- New settings fields change the saved settings. Any change to the save schema needs a `schemaVersion` bump and a migration with a test (M11 rule).
+
+## Done when
+
+- The carousel and tabbed Options run on desktop and touch, and the existing unlock, resume and save-export behaviour still passes its tests.
+- Every option listed above is present, either working or marked as a placeholder with the milestone that completes it.
+- `pnpm check` passes.
+
+## Step 1 notes
+
+- Built: `ui/menu.ts` (main screen and carousel), `ui/carousel-model.ts` (+ test), `ui/map-thumbnail.ts`. `main.ts` passes the theme.
+- Card description is not shown: the campaign data has no description text yet. Add it with the M14 content.
+- The save section is still on the main screen. It moves to Privacy in step 2.
+- The challenge list has left the menu. It returns when M14 adds challenges.
+- Test maps: Los Angeles is in the campaign list after Tulsa, from the Studio export. `apps/game/src/dev-flags.ts` has `showAllMaps`, which is on in dev so every card opens for layout checks. It is off in production builds.
+- Checked: `tsc --noEmit` passes, Prettier and ESLint pass on the changed files, and the carousel rules pass a direct run.
+- Not yet checked: the Vitest suites (the sandbox lacks the rolldown native binding), and the layout and touch behaviour in a browser.
+
+## Decisions
+
+- Render scale steps: 75%, 100%, 150%.
+- A reload after an anti-aliasing change is acceptable.
+- No video settings: the reference has none, so none are planned.
+
+## Open questions
+
+- [ ] Tutorial: exact steps and how it is dismissed and re-opened.

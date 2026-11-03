@@ -23,10 +23,16 @@ export interface MenuRow {
   savedWeek: number | null;
 }
 
+export interface CampaignRowOptions {
+  /** Opens every map, for checking the layout of the map select. Dev only, via DEV_FLAGS. */
+  showAll?: boolean;
+}
+
 export function campaignRows(
   maps: readonly CampaignMap[],
   best: BestScores,
   savedWeeks: Readonly<Record<string, number>> = {},
+  options: CampaignRowOptions = {},
 ): MenuRow[] {
   const open = new Set(
     openCampaignMaps(
@@ -35,7 +41,7 @@ export function campaignRows(
     ),
   );
   return maps.map((m, i) => {
-    const isOpen = open.has(m.id);
+    const isOpen = options.showAll === true || open.has(m.id);
     const prev = i > 0 ? maps[i - 1] : undefined;
     const hint =
       !isOpen && prev

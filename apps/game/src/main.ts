@@ -134,6 +134,7 @@ function showMainMenu(): void {
     best: currentBest(),
     savedWeeks: savedWeeks(),
     storage: storageStatus(),
+    theme: currentSettings().theme,
     onPick: (choice) => void playChoice(choice),
     onSettings: openMenuSettings,
     onImported: showMainMenu,

@@ -1,10 +1,8 @@
-import { createStore, get, set } from 'idb-keyval';
+import { idbGet, idbSet } from '../storage/idb.ts';
 import type { KeyValueStore } from './overpass.ts';
 
-/** IndexedDB cache for Overpass replies, kept apart so the tests never open a database. */
-const store = createStore('overpass_game_studio', 'osm-cache');
-
+/** The Overpass reply cache, kept in the Studio's IndexedDB apart from the drafts. */
 export const idbStore: KeyValueStore = {
-  get: (key) => get(key, store),
-  set: (key, value) => set(key, value, store),
+  get: (key) => idbGet('osm-cache', key),
+  set: (key, value) => idbSet('osm-cache', key, value),
 };

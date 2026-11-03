@@ -1,13 +1,19 @@
 import type { BestScores } from '@overpass-game/sim';
+import type { ThemeMode } from '@overpass-game/render-style';
+import { DEV_FLAGS } from '../dev-flags.ts';
 import { CAMPAIGN_MAPS } from '../game/campaign-maps.ts';
+import { loadPlayableMap } from '../game/map-source.ts';
 import type { StorageStatus } from '../game/progress.ts';
-import { campaignRows } from './menu-model.ts';
+import { clampIndex, startIndex, stepIndex } from './carousel-model.ts';
+import { campaignRows, type MenuRow } from './menu-model.ts';
+import { drawThumbnail, THUMB_SIZE } from './map-thumbnail.ts';
 import { buildSavePanel } from './save-panel.ts';
 
 /**
- * The start menu: the campaign's unlock path, the (still empty) challenge list, the test map,
- * settings, and the save panel. Built with DOM elements and text nodes, so no map or player text
- * is parsed as markup.
+ * The start menu. The main screen has Play and Options. Play opens the map select, a carousel of
+ * map cards: each card shows the map's terrain as a round thumbnail, its best score or lock hint.
+ * The selected card's Play (or Resume) button sits below the carousel. Built with DOM elements and
+ * text nodes, so no map or player text is parsed as markup.
  */
 
 export type MenuChoice =
@@ -18,6 +24,8 @@ export interface MenuOptions {
   /** The week of each saved campaign run, by map id. */
   savedWeeks: Readonly<Record<string, number>>;
   storage: StorageStatus;
+  /** The player's theme, used to colour the map thumbnails. */
+  theme: ThemeMode;
   onPick: (choice: MenuChoice) => void;
   onSettings: () => void;
   /** Called after an import replaces the progress, so the menu is built again to show it. */
@@ -26,116 +34,273 @@ export interface MenuOptions {
 
 export interface Menu {
   destroy(): void;
-  /** Shows a message above the list, for a choice that failed. Empty clears it. */
+  /** Shows a message under the carousel, for a choice that failed. Empty clears it. */
   setError(message: string): void;
 }
 
+const CARD_WIDTH = 260;
+const TEAL = '#97c3c3';
+const INK = '#1d232c';
+const PANEL = '#1d232c';
+const MUTED = '#b9c2cc';
+
 const BUTTON_CSS =
-  'display:block;width:100%;min-height:44px;margin:6px 0;padding:10px 12px;box-sizing:border-box;' +
-  'font:16px sans-serif;text-align:left;background:#1d232c;color:#eee;border:1px solid #2e3744;' +
-  'border-radius:6px;cursor:pointer';
+  'display:block;width:100%;min-height:48px;margin:8px 0;padding:10px 16px;box-sizing:border-box;' +
+  `font:600 22px sans-serif;text-align:center;background:${TEAL};color:${INK};border:0;` +
+  'border-radius:4px;cursor:pointer';
 
-const RESUME_CSS =
-  BUTTON_CSS + ';background:#1f2e22;border-color:#34503a;color:#d8f2dc';
-
-const LOCKED_CSS =
-  'margin:6px 0;padding:10px 12px;box-sizing:border-box;font:16px sans-serif;' +
-  'background:#16191e;color:#7d8794;border:1px solid #242a33;border-radius:6px';
+const SECONDARY_CSS = `background:#3b4654;color:#eee`;
 
 const NOTE_CSS =
   'margin:12px 0;padding:8px;background:#3a3420;color:#f2e6b8;border-radius:6px;font:14px sans-serif';
 
-function heading(text: string): HTMLElement {
-  const h = document.createElement('h2');
-  h.textContent = text;
-  h.style.cssText = 'font:18px sans-serif;margin:24px 0 4px;color:#cfd6de';
-  return h;
+function el<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  css: string,
+  text?: string,
+): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  if (css) node.style.cssText = css;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function button(
+  label: string,
+  css: string,
+  onClick: () => void,
+): HTMLButtonElement {
+  const b = el('button', `${BUTTON_CSS};${css}`, label);
+  b.type = 'button';
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+function cardSubtitle(row: MenuRow): string {
+  if (!row.open) return row.hint ?? 'Locked';
+  return row.best === null ? 'Not played yet' : `Best: ${row.best}`;
+}
+
+interface CardView {
+  card: HTMLElement;
+  canvas: HTMLCanvasElement;
+  row: MenuRow;
 }
 
 export function showMenu(options: MenuOptions): Menu {
-  const { best, savedWeeks, storage, onPick, onSettings, onImported } = options;
-  const root = document.createElement('div');
+  const { best, savedWeeks, storage, theme, onPick, onSettings, onImported } =
+    options;
+  const rows = campaignRows(CAMPAIGN_MAPS, best, savedWeeks, {
+    showAll: DEV_FLAGS.showAllMaps,
+  });
+
+  const root = el(
+    'div',
+    'position:fixed;inset:0;overflow:hidden;background:#111;color:#eee;font:16px sans-serif;z-index:5',
+  );
   root.id = 'menu';
-  root.style.cssText =
-    'position:fixed;inset:0;overflow:auto;background:#111;color:#eee;padding:16px;' +
-    'box-sizing:border-box;z-index:5';
 
-  const inner = document.createElement('div');
-  inner.style.cssText = 'max-width:480px;margin:0 auto';
+  // Main screen: the wordmark, Play, Options, and the save section until it moves to Options.
+  const main = el(
+    'div',
+    'position:absolute;inset:0;overflow:auto;padding:16px;box-sizing:border-box',
+  );
+  const mainInner = el('div', 'max-width:420px;margin:0 auto;padding-top:10vh');
+  const wordmark = el(
+    'h1',
+    'font:700 40px sans-serif;margin:0 0 32px;letter-spacing:0.5px',
+    'Overpass_Game',
+  );
+  mainInner.append(wordmark);
+  if (storage.problem !== null) {
+    mainInner.append(el('div', NOTE_CSS, storage.problem));
+  }
+  const playMain = button('Play', '', () => showSelect());
+  const optionsMain = button('Options', SECONDARY_CSS, () => onSettings());
+  mainInner.append(playMain, optionsMain, buildSavePanel(onImported));
+  main.append(mainInner);
 
-  const title = document.createElement('h1');
-  title.textContent = 'Overpass_Game';
-  title.style.cssText = 'font:28px sans-serif;margin:16px 0 0';
+  // Select screen: back arrow, the carousel, and the actions for the selected card.
+  const select = el(
+    'div',
+    'position:absolute;inset:0;display:none;flex-direction:column;padding:16px;box-sizing:border-box',
+  );
+  const topBar = el('div', 'display:flex;align-items:center;min-height:48px');
+  const back = el(
+    'button',
+    'background:none;border:0;color:#eee;font:32px sans-serif;padding:4px 12px;cursor:pointer',
+    '←',
+  );
+  back.type = 'button';
+  back.setAttribute('aria-label', 'Back');
+  back.addEventListener('click', () => showMain());
+  topBar.append(back);
 
-  const error = document.createElement('div');
-  error.style.cssText =
-    'display:none;margin:12px 0;padding:8px;background:#5a1a1a;color:#fff;border-radius:6px';
+  const track = el(
+    'div',
+    'display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;flex:0 0 auto;' +
+      `padding:24px calc(50% - ${CARD_WIDTH / 2}px);box-sizing:border-box;` +
+      `scroll-padding:0 calc(50% - ${CARD_WIDTH / 2}px);scrollbar-width:none`,
+  );
 
-  const campaign = document.createElement('div');
-  campaign.append(heading('Campaign'));
-  for (const row of campaignRows(CAMPAIGN_MAPS, best, savedWeeks)) {
-    if (row.open) {
-      if (row.savedWeek !== null) {
-        const resume = document.createElement('button');
-        resume.type = 'button';
-        resume.textContent = `Resume ${row.name} · week ${row.savedWeek}`;
-        resume.style.cssText = RESUME_CSS;
-        resume.addEventListener('click', () =>
-          onPick({ kind: 'campaign', id: row.id, resume: true }),
-        );
-        campaign.append(resume);
-      }
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent =
-        row.best === null ? row.name : `${row.name} · Best ${row.best}`;
-      b.style.cssText = BUTTON_CSS;
-      b.addEventListener('click', () =>
-        onPick({ kind: 'campaign', id: row.id }),
-      );
-      campaign.append(b);
+  const cards: CardView[] = rows.map((row, index) => {
+    const card = el(
+      'div',
+      `flex:0 0 ${CARD_WIDTH}px;width:${CARD_WIDTH}px;box-sizing:border-box;scroll-snap-align:center;` +
+        `background:${PANEL};border-radius:14px;padding:16px;text-align:center;cursor:pointer;` +
+        'transition:opacity .2s,transform .2s;opacity:0.5;transform:scale(0.92)',
+    );
+    const canvas = el(
+      'canvas',
+      `display:block;width:${THUMB_SIZE}px;height:${THUMB_SIZE}px;margin:0 auto 12px;border-radius:50%;` +
+        `background:#2a313b;${row.open ? '' : 'filter:grayscale(1) brightness(0.6)'}`,
+    );
+    const name = el('h2', 'font:700 24px sans-serif;margin:0 0 6px', row.name);
+    const sub = el(
+      'p',
+      `margin:0;color:${MUTED};font-size:15px`,
+      cardSubtitle(row),
+    );
+    card.append(canvas, name, sub);
+    card.addEventListener('click', () => choose(index, 'smooth'));
+    track.append(card);
+    return { card, canvas, row };
+  });
+
+  const actions = el('div', 'max-width:420px;width:100%;margin:12px auto 0');
+  const resume = button('', SECONDARY_CSS, () => {
+    const row = rows[selected];
+    if (row?.open) onPick({ kind: 'campaign', id: row.id, resume: true });
+  });
+  resume.style.display = 'none';
+  const play = button('Play', '', () => {
+    const row = rows[selected];
+    if (row?.open) onPick({ kind: 'campaign', id: row.id });
+  });
+  const locked = el('p', `margin:8px 0;text-align:center;color:${MUTED}`);
+  const test = button('Test map', SECONDARY_CSS, () =>
+    onPick({ kind: 'test' }),
+  );
+  const error = el(
+    'div',
+    'display:none;margin:12px 0;padding:8px;background:#5a1a1a;color:#fff;border-radius:6px',
+  );
+  actions.append(resume, play, locked, test, error);
+
+  select.append(topBar, track, actions);
+  main.style.display = 'block';
+  root.append(main, select);
+  document.body.append(root);
+
+  let selected = clampIndex(startIndex(rows), rows.length);
+  let frame = 0;
+  // While a programmatic scroll runs, the track's scroll events are ignored: otherwise the card
+  // nearest the middle mid-scroll (the one being left) would take the selection back.
+  let scrolling = false;
+  let scrollTimer = 0;
+
+  // Thumbnails are drawn once the map files load. A map that fails keeps its plain disc.
+  for (const { canvas, row } of cards) {
+    loadPlayableMap(row.id)
+      .then((map) => drawThumbnail(canvas, map, theme))
+      .catch(() => undefined);
+  }
+
+  function render(): void {
+    cards.forEach((c, i) => {
+      const on = i === selected;
+      c.card.style.opacity = on ? '1' : '0.5';
+      c.card.style.transform = on ? 'scale(1)' : 'scale(0.92)';
+      c.card.setAttribute('aria-current', on ? 'true' : 'false');
+    });
+    const row = rows[selected];
+    if (!row) return;
+    play.disabled = !row.open;
+    play.style.opacity = row.open ? '1' : '0.4';
+    play.textContent = row.open ? 'Play' : 'Locked';
+    locked.textContent = row.open ? '' : (row.hint ?? '');
+    if (row.open && row.savedWeek !== null) {
+      resume.textContent = `Resume · week ${row.savedWeek}`;
+      resume.style.display = 'block';
     } else {
-      const d = document.createElement('div');
-      d.style.cssText = LOCKED_CSS;
-      d.textContent = row.hint ? `${row.name} · ${row.hint}` : row.name;
-      campaign.append(d);
+      resume.style.display = 'none';
     }
   }
 
-  const challenges = document.createElement('div');
-  challenges.append(heading('Challenges'));
-  const none = document.createElement('p');
-  none.textContent = 'No challenges yet.';
-  none.style.color = '#7d8794';
-  challenges.append(none);
-
-  const other = document.createElement('div');
-  other.append(heading('Other'));
-  const test = document.createElement('button');
-  test.type = 'button';
-  test.textContent = 'Test map';
-  test.style.cssText = BUTTON_CSS;
-  test.addEventListener('click', () => onPick({ kind: 'test' }));
-  const settings = document.createElement('button');
-  settings.type = 'button';
-  settings.textContent = 'Settings';
-  settings.style.cssText = BUTTON_CSS;
-  settings.addEventListener('click', () => onSettings());
-  other.append(test, settings);
-
-  inner.append(title);
-  if (storage.problem !== null) {
-    const note = document.createElement('div');
-    note.textContent = storage.problem;
-    note.style.cssText = NOTE_CSS;
-    inner.append(note);
+  /** Selects a card by index, without scrolling. */
+  function setSelected(index: number): void {
+    selected = clampIndex(index, rows.length);
+    render();
   }
-  inner.append(error, campaign, challenges, other, buildSavePanel(onImported));
-  root.append(inner);
-  document.body.append(root);
+
+  /** Selects a card and scrolls it to the centre of the track. */
+  function choose(index: number, behavior: ScrollBehavior): void {
+    setSelected(index);
+    const card = cards[selected]?.card;
+    if (!card) return;
+    scrolling = true;
+    window.clearTimeout(scrollTimer);
+    // Cleared by scrollend; the timer covers a scroll that never starts.
+    scrollTimer = window.setTimeout(() => (scrolling = false), 700);
+    card.scrollIntoView({ behavior, inline: 'center', block: 'nearest' });
+  }
+
+  track.addEventListener('scrollend', () => {
+    scrolling = false;
+    window.clearTimeout(scrollTimer);
+  });
+
+  // Swiping or scrolling the track selects the card nearest the middle of it.
+  track.addEventListener('scroll', () => {
+    if (scrolling) return;
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => {
+      if (scrolling) return;
+      const mid = track.getBoundingClientRect().left + track.clientWidth / 2;
+      let nearest = selected;
+      let distance = Infinity;
+      cards.forEach((c, i) => {
+        const r = c.card.getBoundingClientRect();
+        const d = Math.abs(r.left + r.width / 2 - mid);
+        if (d < distance) {
+          distance = d;
+          nearest = i;
+        }
+      });
+      if (nearest !== selected) setSelected(nearest);
+    });
+  });
+
+  function showMain(): void {
+    select.style.display = 'none';
+    main.style.display = 'block';
+  }
+
+  function showSelect(): void {
+    main.style.display = 'none';
+    select.style.display = 'flex';
+    choose(selected, 'auto');
+  }
+
+  const onKey = (e: KeyboardEvent): void => {
+    if (select.style.display === 'none') return;
+    if (e.key === 'ArrowLeft')
+      choose(stepIndex(selected, -1, rows.length), 'smooth');
+    else if (e.key === 'ArrowRight')
+      choose(stepIndex(selected, 1, rows.length), 'smooth');
+    else if (e.key === 'Escape') showMain();
+  };
+  document.addEventListener('keydown', onKey);
+
+  render();
 
   return {
-    destroy: () => root.remove(),
+    destroy() {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(scrollTimer);
+      document.removeEventListener('keydown', onKey);
+      root.remove();
+    },
     setError(message: string) {
       error.textContent = message;
       error.style.display = message ? 'block' : 'none';

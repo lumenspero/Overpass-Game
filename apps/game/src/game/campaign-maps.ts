@@ -9,4 +9,8 @@ export interface CampaignMap {
 
 export const CAMPAIGN_MAPS: readonly CampaignMap[] = [
   { id: 'tulsa-oklahoma-united-states', name: 'Tulsa' },
+  {
+    id: 'los-angeles-los-angeles-county-california-united-states',
+    name: 'Los Angeles',
+  },
 ];

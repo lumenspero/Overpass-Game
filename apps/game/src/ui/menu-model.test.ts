@@ -58,6 +58,19 @@ describe('campaignRows best scores', () => {
   });
 });
 
+describe('campaignRows showAll', () => {
+  it('opens every map when showAll is set, with no lock hints', () => {
+    const rows = campaignRows(MAPS, {}, {}, { showAll: true });
+    expect(rows.map((r) => r.open)).toEqual([true, true, true]);
+    expect(rows.map((r) => r.hint)).toEqual([null, null, null]);
+  });
+
+  it('keeps the normal lock rules when showAll is off', () => {
+    const rows = campaignRows(MAPS, {}, {}, { showAll: false });
+    expect(rows.map((r) => r.open)).toEqual([true, false, false]);
+  });
+});
+
 describe('campaignRows saved runs', () => {
   it('shows the week of a saved run on its map, and nothing elsewhere', () => {
     const rows = campaignRows(MAPS, {}, { a: 4 });
