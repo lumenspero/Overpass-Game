@@ -1,4 +1,8 @@
-import type { MapLabel, SourceMap } from '@overpass-game/map-schema';
+import type {
+  MapLabel,
+  RestrictableOffer,
+  SourceMap,
+} from '@overpass-game/map-schema';
 import { EDIT, IMPORT } from '../config.ts';
 import * as history from './history.ts';
 import {
@@ -470,6 +474,11 @@ export class Editor {
   /** Sets the water choice the map is drawn with. Undoable like any other edit. */
   setWaterPalette(waterId: string): void {
     this.apply((m) => ops.setWaterPalette(m, waterId));
+  }
+
+  /** Sets which offers the map allows. Undoable like any other edit. */
+  setAllowedOffers(options: readonly RestrictableOffer[]): void {
+    this.apply((m) => ops.setAllowedOffers(m, options));
   }
 
   /** Removes every label, for pruning an import in one step. Undo restores them. */

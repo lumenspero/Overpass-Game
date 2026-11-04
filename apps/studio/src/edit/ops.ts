@@ -1,4 +1,9 @@
-import type { MapLabel, SourceMap } from '@overpass-game/map-schema';
+import {
+  RESTRICTABLE_OFFERS,
+  type MapLabel,
+  type RestrictableOffer,
+  type SourceMap,
+} from '@overpass-game/map-schema';
 
 /**
  * Immutable edits to a source map. Each operation returns the same map object when nothing
@@ -353,6 +358,33 @@ export function setPalette(map: SourceMap, paletteId: string): SourceMap {
 export function setWaterPalette(map: SourceMap, waterId: string): SourceMap {
   if (map.waterPalette === waterId) return map;
   return { ...map, waterPalette: waterId };
+}
+
+/** The offers a map allows. With no rule, every option is allowed. */
+export function allowedOffersOf(map: SourceMap): RestrictableOffer[] {
+  const rule = map.rules.find((r) => r.kind === 'allowedOffers');
+  if (rule?.kind === 'allowedOffers') return [...rule.options];
+  return [...RESTRICTABLE_OFFERS];
+}
+
+/**
+ * Sets which offers a map allows. Allowing every option stores no rule, so a map that never
+ * restricted anything stays as it was. At least one option must stay on.
+ */
+export function setAllowedOffers(
+  map: SourceMap,
+  options: readonly RestrictableOffer[],
+): SourceMap {
+  const chosen = RESTRICTABLE_OFFERS.filter((id) => options.includes(id));
+  if (chosen.length === 0) return map;
+  const rules = map.rules.filter((r) => r.kind !== 'allowedOffers');
+  const every = chosen.length === RESTRICTABLE_OFFERS.length;
+  return {
+    ...map,
+    rules: every
+      ? rules
+      : [...rules, { kind: 'allowedOffers', options: chosen }],
+  };
 }
 
 /** Removes every label. Undo brings them back, so a bulk prune is safe to try. */

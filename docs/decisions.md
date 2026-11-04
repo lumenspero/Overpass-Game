@@ -160,3 +160,17 @@ Short log of choices and why. Newest at the bottom.
 - **Clock pauses while an offer waits:** the sim stops ticking until the player chooses. Asked by the author.
 - **Traffic lights are the game's nudge:** the original steers players toward traffic lights on existing roads. Dock items are shaded only when empty, and bridges get no placement highlight. Asked by the author.
 - **Road tiles are always on offer:** a map that restricts its options still gives a choice. This is a guard added in the sim, not a player-facing rule.
+
+## M13 · Map offer restrictions
+
+- A map's allowed offers are an `allowedOffers` rule in its data, not a new field, so the save format is unchanged and the sim reads it at each week boundary.
+- Road tiles stay on offer whatever the map says, so a restricted map always gives a choice of two.
+- The Studio blocks unchecking the last option, so no map can end up with no offers.
+
+## M13 · Crossings and roundabouts
+
+- **Automatic bridges and tunnels:** the author asked that bridges and tunnels not be dragged from the dock. A road drawn onto water or mountain uses one from stock. Asked by the author.
+- **Half-tile drag icon:** a dragged traffic light, motorway or roundabout is drawn at half a road tile, so it lands on the tile the player means. Asked by the author.
+- **Roundabout size and direction:** the ring is two tiles across with a road-wide band. Traffic circulates counter-clockwise, as the spec says, so a left turn goes the long way round. Asked by the author; the alternative of a shorter arc for every turn was rejected because it would reverse the circulation.
+- **Arms meet the outer edge:** road arms reach the ring at the neighbouring tile's centre, so the ring can be two tiles across without cars turning inside it. Chosen to keep the two-tile size the author asked for.
+- **Ring kerb under the roads:** the ring's outline is drawn beneath the roads and in the map palette's kerb colour, so no curb cuts across an arm and the outline follows light and dark themes.

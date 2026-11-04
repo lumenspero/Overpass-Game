@@ -7,7 +7,7 @@ import type { Building, Demand, Home } from './buildings.ts';
 import { type Car, onRoadsChanged } from './cars.ts';
 import { tuning } from './config.ts';
 import { generateDemand, growDestinations, updateOverflow } from './demand.ts';
-import type { MapRule } from './rules.ts';
+import { type MapRule, offerCandidates } from './rules.ts';
 import { isOpenTile } from './expansion.ts';
 import { buildRoadGraph, type RoadGraph, updateRoadGraph } from './graph.ts';
 import {
@@ -274,7 +274,7 @@ export function step(state: SimState): SimEvent[] {
   state.tick += 1;
   if (state.tick % tuning.WEEK_TICKS === 0) {
     emitEvent({ kind: 'week-ended', week: state.tick / tuning.WEEK_TICKS });
-    grantWeeklyReward(state);
+    grantWeeklyReward(state, offerCandidates(state));
     growDestinations(state);
     addSecondBuildings(state);
   }

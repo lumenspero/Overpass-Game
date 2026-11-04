@@ -118,7 +118,7 @@ Elevated links for faster travel between two points on the ground network. `appr
   - Traffic lights: 2 traffic lights, 20 tiles.
   - Road tiles: 30 tiles, no upgrade.
 - **Weights:** each option's chance is its weight: `UPGRADE_WEIGHT_MOTORWAY`, `_BRIDGE`, `_ROUNDABOUT`, `_TUNNEL`, `_LIGHT` (traffic lights), `_TILES`, each 1. A weight of 0 means never offered. `approximated`
-- **Map restrictions:** each map can list the options it allows, so a map where bridges or tunnels are not useful can leave them out. Road tiles are always allowed, so a restricted map still gives a choice. The Studio sets the list (planned, see M13).
+- **Map restrictions:** each map can list the options it allows, so a map where bridges or tunnels are not useful can leave them out. Road tiles are always allowed, so a restricted map still gives a choice. The Studio sets the list with one checkbox per option; the list is stored as an `allowedOffers` rule on the map, and the weekly offer draws only from it. A map with no such rule allows every option, and at least one option must stay on.
 - **Replaces the weekly reward:** the tiles in an option are the week's road reward. There is no separate weekly tile grant. This replaces the earlier fixed 20 tiles a week (`WEEKLY_ROAD_REWARD`, removed).
 - **Stock:** choosing an option adds its upgrades to stock. Placing a bridge or tunnel uses one. Stock is not refunded when a crossing is removed.
 - **Queue:** offers wait in `offers`, oldest first, until the player answers. The clock stops while any offer waits.
@@ -129,6 +129,7 @@ Elevated links for faster travel between two points on the ground network. `appr
 
 - **Bridge:** a road dragged across water. The drag's path is the bridge, so it can turn and cross a lake's corner diagonally. `approximated`
 - **Tunnel:** a road dragged through mountain, with the same rules. `approximated`
+- **Automatic:** a bridge or tunnel is not carried and cannot be dragged from the dock. Drawing a road onto water or mountain with one in stock places it on its own: the road reaches the far bank and the crossing is built. With no stock, the road stops at the shore. A road that cannot reach land on the far side builds nothing. `approximated`
 - **Span limit:** a run of new water (bridge) or mountain (tunnel) tiles along the path may be at most `BRIDGE_MAX_SPAN` (3) or `TUNNEL_MAX_SPAN` (4) tiles long. A run of 3 is "less than 4 nodes" for bridges. `approximated`
 - **Runs:** each separate run of new crossing tiles on a path is one crossing, and uses one bridge or tunnel from stock. Two rivers in one drag need two bridges.
 - **Endpoints and other tiles:** the path must start and end on land, park, or road. Its other tiles may be land, park, road, or the crossing's own terrain. A bridge cannot cross mountain, and a tunnel cannot cross water. Buildings block the path.
@@ -167,7 +168,7 @@ Elevated links for faster travel between two points on the ground network. `appr
 ### Roundabouts and lights
 
 - **Placement:** a roundabout or a light goes on any open land, park or road tile with no building on it. Mountain and water are refused. Each tile takes at most one of them. Each comes from the weekly offer and takes one from stock, as bridges do. `approximated`
-- **Roundabout:** cars drive round the ring, keeping right (counter-clockwise on screen), so they never cut across the middle. The ring is drawn as a donut on the tile, with the centre left open. The junction stays open to several cars at once. A car may enter while no car on the junction is within `CAR_GAP` of the entrance, and it leaves once it has passed through. A plain junction still holds one car. Capacity is `ROUNDABOUT_CAPACITY` cars (default 3). `approximated`
+- **Roundabout:** cars drive round the ring counter-clockwise on screen, keeping right, so they never cut across the middle. A car from one arm to another takes the counter-clockwise way round, so a left turn goes the long way. The ring is drawn as a donut two tiles across: its band is one road wide, centred 0.75 tiles from the tile's centre, with the centre left open. Each arm meets the ring at the neighbouring tile's centre, the ring's outer edge, and cars join and leave on a short curve so they turn smoothly rather than cut in. Road arms are drawn under the ring's kerb, so no curb shows where an arm joins. The junction stays open to several cars at once. A car may enter while no car on the junction is within `CAR_GAP` of the entrance, and it leaves once it has passed through. A plain junction still holds one car. Capacity is `ROUNDABOUT_CAPACITY` cars (default 3). `approximated`
 - **Light:** the tile has two phases, one for each axis (across and along). Each phase has green for `LIGHT_GREEN_TICKS` ticks (default 240), then the other phase has green. A car may enter only in its phase's green, and waits short of the junction otherwise. Phases switch on the tick count, so runs stay deterministic. `approximated`
 - **Keys:** O places a roundabout, L a light. Each is a toggle, like B, T and M.
 - **Erasing:** removing the junction's road, or the roundabout or light itself, returns its stock.

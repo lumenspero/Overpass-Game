@@ -22,7 +22,11 @@ import { MapPanel } from './map/map-panel.ts';
 import { loadRegion } from './osm/region.ts';
 import { Editor, type Selection } from './edit/editor.ts';
 import { attachInteraction } from './edit/interaction.ts';
-import { replaceLayer, type EditableLayer } from './edit/ops.ts';
+import {
+  allowedOffersOf,
+  replaceLayer,
+  type EditableLayer,
+} from './edit/ops.ts';
 import { LABEL_SIZE } from './edit/labels.ts';
 import {
   BASE_PALETTE_IDS,
@@ -47,6 +51,20 @@ import { listDrafts, removeDraft, saveDraft } from './drafts/store.ts';
  * plain list of HTML elements. This wrapper keeps the call sites simple.
  */
 /** Label kinds with the names the Labels panel shows. */
+import {
+  RESTRICTABLE_OFFERS,
+  type RestrictableOffer,
+} from '@overpass-game/map-schema';
+
+/** Names for the offer checkboxes. */
+const OFFER_NAMES: Record<RestrictableOffer, string> = {
+  motorway: 'Motorways',
+  bridge: 'Bridges',
+  roundabout: 'Roundabouts',
+  tunnel: 'Tunnels',
+  lights: 'Traffic lights',
+};
+
 const LABEL_KIND_OPTIONS: readonly [LabelKind, string][] = [
   ['park', 'Park'],
   ['mountain', 'Mountain'],
@@ -324,6 +342,9 @@ export function App(): VNode {
   // The palette family comes from the map; light or dark comes from the toggle.
   const paletteId = editor.current?.map.palette ?? 'default';
   const waterId = editor.current?.map.waterPalette ?? 'shared';
+  const allowedOffers = editor.current
+    ? allowedOffersOf(editor.current.map)
+    : [...RESTRICTABLE_OFFERS];
   useEffect(() => {
     preview.current?.setPalette(resolvePalette(paletteId, themeMode, waterId));
   }, [paletteId, waterId, themeMode]);
@@ -936,6 +957,37 @@ export function App(): VNode {
                     id === 'shared' ? 'Shared ramp (approved)' : 'From ' + id,
                   ),
                 ),
+              ),
+              el(
+                'fieldset',
+                { class: 'offers' },
+                el(
+                  'legend',
+                  null,
+                  'Allowed offers (road tiles are always allowed)',
+                ),
+                RESTRICTABLE_OFFERS.map((id) => {
+                  const on = allowedOffers.includes(id);
+                  return el(
+                    'label',
+                    { key: id },
+                    el('input', {
+                      type: 'checkbox',
+                      checked: on,
+                      // The last option stays on, so the player always has a choice.
+                      disabled: on && allowedOffers.length === 1,
+                      onChange: (e: Event) => {
+                        const checked = (e.currentTarget as HTMLInputElement)
+                          .checked;
+                        const next = checked
+                          ? [...allowedOffers, id]
+                          : allowedOffers.filter((x) => x !== id);
+                        editor.current?.setAllowedOffers(next);
+                      },
+                    }),
+                    ' ' + OFFER_NAMES[id],
+                  );
+                }),
               ),
             )
           : null,
