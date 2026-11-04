@@ -141,6 +141,10 @@ Short log of choices and why. Newest at the bottom.
 | 2026-11-03 | The player never places buildings; every house and destination spawns at random inside the slowly expanding build boundary (the open districts) | Confirmed by the author. The boundary keeps new buildings within reach of the city. There is no building-placement sound, since the player never places one |
 | 2026-11-03 | A house's driveway is drawn at road width, not house-body width | At house width the bar ended flat at the road tile's centre and the narrower road cap showed below it as a pinched tip. Road width matches the lot inlet tabs and rounds cleanly |
 | 2026-11-03 | Houses keep a free, permanent stub that the player can drag to any of the 8 neighbours; pulled forward from M14 | Asked by the author. The stub costs nothing and can't be erased. A free stub that moves leaves no road behind, with no refund, so moving it can't create budget; a paid road it took over stays. Stored on the house (`stub`, `stubAdopted`), which saves keep as written, so no schema change; older runs get stubs on load |
+| 2026-11-03 | Music is MP3 only; the OGG with M4A/AAC plan is dropped | Asked by the author. One format keeps the loader and build simple, and MP3 plays in every browser the game targets |
+| 2026-11-03 | Music stems are split from the existing Freesound loops, not commissioned | Asked by the author. Each track becomes pad, melody and percussion stems that add back to the original, by a percussive split and a 250–400 Hz crossover. This is approximate, not a learned separation, and needs a listening check |
+| 2026-11-03 | Stem rules: melody follows cars (full at 30), percussion follows pins (full at 6, or any overflow), pad rises from 60% through the week; the menu plays the full mix | Chosen by the author's brief: the mix thickens as the city grows. Tuning constants live in `music-stems.ts` |
+| 2026-11-03 | The music credit says the tracks were looped and split into stems | CC BY asks that changes be said. The note follows the Freesound credit lines |
 
 ## M9 · Palette and labels
 

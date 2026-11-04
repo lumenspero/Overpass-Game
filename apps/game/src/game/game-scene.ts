@@ -136,7 +136,8 @@ import {
 import { overflowRings } from '../view/overflow.ts';
 import { audio } from '../audio/shared.ts';
 import { soundForSimEvent } from '../audio/sim-sounds.ts';
-import { weekEndSound } from '../audio/week-tick.ts';
+import { weekEndSound, hourOfWeek } from '../audio/week-tick.ts';
+import { stemLevels } from '../audio/music-stems.ts';
 import {
   actionSounds,
   EMPTY_TALLY,
@@ -490,6 +491,16 @@ export class GameScene extends Phaser.Scene {
       const tock = weekEndSound(before, this.sim.tick, tuning.WEEK_TICKS);
       if (tock) audio.playEffect(tock);
     }
+    // The music's stems follow traffic, pin pressure and the week.
+    const demands = Object.values(this.sim.demand);
+    audio.setStems(
+      stemLevels({
+        cars: this.sim.cars.length,
+        pins: demands.reduce((sum, d) => sum + d.pins, 0),
+        overflowing: demands.some((d) => d.overflow > 0),
+        weekHour: hourOfWeek(this.sim.tick, tuning.WEEK_TICKS),
+      }),
+    );
     // Once each week the run is saved, so a reload resumes from the start of that week.
     if (ticks > 0 && weekOf(this.sim.tick) > this.lastSavedWeek) this.saveNow();
 

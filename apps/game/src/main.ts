@@ -24,6 +24,7 @@ import { showOptions, type OptionsScreen } from './ui/options-screen.ts';
 import type { AudioLevels } from './audio/audio-manager.ts';
 import { audio } from './audio/shared.ts';
 import { MUSIC_TRACKS } from './audio/catalog.ts';
+import { FULL_STEMS } from './audio/music-stems.ts';
 
 const root = document.querySelector<HTMLDivElement>('#app');
 if (!root) throw new Error('#app element not found');
@@ -168,6 +169,7 @@ function showMainMenu(): void {
     onSettings: openOptions,
     sound: (event) => audio.playEffect(event),
   });
+  audio.setStems(FULL_STEMS);
   audio.playMusic(MUSIC_TRACKS[0]);
 }
 

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MUSIC_CREDIT_NOTE,
+  MUSIC_STEMS,
   MUSIC_TRACKS,
   SOUND_CATALOG,
   SOUND_EVENTS,
-  musicUrl,
+  musicStemUrl,
   soundCreditLines,
   soundSourceUrl,
   soundUrl,
@@ -25,9 +27,13 @@ describe('sound catalog', () => {
   it('gives every game file a unique name', () => {
     const files = [
       ...SOUND_EVENTS.map((event) => SOUND_CATALOG[event].file),
-      ...MUSIC_TRACKS.map((track) => track.file),
+      ...MUSIC_TRACKS.map((track) => track.folder),
     ];
     expect(new Set(files).size).toBe(files.length);
+  });
+
+  it('gives every music track one stem per name', () => {
+    expect(MUSIC_STEMS).toEqual(['pad', 'melody', 'percussion']);
   });
 
   it('keeps the Freesound details for attribution', () => {
@@ -65,16 +71,17 @@ describe('sound catalog', () => {
     expect(soundUrl('map.next', '/overpass/')).toBe(
       '/overpass/audio/sfx/map-next.wav',
     );
-    expect(musicUrl(MUSIC_TRACKS[0], '/')).toBe(
-      '/audio/music/music-synth-pad-chords.mp3',
+    expect(musicStemUrl(MUSIC_TRACKS[0], 'melody', '/')).toBe(
+      '/audio/music/stems/synth-pad-chords/melody.mp3',
     );
   });
 
   it('credits each Freesound source once and leaves out generated tones', () => {
     const lines = soundCreditLines();
     expect(lines.length).toBe(new Set(lines).size);
-    // Only the seven music tracks: every effect is generated.
-    expect(lines.length).toBe(7);
+    // The seven music tracks, then the note that they are changed: every effect is generated.
+    expect(lines.length).toBe(8);
+    expect(lines[7]).toBe(MUSIC_CREDIT_NOTE);
     expect(lines.some((line) => line.includes('nnaudio, CC BY 4.0'))).toBe(
       true,
     );

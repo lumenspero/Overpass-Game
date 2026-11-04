@@ -329,7 +329,9 @@ Done when: a run survives a reload mid-game, and a save exported on one host imp
 - [ ] **Checkpoint E · Audio sourcing.** Present the sourcing options below; you pick sources and a direction before any assets are added
 - [ ] Audio manager over Phaser sound: buses for music, ambience and effects; volume settings; mobile unlock on first tap
 - [ ] Sound effects mapped to sim events through an event bus
-- [ ] Music loops with layers whose volume follows game state
+- [x] Music loops with layers whose volume follows game state
+
+> **Status (stems built; listening check open):** each track is three MP3 stems (pad, melody, percussion) in `apps/game/public/audio/music/stems/`, made from the Freesound loops by `tools/audio/make-music-stems.py`. The stems come from splitting the recordings (a percussive split and a 250–400 Hz crossover), not from a learned separation model, so they are approximate. The three add back to the original. The melody follows traffic, the percussion follows pin pressure and overflow, and the pad rises through the week. The menu plays the full mix. The seven full-mix MP3s are still in the music folder until the author decides to remove them.
 
 ### Phase 5: Platform, content, release
 
@@ -363,9 +365,9 @@ Audio is built so it can react to the game whether or not the original's does: t
 **Design**
 
 - **Effects** for road placement and erasing, building spawn, car arrival, pin appearing, overflow warning and countdown, week end, upgrade pick, menu clicks, game over.
-- **Music** as 2–4 calm loops of equal length and tempo, split into stems (pad, melody, percussion). Stem volumes follow traffic, pin pressure and week, so the mix thickens as the city grows.
+- **Music** as 2–4 calm loops of equal length and tempo, split into stems (pad, melody, percussion). Stem volumes follow traffic, pin pressure and week, so the mix thickens as the city grows. In M12 the stems are derived from the existing Freesound loops, since no separate stems were available.
 - **Musical effects (optional):** pitch arrival chimes to a scale per building color and quantize them to the beat, so busy traffic sounds like part of the music.
-- Formats: OGG with an M4A/AAC fallback for Safari; loudness normalized; loops cut sample-accurately.
+- Format: MP3 only, decided at M12, so one format covers every browser. Loudness normalized; loops joined with a 50 ms crossfade.
 
 **Sourcing options**
 

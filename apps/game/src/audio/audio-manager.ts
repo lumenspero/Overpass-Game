@@ -1,10 +1,13 @@
 import {
-  musicUrl,
+  MUSIC_STEMS,
+  musicStemUrl,
   soundUrl,
+  type MusicStem,
   type MusicTrack,
   type SoundEvent,
 } from './catalog.ts';
 import { volumeToGain } from './levels.ts';
+import { FULL_STEMS, STEM_FADE_S, type StemLevels } from './music-stems.ts';
 import { allowPlay, MIN_GAP_S } from './throttle.ts';
 
 /** The volume level of each bus, from 0 to 10. */
@@ -16,10 +19,19 @@ export interface AudioLevels {
 
 type BusName = keyof AudioLevels;
 
+interface PlayingTrack {
+  track: MusicTrack;
+  sources: AudioBufferSourceNode[];
+  gains: Record<MusicStem, GainNode>;
+}
+
 /**
  * Plays sound effects and music through three gain buses (music, effects and soundscape), each set
  * from the player's levels. The menu runs before any Phaser game exists, so this uses the Web Audio
  * API directly rather than a Phaser sound manager.
+ *
+ * A music track is three stems that start together and loop in step. Each stem has its own gain,
+ * which `setStems` moves to follow the game.
  *
  * Browsers keep audio suspended until the page gets a tap or key press. `unlock` runs from such a
  * gesture: it resumes audio, and starts any music that was waiting for it.
@@ -32,8 +44,9 @@ export class AudioManager {
   /** When each effect last played, in audio-clock seconds, for throttling. */
   private readonly lastPlayed = new Map<SoundEvent, number>();
   private wanted: MusicTrack | null = null;
-  private playing: { track: MusicTrack; source: AudioBufferSourceNode } | null =
-    null;
+  private playing: PlayingTrack | null = null;
+  /** The stem levels the music is moving towards. */
+  private stems: StemLevels = FULL_STEMS;
   private readonly baseUrl: string;
 
   constructor(baseUrl: string, levels: AudioLevels) {
@@ -58,6 +71,22 @@ export class AudioManager {
     if (!this.buses) return;
     for (const bus of ['music', 'effects', 'ambience'] as const) {
       this.buses[bus].gain.value = volumeToGain(levels[bus]);
+    }
+  }
+
+  /**
+   * Moves each stem of the playing music towards its level, over about STEM_FADE_S seconds. Safe
+   * to call every frame: a level already reached does not change anything.
+   */
+  setStems(stems: StemLevels): void {
+    if (MUSIC_STEMS.every((stem) => stems[stem] === this.stems[stem])) return;
+    this.stems = stems;
+    const playing = this.playing;
+    const context = this.context;
+    if (!playing || !context) return;
+    const now = context.currentTime;
+    for (const stem of MUSIC_STEMS) {
+      playing.gains[stem].gain.setTargetAtTime(stems[stem], now, STEM_FADE_S);
     }
   }
 
@@ -87,7 +116,11 @@ export class AudioManager {
   /** Stops the music. */
   stopMusic(): void {
     this.wanted = null;
-    this.playing?.source.stop();
+    this.stopPlaying();
+  }
+
+  private stopPlaying(): void {
+    for (const source of this.playing?.sources ?? []) source.stop();
     this.playing = null;
   }
 
@@ -98,18 +131,37 @@ export class AudioManager {
       return;
     if (this.playing?.track === track) return;
     const music = this.buses.music;
-    void this.load(musicUrl(track, this.baseUrl)).then((buffer) => {
+    const loads = MUSIC_STEMS.map((stem) =>
+      this.load(musicStemUrl(track, stem, this.baseUrl)),
+    );
+    void Promise.all(loads).then((buffers) => {
+      const loaded = buffers.filter((b): b is AudioBuffer => b !== null);
       // The wanted track may have changed, or been stopped, while it loaded.
-      if (!buffer || this.wanted !== track || this.playing?.track === track) {
+      if (
+        loaded.length !== MUSIC_STEMS.length ||
+        this.wanted !== track ||
+        this.playing?.track === track
+      ) {
         return;
       }
-      this.playing?.source.stop();
-      const source = context.createBufferSource();
-      source.buffer = buffer;
-      source.loop = true;
-      source.connect(music);
-      source.start();
-      this.playing = { track, source };
+      this.stopPlaying();
+      // All stems start at one moment, so they stay in step as they loop.
+      const start = context.currentTime + 0.05;
+      const sources: AudioBufferSourceNode[] = [];
+      const gains = {} as Record<MusicStem, GainNode>;
+      MUSIC_STEMS.forEach((stem, i) => {
+        const gain = context.createGain();
+        gain.gain.value = this.stems[stem];
+        gain.connect(music);
+        const source = context.createBufferSource();
+        source.buffer = loaded[i];
+        source.loop = true;
+        source.connect(gain);
+        source.start(start);
+        sources.push(source);
+        gains[stem] = gain;
+      });
+      this.playing = { track, sources, gains };
     });
   }
 

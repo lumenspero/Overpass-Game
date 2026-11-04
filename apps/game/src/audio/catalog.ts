@@ -201,12 +201,20 @@ export const SOUND_CATALOG: Readonly<Record<SoundEvent, SoundEntry>> = {
 };
 
 /**
+ * The three stems every music track is split into. They play together, in step, and each one's
+ * volume follows the game (see music-stems.ts). Each stem is an MP3 named after it.
+ */
+export const MUSIC_STEMS = ['pad', 'melody', 'percussion'] as const;
+export type MusicStem = (typeof MUSIC_STEMS)[number];
+
+/**
  * Background music. Each track is looped to about two minutes, then set to the shared level of
  * -21 LUFS. `gainDb` is the change from the measured level, and `loops` is the number of copies
- * joined with a 50 ms crossfade. Files live under audio/music/.
+ * joined with a 50 ms crossfade. Each track's stems live in its folder under audio/music/.
  */
 export interface MusicTrack {
-  readonly file: string;
+  /** The folder under audio/music/ holding the track's stems, one MP3 per entry of MUSIC_STEMS. */
+  readonly folder: string;
   readonly loops: number;
   readonly gainDb: number;
   readonly source: FreesoundSource;
@@ -214,7 +222,7 @@ export interface MusicTrack {
 
 export const MUSIC_TRACKS: readonly MusicTrack[] = [
   {
-    file: 'music-synth-pad-chords.mp3',
+    folder: 'stems/synth-pad-chords',
     loops: 9,
     gainDb: -1.3,
     source: {
@@ -227,7 +235,7 @@ export const MUSIC_TRACKS: readonly MusicTrack[] = [
     },
   },
   {
-    file: 'music-vibey-synth.mp3',
+    folder: 'stems/vibey-synth',
     loops: 9,
     gainDb: -1.1,
     source: {
@@ -240,7 +248,7 @@ export const MUSIC_TRACKS: readonly MusicTrack[] = [
     },
   },
   {
-    file: 'music-summer-love-keys.mp3',
+    folder: 'stems/summer-love-keys',
     loops: 10,
     gainDb: -0.7,
     source: {
@@ -254,7 +262,7 @@ export const MUSIC_TRACKS: readonly MusicTrack[] = [
     },
   },
   {
-    file: 'music-lofi-zelda-bells.mp3',
+    folder: 'stems/lofi-zelda-bells',
     loops: 8,
     gainDb: -1.2,
     source: {
@@ -267,7 +275,7 @@ export const MUSIC_TRACKS: readonly MusicTrack[] = [
     },
   },
   {
-    file: 'music-lofi-bells-140.mp3',
+    folder: 'stems/lofi-bells-140',
     loops: 9,
     gainDb: -2.7,
     source: {
@@ -280,7 +288,7 @@ export const MUSIC_TRACKS: readonly MusicTrack[] = [
     },
   },
   {
-    file: 'music-uber-smooth-chords.mp3',
+    folder: 'stems/uber-smooth-chords',
     loops: 10,
     gainDb: 1.6,
     source: {
@@ -293,7 +301,7 @@ export const MUSIC_TRACKS: readonly MusicTrack[] = [
     },
   },
   {
-    file: 'music-lofi-bells-145.mp3',
+    folder: 'stems/lofi-bells-145',
     loops: 9,
     gainDb: -2.5,
     source: {
@@ -317,9 +325,16 @@ export function soundUrl(event: SoundEvent, baseUrl: string): string {
   return `${baseUrl}audio/sfx/${SOUND_CATALOG[event].file}`;
 }
 
-/** The game's URL for a music track. `baseUrl` is Vite's BASE_URL, which ends in a slash. */
-export function musicUrl(track: MusicTrack, baseUrl: string): string {
-  return `${baseUrl}audio/music/${track.file}`;
+/**
+ * The game's URL for one stem of a music track. `baseUrl` is Vite's BASE_URL, which ends in a
+ * slash.
+ */
+export function musicStemUrl(
+  track: MusicTrack,
+  stem: MusicStem,
+  baseUrl: string,
+): string {
+  return `${baseUrl}audio/music/${track.folder}/${stem}.mp3`;
 }
 
 /**
@@ -340,5 +355,11 @@ export function soundCreditLines(): string[] {
       `${source.title} by ${source.creator}, ${source.license}. ${soundSourceUrl(source)}`,
     );
   }
+  // CC BY asks for changes to be said, so the music credit notes that it was changed.
+  if (MUSIC_TRACKS.length > 0) lines.push(MUSIC_CREDIT_NOTE);
   return lines;
 }
+
+/** Said after the music credits: the tracks are changed, as CC BY requires saying. */
+export const MUSIC_CREDIT_NOTE =
+  'The music is looped and split into stems from the recordings above.';
