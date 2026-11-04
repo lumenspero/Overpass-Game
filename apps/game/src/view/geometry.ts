@@ -18,6 +18,8 @@ import {
   motorwayBetween,
   pointAtDistance,
   polylineLength,
+  ROUNDABOUT_ARM_TILES,
+  ROUNDABOUT_RING_TILES,
   roundaboutPath,
   roundedPath,
 } from '@overpass-game/sim';
@@ -348,6 +350,9 @@ export function carShapes(
     // A car on its first tile enters as it leaves; a car on its last tile leaves as it came in.
     const inDir = inRaw ?? outRaw;
     const outDir = outRaw ?? inRaw;
+    // A road reaching a roundabout meets it at the neighbour's centre, the ring's outer edge.
+    const inHalf = prev !== null && controls[prev] === 'roundabout' ? 0 : half;
+    const outHalf = next !== null && controls[next] === 'roundabout' ? 0 : half;
     if (
       inDir &&
       outDir &&
@@ -358,19 +363,33 @@ export function carShapes(
       // Round a roundabout the car keeps to the ring, from the edge it came in by to the edge it leaves by.
       const nIn = rightOfTravel(inDir);
       const nOut = rightOfTravel(outDir);
-      const entry = {
-        x: c.x - inDir.dx * half + nIn.x,
-        y: c.y - inDir.dy * half + nIn.y,
+      // The car keeps its lane on the arm, then the lane fades out over the join so it
+      // reaches the ring centred on it.
+      const cu = {
+        x: (tile % grid.cols) + 0.5,
+        y: Math.floor(tile / grid.cols) + 0.5,
       };
-      const exit = {
-        x: c.x + outDir.dx * half + nOut.x,
-        y: c.y + outDir.dy * half + nOut.y,
-      };
-      const ring = roundaboutPath(grid, prev, tile, next).map((p) => ({
-        x: p.x * TILE_SIZE,
-        y: p.y * TILE_SIZE,
-      }));
-      const path = [entry, ...ring.slice(1, -1), exit];
+      const ring = roundaboutPath(grid, prev, tile, next);
+      const path = ring.map((p) => {
+        const dx = p.x - cu.x;
+        const dy = p.y - cu.y;
+        const r = Math.hypot(dx, dy);
+        const w = Math.min(
+          1,
+          Math.max(
+            0,
+            (r - ROUNDABOUT_RING_TILES) /
+              (ROUNDABOUT_ARM_TILES - ROUNDABOUT_RING_TILES),
+          ),
+        );
+        const onEntry =
+          dx * -inDir.dx + dy * -inDir.dy > dx * outDir.dx + dy * outDir.dy;
+        const lane = onEntry ? nIn : nOut;
+        return {
+          x: p.x * TILE_SIZE + lane.x * w,
+          y: p.y * TILE_SIZE + lane.y * w,
+        };
+      });
       const spot = pointAtDistance(path, along * polylineLength(path));
       x = spot.x;
       y = spot.y;
@@ -379,10 +398,10 @@ export function carShapes(
       const nIn = rightOfTravel(inDir);
       const nOut = rightOfTravel(outDir);
       // Quadratic Bézier: start on the entry edge, control at the centre, end on the exit edge.
-      const ax = c.x - inDir.dx * half + nIn.x;
-      const ay = c.y - inDir.dy * half + nIn.y;
-      const bx = c.x + outDir.dx * half + nOut.x;
-      const by = c.y + outDir.dy * half + nOut.y;
+      const ax = c.x - inDir.dx * inHalf + nIn.x;
+      const ay = c.y - inDir.dy * inHalf + nIn.y;
+      const bx = c.x + outDir.dx * outHalf + nOut.x;
+      const by = c.y + outDir.dy * outHalf + nOut.y;
       const cx = c.x + (nIn.x + nOut.x) / 2;
       const cy = c.y + (nIn.y + nOut.y) / 2;
       const u = 1 - along;

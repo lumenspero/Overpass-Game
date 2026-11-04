@@ -25,6 +25,8 @@ import {
   linkPartners,
   linkTiles,
   placeCrossing,
+  Terrain,
+  tuning,
   releaseCrossingTile,
   restoreCrossingTile,
   placeRoads,
@@ -75,7 +77,15 @@ type Change =
       refunded: boolean;
     }
   /** A link an erase took off a house's stub. Restored on rollback. */
-  | { kind: 'unlink'; a: number; b: number };
+  | { kind: 'unlink'; a: number; b: number }
+  /** A road stroke's own bridge or tunnel. Its tiles, links and stock are undone together. */
+  | {
+      kind: 'auto-crossing';
+      crossing: CrossingKind;
+      tiles: number[];
+      added: number[];
+      path: number[];
+    };
 
 interface Stroke {
   mode: StrokeMode;
@@ -89,6 +99,8 @@ interface Stroke {
   nudge: { id: number; handle: number } | null;
   /** A draw stroke pressed on a house: its first step moves the house's stub there. */
   house: number | null;
+  /** Water or mountain tiles a road stroke is crossing, held until it reaches land. Not laid yet. */
+  pending?: { kind: CrossingKind; from: number; tiles: number[] } | null;
 }
 
 /** The outcome of one bridge, tunnel or motorway release. `seq` rises with every release. */
@@ -180,6 +192,10 @@ function touchTile(ctl: Controller, stroke: Stroke, t: TileXY): boolean {
     stroke.halted = true;
     return false;
   }
+  if (stroke.mode === 'draw') {
+    const crossed = touchDrawTile(ctl, stroke, t, i);
+    if (crossed !== null) return crossed;
+  }
   if (ctl.sim.roads[i] === 1) return false; // already a road: free, keep going
   const result = placeRoads(ctl.sim, [i]);
   if (!result.ok) {
@@ -187,6 +203,88 @@ function touchTile(ctl: Controller, stroke: Stroke, t: TileXY): boolean {
     return false;
   }
   stroke.changes.push({ kind: 'tile', index: i, wasRoad: 0, partners: [] });
+  return true;
+}
+
+/**
+ * A road stroke over water or mountain (spec: Bridges and tunnels). With a bridge or tunnel in
+ * stock, the stroke holds the tiles it crosses and builds them in one piece once it reaches land.
+ * Returns null when the tile is not a crossing tile, so the normal road rules apply.
+ */
+function touchDrawTile(
+  ctl: Controller,
+  stroke: Stroke,
+  t: TileXY,
+  i: number,
+): boolean | null {
+  const terrain = ctl.sim.grid.terrain[i];
+  const kind: CrossingKind | null =
+    terrain === Terrain.Water
+      ? 'bridge'
+      : terrain === Terrain.Mountain
+        ? 'tunnel'
+        : null;
+  const open = stroke.pending ?? null;
+  if (open === null) {
+    if (kind === null || ctl.sim.roads[i] === 1) return null;
+    const k = stroke.path.indexOf(t);
+    const from = k > 0 ? indexOf(ctl.sim, stroke.path[k - 1]) : null;
+    if (from === null || ctl.sim.stock[kind] < 1) {
+      stroke.halted = true;
+      ctl.note =
+        from === null
+          ? `${kind} refused: no land before it`
+          : `${kind} refused: no stock`;
+      return false;
+    }
+    stroke.pending = { kind, from, tiles: [i] };
+    return false;
+  }
+  if (kind === open.kind && ctl.sim.roads[i] === 0) {
+    const span =
+      open.kind === 'bridge' ? tuning.BRIDGE_MAX_SPAN : tuning.TUNNEL_MAX_SPAN;
+    if (open.tiles.length >= span) {
+      stroke.halted = true;
+      stroke.pending = null;
+      ctl.note = `${open.kind} refused: too-long`;
+      return false;
+    }
+    open.tiles.push(i);
+    return false;
+  }
+  return closeCrossing(ctl, stroke, open, i);
+}
+
+/** Builds the held crossing from its land tile to this one, as one piece. */
+function closeCrossing(
+  ctl: Controller,
+  stroke: Stroke,
+  open: { kind: CrossingKind; from: number; tiles: number[] },
+  i: number,
+): boolean {
+  const path = [open.from, ...open.tiles, i];
+  const added = path.filter((x) => ctl.sim.roads[x] === 0);
+  const result = placeCrossing(ctl.sim, open.kind, path);
+  stroke.pending = null;
+  ctl.note = result.ok
+    ? `${open.kind} built (${result.crossings})`
+    : `${open.kind} refused: ${result.reason}`;
+  ctl.crossing = {
+    seq: (ctl.crossing?.seq ?? 0) + 1,
+    kind: open.kind,
+    result,
+  };
+  if (!result.ok) {
+    stroke.halted = true;
+    return false;
+  }
+  stroke.changes.push({
+    kind: 'auto-crossing',
+    crossing: open.kind,
+    tiles: open.tiles,
+    added,
+    path,
+  });
   return true;
 }
 
@@ -253,7 +351,7 @@ function extend(
     }
     changed = touchTile(ctl, stroke, t) || changed;
     if (stroke.halted) break;
-    if (stroke.mode === 'draw' && k > 0) {
+    if (stroke.mode === 'draw' && k > 0 && stroke.pending == null) {
       // A new link changes what is drawn, so the view must redraw even with no new road.
       changed = linkStep(ctl, stroke, stroke.path[k - 1], t) || changed;
     }
@@ -460,6 +558,12 @@ function rollback(ctl: Controller, stroke: Stroke): boolean {
       restoreMotorway(ctl.sim, c.motorway);
     } else if (c.kind === 'control') {
       restoreControl(ctl.sim, c.index, c.control);
+    } else if (c.kind === 'auto-crossing') {
+      for (let k = 1; k < c.path.length; k++) {
+        unlinkTiles(ctl.sim, c.path[k - 1], c.path[k]);
+      }
+      for (const i of c.tiles) releaseCrossingTile(ctl.sim, i);
+      removeRoads(ctl.sim, c.added);
     } else if (c.kind === 'unlink') {
       linkTiles(ctl.sim, c.a, c.b);
     } else if (c.kind === 'stub') {
@@ -571,7 +675,13 @@ export function applyIntent(
       // Releasing a draw stroke takes the tile under the pointer, so the last step of the
       // drag is linked even if the pointer never settled on that tile's centre.
       if (stroke && intent.at && stroke.mode === 'draw') {
-        return extend(ctl, stroke, intent.at, toTile, true);
+        const changed = extend(ctl, stroke, intent.at, toTile, true);
+        if (stroke.pending) {
+          // Released over water: the crossing never reached land, so nothing is built.
+          ctl.note = `${stroke.pending.kind} needs land on the far bank`;
+          stroke.pending = null;
+        }
+        return changed;
       }
       return false;
     }

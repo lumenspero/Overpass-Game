@@ -86,6 +86,10 @@ import {
 } from '../debug/tuning-panel.ts';
 import { createOfferPanel, type OfferPanel } from '../ui/offer-panel.ts';
 import { createDock, type Dock } from '../ui/dock.ts';
+import type { DockId } from '../ui/dock-model.ts';
+
+/** Pointer id for a drag from the dock. Real pointers are never negative. */
+const DOCK_POINTER_ID = -7;
 import { createTopBar, type TopBar } from '../ui/top-bar.ts';
 import { clockFor, type PlayChoice } from '../ui/top-bar-model.ts';
 import { previewRoads } from '../view/crossing-preview.ts';
@@ -166,8 +170,6 @@ import {
   playedMap,
 } from './test-map.ts';
 
-/** Roundabout ring and the two light colours. */
-const CONTROL_OUTLINE_COLOUR = 0x3a4150;
 /** A touch stroke shorter than this, in screen pixels, is a tap, and does not auto-zoom. */
 const STROKE_FIT_MIN_PX = 24;
 
@@ -276,6 +278,8 @@ export class GameScene extends Phaser.Scene {
   private guideLines: { x: number; y: number }[][] | null = null;
   private settings: GameSettings = DEFAULT_SETTINGS;
   private controlGfx!: Phaser.GameObjects.Graphics;
+  /** Roundabout kerbs, beneath the roads so each arm runs into the ring without a curb. */
+  private roundaboutKerbGfx!: Phaser.GameObjects.Graphics;
   private carGfx!: Phaser.GameObjects.Graphics;
   /** Each car's heading when last drawn, by car id, so a stopped car keeps facing the way it was going. */
   private carHeadings = new Map<number, number>();
@@ -302,6 +306,9 @@ export class GameScene extends Phaser.Scene {
   private debugText!: Phaser.GameObjects.Text;
   private offerPanel!: OfferPanel;
   private dock!: Dock;
+  /** A piece being dragged from the dock: its item, and whether its stroke has started on the map. */
+  private dockDrag: { id: DockId; started: boolean; single: boolean } | null =
+    null;
   private topBar!: TopBar;
   private debugOn = false;
   private overlayDirty = true;
@@ -352,6 +359,10 @@ export class GameScene extends Phaser.Scene {
       onArm: (id) => {
         if (id !== 'tiles') this.pickCrossing(id);
       },
+      onDragStart: (id) => this.onDockDragStart(id),
+      onDragMove: (x, y) => this.onDockDragMove(x, y),
+      onDragEnd: (x, y) => this.onDockDragEnd(x, y),
+      getTilePx: () => TILE_SIZE * this.view.zoom,
     });
     this.topBar = createTopBar({
       onMenu: () => runActions()?.menu(),
@@ -372,6 +383,7 @@ export class GameScene extends Phaser.Scene {
     this.guideGfx = this.add.graphics();
     this.lockGfx = this.add.graphics();
     // Roads sit under buildings, so a road that meets a building tucks in beneath its body.
+    this.roundaboutKerbGfx = this.add.graphics();
     this.roadGfx = this.add.graphics();
     this.buildingGfx = this.add.graphics();
     this.motorwayGfx = this.add.graphics();
@@ -389,6 +401,7 @@ export class GameScene extends Phaser.Scene {
       this.gridGfx,
       this.guideGfx,
       this.lockGfx,
+      this.roundaboutKerbGfx,
       this.roadGfx,
       this.buildingGfx,
       this.motorwayGfx,
@@ -602,6 +615,67 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Canvas-relative position of a DOM event, in game pixels. */
+  private dockSample(clientX: number, clientY: number): PointerSample {
+    return {
+      id: DOCK_POINTER_ID,
+      kind: 'mouse',
+      ...this.canvasPoint({ clientX, clientY }),
+      button: 0,
+      time: this.time.now,
+    };
+  }
+
+  /** True when the point is over the map itself, not over the dock, the popup or the top bar. */
+  private overCanvas(clientX: number, clientY: number): boolean {
+    return document.elementFromPoint(clientX, clientY) === this.canvas;
+  }
+
+  private onDockDragStart = (id: DockId): void => {
+    if (id === 'tiles' || this.sim.over || this.sim.offers.length > 0) return;
+    setTool(this.mapper, id);
+    this.dockDrag = {
+      id,
+      started: false,
+      single: id === 'roundabout' || id === 'light',
+    };
+  };
+
+  private onDockDragMove = (x: number, y: number): void => {
+    const drag = this.dockDrag;
+    if (!drag || drag.single) return;
+    if (!drag.started) {
+      // The stroke starts where the pointer first enters the map, so a bridge or tunnel is drawn from there.
+      if (!this.overCanvas(x, y)) return;
+      drag.started = true;
+      this.dispatch(pointerDown(this.mapper, this.dockSample(x, y)));
+      return;
+    }
+    this.dispatch(pointerMove(this.mapper, this.dockSample(x, y)));
+  };
+
+  private onDockDragEnd = (x: number, y: number): void => {
+    const drag = this.dockDrag;
+    this.dockDrag = null;
+    if (drag) {
+      const inside = this.overCanvas(x, y);
+      if (drag.single) {
+        // A roundabout or traffic light is one tile: it goes where the piece is dropped.
+        if (inside) {
+          this.dispatch(pointerDown(this.mapper, this.dockSample(x, y)));
+          this.dispatch(pointerUp(this.mapper, this.dockSample(x, y)));
+        }
+      } else if (drag.started) {
+        // Dropped off the map: the stroke is cancelled and nothing is placed.
+        this.dispatch(
+          inside
+            ? pointerUp(this.mapper, this.dockSample(x, y))
+            : pointerCancel(this.mapper, this.dockSample(x, y)),
+        );
+      }
+    }
+    setTool(this.mapper, 'select');
+  };
+
   private canvasPoint(e: { clientX: number; clientY: number }): Vec2 {
     const r = this.canvas.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
@@ -1351,7 +1425,9 @@ export class GameScene extends Phaser.Scene {
   /** Roundabouts as rings, and lights as a red or green dot on each axis, the green one on the axis that has it. */
   private drawControls(): void {
     const gfx = this.controlGfx;
+    const kerb = this.roundaboutKerbGfx;
     gfx.clear();
+    kerb.clear();
     const { cols } = this.sim.grid;
     const horizontal = greenIsHorizontal(this.sim);
     for (const [key, kind] of Object.entries(this.sim.controls)) {
@@ -1359,13 +1435,16 @@ export class GameScene extends Phaser.Scene {
       const cx = ((tile % cols) + 0.5) * TILE_SIZE;
       const cy = (Math.floor(tile / cols) + 0.5) * TILE_SIZE;
       if (kind === 'roundabout') {
-        // A donut: a road-coloured band with a dark outline, the tile's centre left open.
+        // A donut of filled discs (a stroked circle shows a seam where it closes). The kerb
+        // sits under the roads, so each arm runs into the ring; the pavement and the open
+        // centre sit over the roads.
         const mid = TILE_SIZE * ROUNDABOUT_RING_TILES;
-        const band = TILE_SIZE * 0.28;
-        gfx.lineStyle(band + 3, CONTROL_OUTLINE_COLOUR, 1);
-        gfx.strokeCircle(cx, cy, mid);
-        gfx.lineStyle(band, this.pal.road, 1);
-        gfx.strokeCircle(cx, cy, mid);
+        const band = TILE_SIZE * ROAD_WIDTH_TILES;
+        const outer = mid + band / 2;
+        kerb.fillStyle(this.pal.kerb, 1);
+        kerb.fillCircle(cx, cy, outer + BORDER_PX);
+        gfx.fillStyle(this.pal.road, 1);
+        gfx.fillCircle(cx, cy, outer);
         // Hollow centre: the tile's own ground shows through, so the roads under it don't.
         const ground = this.terrainColour(
           this.sim.grid.terrain[tile] as TerrainKind,

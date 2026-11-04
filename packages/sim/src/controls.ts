@@ -16,12 +16,19 @@ export type ControlKind = 'roundabout' | 'light';
  * Where cars drive round a roundabout, as a fraction of a tile from its centre. The ring is
  * the middle of the donut drawn on the tile, so cars keep to its band.
  */
-export const ROUNDABOUT_RING_TILES = 0.36;
+export const ROUNDABOUT_RING_TILES = 0.75;
+
+/** How far, in tiles from a roundabout's centre, each road arm meets it: the outer edge of the ring. */
+export const ROUNDABOUT_ARM_TILES = 1;
+/** Angle, in radians, from an arm to the point where the car joins the ring. */
+const ROUNDABOUT_JOIN_RAD = 0.5;
+/** Length of the curve handles that bend a car onto and off the ring, in tiles. */
+const ROUNDABOUT_HANDLE_TILES = 0.15;
 
 /**
- * The path a car takes across a roundabout tile: in from the arm it came by, round the ring
- * keeping right (counter-clockwise on screen), and out by the arm it leaves by. Points are in
- * tile units. The first and last points are on the tile's edge where the arms meet it.
+ * The path a car takes across a roundabout tile: out to the ring from the arm it came by, round
+ * the ring counter-clockwise on screen, and out by the arm it leaves by. Points are in tile
+ * units. The first and last points are where the arms meet the ring's outer edge.
  */
 export function roundaboutPath(
   grid: Grid,
@@ -38,19 +45,106 @@ export function roundaboutPath(
   const entry = angle(prev);
   const exit = angle(next);
   const TAU = 2 * Math.PI;
-  // Screen angles fall as the car goes round, so the sweep is the way round from entry to exit.
+  // Screen angles fall as the car goes round, and traffic goes counter-clockwise, so the ring
+  // is always driven from entry down to exit.
   const sweep = (((entry - exit) % TAU) + TAU) % TAU;
   const R = ROUNDABOUT_RING_TILES;
+  const A = ROUNDABOUT_ARM_TILES;
+  const d = ROUNDABOUT_JOIN_RAD;
+  const h = ROUNDABOUT_HANDLE_TILES;
   const at = (phi: number, r: number): CurvePoint => ({
     x: c.x + r * Math.cos(phi),
     y: c.y + r * Math.sin(phi),
   });
-  const steps = Math.max(2, Math.ceil(sweep * R * 12));
-  const out: CurvePoint[] = [at(entry, 0.5)];
-  for (let k = 0; k <= steps; k++) {
-    out.push(at(entry - (sweep * k) / steps, R));
+  // Heading when driving round the ring at angle phi, counter-clockwise on screen.
+  const travel = (phi: number): CurvePoint => ({
+    x: Math.sin(phi),
+    y: -Math.cos(phi),
+  });
+  // Heading straight out along the arm at angle phi.
+  const outward = (phi: number): CurvePoint => ({
+    x: Math.cos(phi),
+    y: Math.sin(phi),
+  });
+  const offset = (p: CurvePoint, v: CurvePoint, k: number): CurvePoint => ({
+    x: p.x + v.x * k,
+    y: p.y + v.y * k,
+  });
+  // Each join is a cubic: it leaves the arm heading in along the arm and arrives on the ring
+  // heading along the ring, so the car bends smoothly and never cuts into the middle.
+  const cubic = (
+    p0: CurvePoint,
+    p1: CurvePoint,
+    p2: CurvePoint,
+    p3: CurvePoint,
+    n: number,
+  ): CurvePoint[] => {
+    const out: CurvePoint[] = [];
+    for (let k = 0; k <= n; k++) {
+      const t = k / n;
+      const u = 1 - t;
+      const a = u * u * u;
+      const b = 3 * u * u * t;
+      const e = 3 * u * t * t;
+      const f = t * t * t;
+      out.push({
+        x: a * p0.x + b * p1.x + e * p2.x + f * p3.x,
+        y: a * p0.y + b * p1.y + e * p2.y + f * p3.y,
+      });
+    }
+    return out;
+  };
+  const aIn = at(entry, A);
+  const bIn = at(entry - d, R);
+  const bOut = at(exit + d, R);
+  const aOut = at(exit, A);
+  const pts: CurvePoint[] = cubic(
+    aIn,
+    offset(aIn, outward(entry), -h),
+    offset(bIn, travel(entry - d), -h),
+    bIn,
+    12,
+  );
+  const ringSweep = sweep - 2 * d;
+  const ringSteps = Math.max(2, Math.ceil(ringSweep * R * 24));
+  for (let k = 1; k < ringSteps; k++) {
+    pts.push(at(entry - d - (ringSweep * k) / ringSteps, R));
   }
-  out.push(at(exit, 0.5));
+  pts.push(
+    ...cubic(
+      bOut,
+      offset(bOut, travel(exit + d), h),
+      offset(aOut, outward(exit), -h),
+      aOut,
+      12,
+    ),
+  );
+  return evenlySpaced(pts, pts.length * 2);
+}
+
+/**
+ * Resamples a polyline at equal distances along it, so a car moves at one speed over the whole
+ * path rather than faster where the points are spread out.
+ */
+function evenlySpaced(points: CurvePoint[], count: number): CurvePoint[] {
+  const lengths = [0];
+  for (let k = 1; k < points.length; k++) {
+    const a = points[k - 1];
+    const b = points[k];
+    lengths.push(lengths[k - 1] + Math.hypot(b.x - a.x, b.y - a.y));
+  }
+  const total = lengths[lengths.length - 1];
+  const out: CurvePoint[] = [];
+  let seg = 1;
+  for (let i = 0; i <= count; i++) {
+    const target = (total * i) / count;
+    while (seg < points.length - 1 && lengths[seg] < target) seg++;
+    const span = lengths[seg] - lengths[seg - 1];
+    const t = span > 0 ? (target - lengths[seg - 1]) / span : 0;
+    const a = points[seg - 1];
+    const b = points[seg];
+    out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+  }
   return out;
 }
 

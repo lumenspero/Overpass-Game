@@ -18,7 +18,15 @@ export interface DockOptions {
   getSim(): SimState;
   /** The tool currently picked, so the armed item can be marked. */
   getArmed(): string;
+  /** A tap on an item with stock picks it up. */
   onArm(id: DockId): void;
+  /** A press that moves picks the item up as a drag; the scene follows the pointer. */
+  onDragStart(id: DockId): void;
+  onDragMove(x: number, y: number): void;
+  /** Released. x and y are -1 when the drag was cancelled. */
+  onDragEnd(x: number, y: number): void;
+  /** On-screen width of one road tile, so a dragged piece can be drawn at half of it. */
+  getTilePx(): number;
 }
 
 const CREAM = '#f2efe8';
@@ -26,6 +34,7 @@ const INK = '#1d222a';
 const EMPTY_DISC = '#4a505b';
 const EMPTY_INK = '#8a909a';
 const SWIPE_PX = 24;
+const DRAG_PX = 8;
 
 const ICON_FOR: Record<DockId, string> = {
   roundabout: OFFER_ICONS.roundabout,
@@ -74,6 +83,16 @@ export function createDock(opts: DockOptions): Dock {
   document.body.append(root);
 
   let expanded = false;
+  let drag: {
+    id: DockId;
+    pointerId: number;
+    x0: number;
+    y0: number;
+    moved: boolean;
+  } | null = null;
+  let ghost: HTMLElement | null = null;
+  // After a drag the browser may still fire a click on the item; it must not arm the tool again.
+  let suppressClick = false;
   let shownKey: string | null = null;
   let touchStartY: number | null = null;
 
@@ -118,7 +137,9 @@ export function createDock(opts: DockOptions): Dock {
       `${item.label}, ${item.count}${item.id === 'tiles' ? ' road tiles' : ' in stock'}`,
     );
     if (interactive) {
+      wrap.addEventListener('pointerdown', (e) => startDrag(e, item.id));
       wrap.addEventListener('click', () => {
+        if (suppressClick) return;
         opts.onArm(item.id);
         shownKey = null;
         sync();
@@ -147,6 +168,83 @@ export function createDock(opts: DockOptions): Dock {
       'display:flex;align-items:center;gap:10px;padding:0;margin-bottom:6px;touch-action:pan-y;' +
       `transition:transform ${ms}ms cubic-bezier(.2,.7,.2,1),visibility ${ms}ms;` +
       (expanded ? ABOVE : BELOW);
+  }
+
+  function showGhost(id: DockId, x: number, y: number): void {
+    // Half a road tile across, so the drop lands on the tile the player means.
+    const size = Math.max(10, opts.getTilePx() / 2);
+    ghost = el(
+      'div',
+      `position:fixed;left:${x}px;top:${y}px;width:${size}px;height:${size}px;transform:translate(-50%,-50%);` +
+        `border-radius:50%;background:${CREAM};color:${INK};display:flex;align-items:center;` +
+        'justify-content:center;pointer-events:none;z-index:40;box-shadow:0 4px 14px rgba(0,0,0,0.35);',
+    );
+    ghost.innerHTML = svgIcon(ICON_FOR[id], size);
+    document.body.append(ghost);
+  }
+
+  function moveGhost(x: number, y: number): void {
+    if (!ghost) return;
+    ghost.style.left = `${x}px`;
+    ghost.style.top = `${y}px`;
+  }
+
+  function endDrag(): void {
+    ghost?.remove();
+    ghost = null;
+    drag = null;
+    window.removeEventListener('pointermove', onDragMove);
+    window.removeEventListener('pointerup', onDragUp);
+    window.removeEventListener('pointercancel', onDragCancel);
+  }
+
+  function startDrag(e: PointerEvent, id: DockId): void {
+    if (e.button !== 0) return;
+    drag = {
+      id,
+      pointerId: e.pointerId,
+      x0: e.clientX,
+      y0: e.clientY,
+      moved: false,
+    };
+    window.addEventListener('pointermove', onDragMove);
+    window.addEventListener('pointerup', onDragUp);
+    window.addEventListener('pointercancel', onDragCancel);
+  }
+
+  function onDragMove(e: PointerEvent): void {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    if (!drag.moved) {
+      if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < DRAG_PX)
+        return;
+      drag.moved = true;
+      showGhost(drag.id, e.clientX, e.clientY);
+      opts.onDragStart(drag.id);
+    }
+    moveGhost(e.clientX, e.clientY);
+    opts.onDragMove(e.clientX, e.clientY);
+  }
+
+  function onDragUp(e: PointerEvent): void {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    const moved = drag.moved;
+    endDrag();
+    if (moved) {
+      suppressClick = true;
+      setTimeout(() => {
+        suppressClick = false;
+      }, 0);
+      opts.onDragEnd(e.clientX, e.clientY);
+      shownKey = null;
+      sync();
+    }
+  }
+
+  function onDragCancel(): void {
+    if (!drag) return;
+    const moved = drag.moved;
+    endDrag();
+    if (moved) opts.onDragEnd(-1, -1);
   }
 
   function sync(): void {

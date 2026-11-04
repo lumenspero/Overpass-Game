@@ -59,10 +59,10 @@ describe('a car crossing a roundabout', () => {
       distances.push(Math.hypot(p.x - middle.x, p.y - middle.y));
     }
     expect(distances.length).toBeGreaterThan(2);
-    // The ring is a little over a third of a tile from the centre, so the car never gets near it.
+    // The ring runs 0.75 tiles from the centre, its outer edge a tile out (a two-node diameter).
     const closest = Math.min(...distances);
     const furthest = Math.max(...distances);
     expect(closest).toBeGreaterThan(0.25 * TILE_SIZE);
-    expect(furthest).toBeLessThan(0.6 * TILE_SIZE);
+    expect(furthest).toBeLessThan(1.1 * TILE_SIZE);
   });
 });

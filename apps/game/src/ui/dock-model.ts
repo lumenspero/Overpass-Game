@@ -68,7 +68,8 @@ export function dockItems(
         count,
         shown: true,
         enabled: count > 0,
-        armable: count > 0,
+        // A bridge or tunnel is not carried: a road drawn over water or mountain uses one.
+        armable: count > 0 && id !== 'bridge' && id !== 'tunnel',
       },
     ];
   });
