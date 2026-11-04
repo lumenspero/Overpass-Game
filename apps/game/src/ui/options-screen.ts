@@ -54,7 +54,7 @@ const TABS: readonly { id: TabId; label: string }[] = [
   { id: 'display', label: 'Display' },
   { id: 'language', label: 'Language' },
   { id: 'controls', label: 'Controls' },
-  { id: 'privacy', label: 'Privacy' },
+  { id: 'privacy', label: 'Save Data' },
   { id: 'credits', label: 'Credits' },
   { id: 'tutorial', label: 'Tutorial' },
 ];
@@ -389,7 +389,7 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
         page.append(
           heading('Overpass_Game'),
           paragraph(
-            'Code is MIT licensed. Art and audio are CC BY 4.0. Map data is ODbL 1.0, derived from OpenStreetMap.',
+            'Code is MIT licensed. Our art and sound effects are CC BY 4.0. The music is third-party and keeps its own licence, listed below. Map data is ODbL 1.0, derived from OpenStreetMap.',
           ),
           paragraph('© OpenStreetMap contributors. '),
           heading('Team'),

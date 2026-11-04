@@ -145,6 +145,7 @@ Short log of choices and why. Newest at the bottom.
 | 2026-11-03 | Music stems are split from the existing Freesound loops, not commissioned | Asked by the author. Each track becomes pad, melody and percussion stems that add back to the original, by a percussive split and a 250–400 Hz crossover. This is approximate, not a learned separation, and needs a listening check |
 | 2026-11-03 | Stem rules: melody follows cars (full at 30), percussion follows pins (full at 6, or any overflow), pad rises from 60% through the week; the menu plays the full mix | Chosen by the author's brief: the mix thickens as the city grows. Tuning constants live in `music-stems.ts` |
 | 2026-11-03 | The music credit says the tracks were looped and split into stems | CC BY asks that changes be said. The note follows the Freesound credit lines |
+| 2026-11-03 | The credits footer says our art and sound effects are CC BY 4.0, and that the music is third-party under its own licence | The old line said all audio was CC BY 4.0, which was wrong for the Freesound music. Sound effects are our own generated tones; the music keeps its Freesound licence and is credited in the list |
 
 ## M9 · Palette and labels
 

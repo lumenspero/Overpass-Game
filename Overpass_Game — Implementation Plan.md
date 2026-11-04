@@ -326,7 +326,7 @@ Done when: a run survives a reload mid-game, and a save exported on one host imp
 
 **M12 · Audio** (details in the Audio section)
 
-- [ ] **Checkpoint E · Audio sourcing.** Present the sourcing options below; you pick sources and a direction before any assets are added
+- [x] **Checkpoint E · Audio sourcing.** Present the sourcing options below; you pick sources and a direction before any assets are added
 - [ ] Audio manager over Phaser sound: buses for music, ambience and effects; volume settings; mobile unlock on first tap
 - [ ] Sound effects mapped to sim events through an event bus
 - [x] Music loops with layers whose volume follows game state

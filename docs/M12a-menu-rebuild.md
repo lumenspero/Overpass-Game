@@ -17,13 +17,13 @@ Goal: rebuild the start menu to match the reference's layout and feel, using ori
 
 - [x] **Main menu:** our own wordmark, Play and Options. No Exit button on the web build.
 - [x] **Map select as a carousel:** horizontal cards, each with a round thumbnail drawn from the compiled map, the map name, best score, a short description, and a locked state. The selected card is centred and highlighted, with a Play button below. Keeps the unlock rules, resume and best scores from M10 and M11.
-- [x] **Options as tabs:** Game, Audio & Video, Display, Language, Controls, Privacy, Credits, with a back arrow top left.
+- [x] **Options as tabs:** Game, Audio & Video, Display, Language, Controls, Save Data, Credits, with a back arrow top left.
   - [ ] **Game:** motorway guide (G), touch auto-zoom, zoom level, hold to draw/delete, draw mode toggle (click-to-draw alongside hold-to-draw).
   - [ ] **Audio & Video:** Volume and Soundscape (music, effects and ambience buses, after M12's audio manager), Menu Transitions (on/off), Night Mode (dark mode), Colorblind Mode (building symbols).
   - [x] **Display:** Fullscreen (on/off, via the browser fullscreen API, which needs a tap or click) and Anti-aliasing (the renderer reads this at boot, so a change takes effect after a reload). Render scale is dropped.
   - [ ] **Language:** English only for now. Other languages left out.
   - [ ] **Controls:** read-only summary of the mouse layout (Move, Select/Draw, Delete, Toggle zoom, Pan) plus touch and keyboard. No controller support.
-  - [ ] **Privacy:** the save-data panel (export, import, storage note), moved from the main menu.
+  - [ ] **Save Data:** the save-data panel (export, import, storage note), moved from the main menu.
   - [ ] **Credits:** our own team and role list, the licence notices, the "© OpenStreetMap contributors" attribution, and the CC BY and CC0 credits for sounds. Feeds M15.
   - [x] **Tutorial:** short in-game overlay of four steps, opened from Options and with H during play.
 - [ ] Remove `docs/screenshots/` (MM1–MM8, the Mini Motorways reference images) once the new UI is in place. Until then, do not commit them. MM8 duplicates MM5.
@@ -43,7 +43,7 @@ Goal: rebuild the start menu to match the reference's layout and feel, using ori
 
 - Built: `ui/menu.ts` (main screen and carousel), `ui/carousel-model.ts` (+ test), `ui/map-thumbnail.ts`. `main.ts` passes the theme.
 - Card description is not shown: the campaign data has no description text yet. Add it with the M14 content.
-- The save section is still on the main screen. It moves to Privacy in step 2.
+- The save section is still on the main screen. It moves to Save Data in step 2.
 - The challenge list has left the menu. It returns when M14 adds challenges.
 - Test maps: Los Angeles is in the campaign list after Tulsa, from the Studio export. `apps/game/src/dev-flags.ts` has `showAllMaps`, which is on in dev so every card opens for layout checks. It is off in production builds.
 - Checked: `tsc --noEmit` passes, Prettier and ESLint pass on the changed files, and the carousel rules pass a direct run.
@@ -51,7 +51,7 @@ Goal: rebuild the start menu to match the reference's layout and feel, using ori
 
 ## Step 2 notes
 
-- Built: `ui/options-screen.ts`, which replaces the old settings modal (`settings-screen.ts`, now deleted; nothing imports it). The menu's save section moved to Options > Privacy.
+- Built: `ui/options-screen.ts`, which replaces the old settings modal (`settings-screen.ts`, now deleted; nothing imports it). The menu's save section moved to Options > Save Data.
 - Real now: motorway guide, night mode, colourblind mode, fullscreen (browser API; the host may refuse it).
 - Shown disabled, for step 3 or M12: draw mode toggle, hold to draw/delete, touch auto-zoom, zoom level, menu transitions, render scale, anti-aliasing, volume and soundscape (M12), tutorial button.
 - Controls lists the controls from `input/intents.ts` and the keyboard handlers in `game-scene.ts`.

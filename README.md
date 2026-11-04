@@ -24,4 +24,4 @@ See `CLAUDE.md` for conventions and the folder map.
 
 ## License
 
-Code MIT; art and audio CC BY 4.0; map data ODbL 1.0. Map data © OpenStreetMap contributors. Details arrive with `LICENSE` in M15.
+Code MIT; our art and sound effects CC BY 4.0; third-party music under its own licence, listed in the game's credits; map data ODbL 1.0. Map data © OpenStreetMap contributors. Details arrive with `LICENSE` in M15.
