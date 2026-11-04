@@ -47,14 +47,13 @@ export const DEFAULT_TUNING = {
   EXPANSION_WEEK_2: 6, // approximated
   /** Week at which district 3 opens: land across a river, reachable by bridge (spec: Expansion). */
   EXPANSION_WEEK_3: 9, // approximated
-  /** Road tiles added to the budget at each week boundary (spec: Upgrades). */
-  WEEKLY_ROAD_REWARD: 20, // approximated
   /** Relative chance each upgrade kind is offered. Zero means never offered (spec: Upgrades). */
   UPGRADE_WEIGHT_BRIDGE: 1, // approximated
   UPGRADE_WEIGHT_TUNNEL: 1, // approximated
   UPGRADE_WEIGHT_MOTORWAY: 1, // approximated
   UPGRADE_WEIGHT_ROUNDABOUT: 1, // approximated
   UPGRADE_WEIGHT_LIGHT: 1, // approximated
+  UPGRADE_WEIGHT_TILES: 1, // approximated
   /** Most water tiles a bridge may span between its two banks (spec: Bridges and tunnels). */
   BRIDGE_MAX_SPAN: 3, // approximated
   /** Most mountain tiles a tunnel may run through (spec: Bridges and tunnels). */
@@ -112,13 +111,13 @@ export const WEEK_TICKS = DEFAULT_TUNING.WEEK_TICKS;
 export const EXPANSION_WEEK_1 = DEFAULT_TUNING.EXPANSION_WEEK_1;
 export const EXPANSION_WEEK_2 = DEFAULT_TUNING.EXPANSION_WEEK_2;
 export const EXPANSION_WEEK_3 = DEFAULT_TUNING.EXPANSION_WEEK_3;
-export const WEEKLY_ROAD_REWARD = DEFAULT_TUNING.WEEKLY_ROAD_REWARD;
 export const UPGRADE_WEIGHT_BRIDGE = DEFAULT_TUNING.UPGRADE_WEIGHT_BRIDGE;
 export const UPGRADE_WEIGHT_TUNNEL = DEFAULT_TUNING.UPGRADE_WEIGHT_TUNNEL;
 export const UPGRADE_WEIGHT_MOTORWAY = DEFAULT_TUNING.UPGRADE_WEIGHT_MOTORWAY;
 export const UPGRADE_WEIGHT_ROUNDABOUT =
   DEFAULT_TUNING.UPGRADE_WEIGHT_ROUNDABOUT;
 export const UPGRADE_WEIGHT_LIGHT = DEFAULT_TUNING.UPGRADE_WEIGHT_LIGHT;
+export const UPGRADE_WEIGHT_TILES = DEFAULT_TUNING.UPGRADE_WEIGHT_TILES;
 export const BRIDGE_MAX_SPAN = DEFAULT_TUNING.BRIDGE_MAX_SPAN;
 export const TUNNEL_MAX_SPAN = DEFAULT_TUNING.TUNNEL_MAX_SPAN;
 export const MOTORWAY_MAX_NODES = DEFAULT_TUNING.MOTORWAY_MAX_NODES;

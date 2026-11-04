@@ -286,9 +286,9 @@ Done when: you can build a complete map from import to playable export without e
 
 **M9 · Visual style**
 
-- [ ] `render-style` package: palettes per map, colors per building type, line weights, shadows
-- [ ] Buildings, cars, pins, timers and roads in the flat minimal style; smooth car turns and parking animation
-- [ ] Water and terrain drawn from tessellated outlines; faint motorway guide style
+- [x] `render-style` package: palettes per map, colors per building type, line weights, shadows
+- [x] Buildings, cars, pins, timers and roads in the flat minimal style; smooth car turns and parking animation
+- [x] Water and terrain drawn from tessellated outlines; faint motorway guide style
 - [x] Screen-size and device-pixel-ratio checks
 
 **M9a · Parking lots and building kinds** (sub-milestone; the driving behaviour in M9 depends on it)
@@ -307,7 +307,7 @@ Done when: you can build a complete map from import to playable export without e
 
 - [x] Main menu, map select showing the sequential unlock path, challenge mode list (the challenge list is empty until M14)
 - [x] Unlock rules (score thresholds per map, `approximated`)
-- [ ] Challenge mode: maps with starter roads and their own goals
+- [x] Challenge mode: maps with starter roads and their own goals
 - [x] Pause, speed controls, settings (guide toggle, color-blind-friendly building symbols; audio deferred to M12)
 - [x] End-of-run screen, best scores per map
 
@@ -327,8 +327,8 @@ Done when: a run survives a reload mid-game, and a save exported on one host imp
 **M12 · Audio** (details in the Audio section)
 
 - [x] **Checkpoint E · Audio sourcing.** Present the sourcing options below; you pick sources and a direction before any assets are added
-- [ ] Audio manager over Phaser sound: buses for music, ambience and effects; volume settings; mobile unlock on first tap
-- [ ] Sound effects mapped to sim events through an event bus
+- [x] Audio manager over Phaser sound: buses for music, ambience and effects; volume settings; mobile unlock on first tap
+- [x] Sound effects mapped to sim events through an event bus
 - [x] Music loops with layers whose volume follows game state
 
 > **Status (stems built; listening check open):** each track is three MP3 stems (pad, melody, percussion) in `apps/game/public/audio/music/stems/`, made from the Freesound loops by `tools/audio/make-music-stems.py`. The stems come from splitting the recordings (a percussive split and a 250–400 Hz crossover), not from a learned separation model, so they are approximate. The three add back to the original. The melody follows traffic, the percussion follows pin pressure and overflow, and the pad rises through the week. The menu plays the full mix. The seven full-mix MP3s are still in the music folder until the author decides to remove them.

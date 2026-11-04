@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  chooseUpgrade,
+  chooseOffer,
   createSim,
   findRoute,
   placeCrossing,
@@ -256,22 +256,22 @@ describe('tunnels along a drag', () => {
   });
 });
 
-describe('choosing an upgrade', () => {
+describe('choosing an offer', () => {
   it('moves the oldest offer into stock once answered', () => {
     const sim = world(Terrain.Water, [2, 3, 4]);
     sim.offers = [
       ['bridge', 'tunnel'],
-      ['tunnel', 'bridge'],
+      ['tunnel', 'lights'],
     ];
-    expect(chooseUpgrade(sim, 'tunnel')).toEqual({ ok: true });
+    expect(chooseOffer(sim, 'tunnel')).toEqual({ ok: true });
     expect(sim.stock.tunnel).toBe(2);
-    expect(sim.offers).toEqual([['tunnel', 'bridge']]);
+    expect(sim.offers).toEqual([['tunnel', 'lights']]);
   });
 
-  it('refuses a kind that was not offered, and leaves the offer open', () => {
+  it('refuses an option that was not offered, and leaves the offer open', () => {
     const sim = world(Terrain.Water, [2, 3, 4]);
     sim.offers = [['bridge', 'tunnel']];
-    expect(chooseUpgrade(sim, 'light')).toEqual({
+    expect(chooseOffer(sim, 'lights')).toEqual({
       ok: false,
       reason: 'not-offered',
     });
@@ -280,7 +280,7 @@ describe('choosing an upgrade', () => {
 
   it('refuses when there is no offer', () => {
     const sim = world(Terrain.Water, [2, 3, 4]);
-    expect(chooseUpgrade(sim, 'bridge')).toEqual({
+    expect(chooseOffer(sim, 'bridge')).toEqual({
       ok: false,
       reason: 'no-offer',
     });

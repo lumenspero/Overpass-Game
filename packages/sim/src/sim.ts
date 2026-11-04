@@ -35,8 +35,8 @@ import { spawnCars, updateTrips } from './trips.ts';
 import {
   emptyStock,
   grantWeeklyReward,
+  type OfferId,
   type Stock,
-  type UpgradeKind,
 } from './upgrades.ts';
 
 /** Everything the simulation remembers. Plain data only, so it serializes to JSON. */
@@ -65,8 +65,8 @@ export interface SimState {
   over: GameOver | null;
   /** Trips finished so far: cars that reached a destination and served a pin. This is the score. */
   tripsCompleted: number;
-  /** Upgrade offers waiting for an answer, oldest first. Each offer is a pair of kinds. */
-  offers: UpgradeKind[][];
+  /** Offers waiting for an answer, oldest first. Each offer is a pair of options. */
+  offers: OfferId[][];
   /** Upgrades the player holds, ready to place. */
   stock: Stock;
   /** One entry per grid tile: the id of the crossing run it belongs to, or 0 for none. */
@@ -264,7 +264,8 @@ export function unlinkTiles(state: SimState, a: number, b: number): boolean {
  */
 export function step(state: SimState): SimEvent[] {
   takeEvents();
-  if (state.over) return [];
+  // The clock waits while an offer is open, so the player chooses before play goes on.
+  if (state.over || state.offers.length > 0) return [];
   state.tick += 1;
   if (state.tick % tuning.WEEK_TICKS === 0) {
     emitEvent({ kind: 'week-ended', week: state.tick / tuning.WEEK_TICKS });

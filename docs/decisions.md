@@ -151,3 +151,12 @@ Short log of choices and why. Newest at the bottom.
 
 - **Terrain and water palette:** nine terrain families (ROYGBIV, white, black) with approved ground and shadow values. Mountains are a darker alternate of the ground hue; parks a muted alternate. Each region's thin border uses the opposite mode's colour. Water is a shared nine-step greenish-blue to light-purple ramp. Review sheets are in `docs/palette/`.
 - **Label colour:** each region label keeps the hue of the region's mid-tone (halfway between its main colour and outline colour), pulled 30% toward its ground, then set to 3:1 contrast against the land: darker on light ground, lighter on dark. Mixed toward white or black, not scaled, so labels stay quiet. approximated: tune at Checkpoint D.
+
+## M13 · Weekly offer
+
+- **Six options, each an upgrade with tiles:** motorway 10 tiles; bridge, roundabout, tunnel 20 tiles each; two traffic lights 20 tiles; road tiles alone 30. Chosen by the author's spec. `approximated`
+- **Tiles come with the choice:** the option's tiles replace the fixed weekly 20 tiles, so `WEEKLY_ROAD_REWARD` is removed. Asked by the author.
+- **Weighted draw per option:** each option has its own weight in `config.ts`, with per-map restrictions set in the Studio. Asked by the author.
+- **Clock pauses while an offer waits:** the sim stops ticking until the player chooses. Asked by the author.
+- **Traffic lights are the game's nudge:** the original steers players toward traffic lights on existing roads. Dock items are shaded only when empty, and bridges get no placement highlight. Asked by the author.
+- **Road tiles are always on offer:** a map that restricts its options still gives a choice. This is a guard added in the sim, not a player-facing rule.

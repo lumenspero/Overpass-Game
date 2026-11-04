@@ -1,4 +1,4 @@
-import { chooseUpgrade, type SimState } from '@overpass-game/sim';
+import { chooseOffer, type SimState } from '@overpass-game/sim';
 import { offerView } from '../view/offer.ts';
 import { audio } from '../audio/shared.ts';
 
@@ -28,7 +28,7 @@ export function createOfferPanel(getSim: () => SimState): OfferPanel {
     const sim = getSim();
     const view = offerView(sim);
     const key = view
-      ? `${view.pending}:${view.choices.map((c) => c.kind).join(',')}`
+      ? `${view.pending}:${view.choices.map((c) => c.id).join(',')}`
       : '';
     if (key === shown) return;
     shown = key;
@@ -53,7 +53,7 @@ export function createOfferPanel(getSim: () => SimState): OfferPanel {
         'margin:4px;font:14px sans-serif;padding:6px 12px;cursor:pointer';
       b.addEventListener('click', () => {
         audio.playEffect('upgrade.pick');
-        chooseUpgrade(getSim(), c.kind);
+        chooseOffer(getSim(), c.id);
         shown = null;
         sync();
       });

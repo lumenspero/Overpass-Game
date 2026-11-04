@@ -48,6 +48,7 @@ describe('destination growth', () => {
     sim.tick = WEEK_TICKS - 1;
     step(sim);
     expect(sim.demand[destId].growth).toBe(1);
+    sim.offers = []; // the player answers the week's offer, so the clock runs on
     sim.tick = 2 * WEEK_TICKS - 1;
     step(sim);
     expect(sim.demand[destId].growth).toBe(2);

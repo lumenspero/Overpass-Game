@@ -109,13 +109,21 @@ Elevated links for faster travel between two points on the ground network. `appr
 
 ### Upgrades
 
-- **Weekly reward:** at each week boundary, the road budget gains `WEEKLY_ROAD_REWARD` tiles (20). No reward once the game is over. `approximated`
-- **Offer:** each week the player is offered `UPGRADE_CHOICE_COUNT` (2) different upgrades, drawn without repeats. Each kind's chance is its weight: `UPGRADE_WEIGHT_BRIDGE`, `_TUNNEL`, `_MOTORWAY`, `_ROUNDABOUT`, `_LIGHT` (each 1). A weight of 0 means never offered. `approximated`
-- **Implemented only:** only upgrades the sim can apply are offered. The list is `IMPLEMENTED_UPGRADES`: bridge and tunnel so far. It grows as each upgrade lands in M5. An offer needs at least two implemented kinds.
-- **Stock:** answering an offer adds its kind to stock. Placing a bridge or tunnel uses one. Stock is not refunded when a crossing is removed.
-- **Queue:** offers wait in `offers`, oldest first, until the player answers.
-- **Choice screen:** a panel at the bottom of the screen shows the oldest offer as buttons, with a count of waiting offers. Choosing one puts it in stock. The game keeps running while an offer waits. The panel hides once the game is over. `approximated`
-- **Pool:** bridge, tunnel, motorway, roundabout, light. Each is added to the offer list as it is built.
+- **Weekly offer:** at each week boundary the player is offered `UPGRADE_CHOICE_COUNT` (2) different options. The clock pauses until one is chosen. No offer once the game is over. `approximated`
+- **Options:** each option gives upgrades and road tiles. Choosing one adds its upgrades to stock and its tiles to the budget. `approximated`
+  - Motorway: 1 motorway, 10 tiles.
+  - Bridge: 1 bridge, 20 tiles.
+  - Roundabout: 1 roundabout, 20 tiles.
+  - Tunnel: 1 tunnel, 20 tiles.
+  - Traffic lights: 2 traffic lights, 20 tiles.
+  - Road tiles: 30 tiles, no upgrade.
+- **Weights:** each option's chance is its weight: `UPGRADE_WEIGHT_MOTORWAY`, `_BRIDGE`, `_ROUNDABOUT`, `_TUNNEL`, `_LIGHT` (traffic lights), `_TILES`, each 1. A weight of 0 means never offered. `approximated`
+- **Map restrictions:** each map can list the options it allows, so a map where bridges or tunnels are not useful can leave them out. Road tiles are always allowed, so a restricted map still gives a choice. The Studio sets the list (planned, see M13).
+- **Replaces the weekly reward:** the tiles in an option are the week's road reward. There is no separate weekly tile grant. This replaces the earlier fixed 20 tiles a week (`WEEKLY_ROAD_REWARD`, removed).
+- **Stock:** choosing an option adds its upgrades to stock. Placing a bridge or tunnel uses one. Stock is not refunded when a crossing is removed.
+- **Queue:** offers wait in `offers`, oldest first, until the player answers. The clock stops while any offer waits.
+- **Choice screen:** shows the oldest offer as two choices. The redesigned popup and inventory dock are built in M13.
+- **Pool:** motorway, bridge, roundabout, tunnel, traffic lights, road tiles. `OFFER_OPTIONS` in `upgrades.ts` holds the table.
 
 ### Bridges and tunnels
 
