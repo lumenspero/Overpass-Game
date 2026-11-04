@@ -1,5 +1,6 @@
 import { addCar, dropCar, roadEntrance, sendHome, type Car } from './cars.ts';
 import { isConnected } from './buildings.ts';
+import { emitEvent } from './events.ts';
 import { tuning } from './config.ts';
 import { servePin, unclaimedPins } from './demand.ts';
 import { isOpenTile } from './expansion.ts';
@@ -80,6 +81,7 @@ export function updateTrips(state: SimState): void {
         lot.phase = 'parked';
         servePin(state, car.destination);
         state.tripsCompleted += 1;
+        emitEvent({ kind: 'car-arrived', destination: car.destination });
         car.state = 'parked';
         car.timer = tuning.PARK_TICKS;
       } else if (lot.phase === 'parked') {
@@ -95,6 +97,7 @@ export function updateTrips(state: SimState): void {
       if (startLotTrip(state, car) !== 'none') continue;
       servePin(state, car.destination);
       state.tripsCompleted += 1;
+      emitEvent({ kind: 'car-arrived', destination: car.destination });
       car.state = 'parked';
       car.timer = tuning.PARK_TICKS;
     } else if (car.state === 'parked') {

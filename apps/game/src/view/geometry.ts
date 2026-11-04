@@ -89,25 +89,38 @@ export function entranceStubShapes(
   const out: RoadShape[] = [];
   for (const b of buildings) {
     if (b.kind !== 'house') continue;
-    const { dx, dy } = SIDE_STEP[b.entrance];
-    const entrance = b.tile + dy * grid.cols + dx;
+    const { dx, dy } = houseFacing(grid, b);
+    const entrance = b.stub ?? b.tile + dy * grid.cols + dx;
     if (roads[entrance] !== 1) continue;
     const c = buildingCentre(grid, b);
     const bx = c.x * TILE_SIZE;
     const by = c.y * TILE_SIZE;
     const ex = ((entrance % grid.cols) + 0.5) * TILE_SIZE;
     const ey = (Math.floor(entrance / grid.cols) + 0.5) * TILE_SIZE;
-    // A driveway as wide as the house, so it reads as a pad into the road, not as a road.
+    // Road width, like a lot's inlet tab, so the entrance tile's own disc rounds the end cleanly.
+    // A wider bar ends flat at the tile centre and leaves the narrower road cap showing as a pinch.
     out.push({
       kind: 'line',
       x1: ex,
       y1: ey,
       x2: bx,
       y2: by,
-      w: BUILDING_SCALE * TILE_SIZE,
+      w: ROAD_WIDTH_TILES * TILE_SIZE,
     });
   }
   return out;
+}
+
+/**
+ * The step from a house to its stub, or to the tile its entrance faces when it has none: -1, 0 or
+ * 1 on each axis, so a stub moved to a corner gives a diagonal.
+ */
+function houseFacing(grid: Grid, b: Building): { dx: number; dy: number } {
+  if (b.stub === undefined) return SIDE_STEP[b.entrance];
+  return {
+    dx: (b.stub % grid.cols) - (b.tile % grid.cols),
+    dy: Math.floor(b.stub / grid.cols) - Math.floor(b.tile / grid.cols),
+  };
 }
 
 export interface TerrainTile {
@@ -560,7 +573,7 @@ export function buildingShapes(
         color,
         large: false,
       });
-      const { dx, dy } = SIDE_STEP[b.entrance];
+      const { dx, dy } = houseFacing(grid, b);
       out.push({
         kind: 'entrance',
         x1: cx + dx * half,

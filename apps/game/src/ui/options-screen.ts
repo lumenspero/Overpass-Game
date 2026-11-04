@@ -14,6 +14,7 @@ import {
   setVolume,
 } from '../game/settings.ts';
 import { MAX_LEVEL } from '../audio/levels.ts';
+import { audio } from '../audio/shared.ts';
 import { buildSavePanel } from './save-panel.ts';
 import { soundCreditLines } from '../audio/catalog.ts';
 import { showTutorial, type TutorialScreen } from './tutorial.ts';
@@ -107,11 +108,15 @@ function row(label: string, control: HTMLElement, note?: string): HTMLElement {
 }
 
 function switchButton(on: boolean, onClick: () => void): HTMLButtonElement {
+  const press = (): void => {
+    audio.playEffect(on ? 'toggle.off' : 'toggle.on');
+    onClick();
+  };
   return button(
     on ? 'On' : 'Off',
     `width:auto;min-width:72px;min-height:40px;font:600 16px sans-serif;border:0;border-radius:4px;` +
       `background:${on ? TEAL : OFF};color:${on ? INK : '#eee'}`,
-    onClick,
+    press,
   );
 }
 
@@ -126,8 +131,14 @@ function levelRow(
   change: (next: number) => void,
   note?: string,
 ): HTMLElement {
-  const minus = button('−', STEP_CSS, () => change(level - 1));
-  const plus = button('+', STEP_CSS, () => change(level + 1));
+  const minus = button('−', STEP_CSS, () => {
+    change(level - 1);
+    audio.playEffect('toggle.off');
+  });
+  const plus = button('+', STEP_CSS, () => {
+    change(level + 1);
+    audio.playEffect('toggle.on');
+  });
   minus.disabled = level <= 0;
   plus.disabled = level >= MAX_LEVEL;
   minus.setAttribute('aria-label', `Lower ${label}`);
@@ -173,7 +184,10 @@ function choiceRow(
         choice.text,
         `width:auto;min-height:40px;padding:6px 10px;font:600 15px sans-serif;border:0;border-radius:4px;` +
           `background:${on ? TEAL : OFF};color:${on ? INK : '#eee'}`,
-        () => onPick(choice.value),
+        () => {
+          if (!on) audio.playEffect('toggle.on');
+          onPick(choice.value);
+        },
       ),
     );
   }
@@ -209,7 +223,10 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
   );
   back.type = 'button';
   back.setAttribute('aria-label', 'Back');
-  back.addEventListener('click', () => deps.onClose());
+  back.addEventListener('click', () => {
+    audio.playEffect('menu.back');
+    deps.onClose();
+  });
   top.append(back, el('h1', 'font:600 24px sans-serif;margin:0', 'Options'));
 
   const strip = el(
@@ -221,6 +238,7 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
     const b = el('button', tabCss(false), tab.label);
     b.type = 'button';
     b.addEventListener('click', () => {
+      if (current !== tab.id) audio.playEffect('options.tab');
       current = tab.id;
       render();
     });
@@ -417,7 +435,12 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
   }
 
   const onKey = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape') deps.onClose();
+    // The tutorial handles its own Escape while it is open over Options.
+    if (tutorial) return;
+    if (e.key === 'Escape') {
+      audio.playEffect('menu.back');
+      deps.onClose();
+    }
   };
   document.addEventListener('keydown', onKey);
   document.addEventListener('fullscreenchange', render);

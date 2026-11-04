@@ -79,9 +79,10 @@ export function createTopBar(handlers: TopBarHandlers): TopBar {
   root.style.cssText =
     'position:fixed;inset:0;pointer-events:none;z-index:6;font:14px sans-serif;color:#eee';
 
-  const back = iconButton('Back to the main menu', ICONS.back, () =>
-    handlers.onMenu(),
-  );
+  const back = iconButton('Back to the main menu', ICONS.back, () => {
+    audio.playEffect('menu.back');
+    handlers.onMenu();
+  });
   back.style.position = 'absolute';
   back.style.left = '12px';
   back.style.top = '12px';

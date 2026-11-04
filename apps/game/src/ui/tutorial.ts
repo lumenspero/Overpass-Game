@@ -3,6 +3,8 @@
  * H key (the scene pauses the clock while it is open). Built with DOM elements and text nodes.
  */
 
+import { audio } from '../audio/shared.ts';
+
 export interface TutorialScreen {
   /** Removes the overlay without calling `onClose`. */
   destroy(): void;
@@ -52,6 +54,7 @@ function button(
 }
 
 export function showTutorial(onClose: () => void): TutorialScreen {
+  audio.playEffect('menu.enter');
   const root = document.createElement('div');
   root.id = 'tutorial';
   root.style.cssText =
@@ -106,11 +109,14 @@ export function showTutorial(onClose: () => void): TutorialScreen {
       close();
       return;
     }
-    step = Math.min(STEPS.length - 1, Math.max(0, step + delta));
+    const next = Math.min(STEPS.length - 1, Math.max(0, step + delta));
+    if (next !== step) audio.playEffect('options.tab');
+    step = next;
     show();
   }
 
   function close(): void {
+    audio.playEffect('menu.back');
     destroy();
     onClose();
   }

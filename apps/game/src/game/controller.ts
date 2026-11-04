@@ -6,6 +6,7 @@ import type {
   Motorway,
   MotorwayResult,
 } from '@overpass-game/sim';
+import { isHouseStub, isOpenTile, moveHouseStub } from '@overpass-game/sim';
 import {
   distanceToCurve,
   motorwayCurve,
@@ -63,7 +64,18 @@ type Change =
     }
   | { kind: 'control'; index: number; control: ControlKind }
   | { kind: 'link'; a: number; b: number }
-  | { kind: 'motorway'; motorway: Motorway };
+  | { kind: 'motorway'; motorway: Motorway }
+  /** A house's stub moved. `from` and its links are restored on rollback. */
+  | {
+      kind: 'stub';
+      house: number;
+      from: number | undefined;
+      partners: number[];
+      /** The old stub was a paid road that the move removed and refunded. */
+      refunded: boolean;
+    }
+  /** A link an erase took off a house's stub. Restored on rollback. */
+  | { kind: 'unlink'; a: number; b: number };
 
 interface Stroke {
   mode: StrokeMode;
@@ -75,6 +87,8 @@ interface Stroke {
   drag: CurvePoint[];
   /** Set when the stroke moves a handle of a motorway instead of drawing. */
   nudge: { id: number; handle: number } | null;
+  /** A draw stroke pressed on a house: its first step moves the house's stub there. */
+  house: number | null;
 }
 
 /** The outcome of one bridge, tunnel or motorway release. `seq` rises with every release. */
@@ -117,6 +131,23 @@ function touchTile(ctl: Controller, stroke: Stroke, t: TileXY): boolean {
   if (stroke.mode === 'erase') {
     if (i === null) return false;
     const control = ctl.sim.controls[i];
+    if (isHouseStub(ctl.sim, i)) {
+      // A house's stub is never erased, but its links are, so the road is cut off and the stub
+      // stays behind. A roundabout or light on it can still be taken back.
+      let changed = false;
+      for (const p of [...linkPartners(ctl.sim.links, i)]) {
+        if (unlinkTiles(ctl.sim, i, p)) {
+          stroke.changes.push({ kind: 'unlink', a: i, b: p });
+          changed = true;
+        }
+      }
+      if (control !== undefined) {
+        dropControlsAt(ctl.sim, [i]);
+        stroke.changes.push({ kind: 'control', index: i, control });
+        changed = true;
+      }
+      return changed;
+    }
     if (ctl.sim.roads[i] !== 1) {
       // A roundabout or light can stand on a tile with no road under it. Erasing takes it back.
       if (control === undefined) return false;
@@ -141,6 +172,11 @@ function touchTile(ctl: Controller, stroke: Stroke, t: TileXY): boolean {
     return true;
   }
   if (i === null) {
+    stroke.halted = true;
+    return false;
+  }
+  // Land not yet open takes no road, and a hidden house's stub there can't be joined.
+  if (!isOpenTile(ctl.sim, i)) {
     stroke.halted = true;
     return false;
   }
@@ -203,6 +239,18 @@ function extend(
   for (let k = start; k < start + added.length; k++) {
     if (stroke.halted) break;
     const t = stroke.path[k];
+    if (stroke.mode === 'draw' && k === 0) {
+      // A stroke pressed on a house moves the house's stub to the first tile it steps onto.
+      const house = houseAt(ctl.sim, t);
+      if (house !== null) {
+        stroke.house = house;
+        continue;
+      }
+    }
+    if (stroke.house !== null && k === 1) {
+      changed = moveStub(ctl, stroke, t) || changed;
+      continue;
+    }
     changed = touchTile(ctl, stroke, t) || changed;
     if (stroke.halted) break;
     if (stroke.mode === 'draw' && k > 0) {
@@ -211,6 +259,38 @@ function extend(
     }
   }
   return changed;
+}
+
+/** The house standing on a tile, or null. */
+function houseAt(sim: SimState, t: TileXY): number | null {
+  const i = indexOf(sim, t);
+  if (i === null) return null;
+  const id = sim.buildingAt[i];
+  if (id === undefined || id < 0) return null;
+  return sim.buildings[id]?.kind === 'house' ? id : null;
+}
+
+/** Moves the stroke's house stub onto a tile, keeping the old stub and its links for undo. */
+function moveStub(ctl: Controller, stroke: Stroke, t: TileXY): boolean {
+  const i = indexOf(ctl.sim, t);
+  const house = stroke.house;
+  if (i === null || house === null) {
+    stroke.halted = true;
+    return false;
+  }
+  const from = ctl.sim.buildings[house]?.stub;
+  const fromPaid = ctl.sim.buildings[house]?.stubAdopted === true;
+  const partners =
+    from === undefined ? [] : [...linkPartners(ctl.sim.links, from)];
+  const result = moveHouseStub(ctl.sim, house, i);
+  if (!result.ok) {
+    stroke.halted = true;
+    return false;
+  }
+  if (!result.moved) return false;
+  const refunded = fromPaid && from !== undefined && ctl.sim.roads[from] === 0;
+  stroke.changes.push({ kind: 'stub', house, from, partners, refunded });
+  return true;
 }
 
 function isCrossing(mode: StrokeMode): mode is 'bridge' | 'tunnel' {
@@ -317,7 +397,15 @@ function newStroke(
   mode: StrokeMode,
   nudge: { id: number; handle: number } | null = null,
 ): Stroke {
-  return { mode, path: [], halted: false, changes: [], drag: [], nudge };
+  return {
+    mode,
+    path: [],
+    halted: false,
+    changes: [],
+    drag: [],
+    nudge,
+    house: null,
+  };
 }
 
 /** Keeps a motorway's drag path, skipping points too close to the last one to shape the curve. */
@@ -372,6 +460,15 @@ function rollback(ctl: Controller, stroke: Stroke): boolean {
       restoreMotorway(ctl.sim, c.motorway);
     } else if (c.kind === 'control') {
       restoreControl(ctl.sim, c.index, c.control);
+    } else if (c.kind === 'unlink') {
+      linkTiles(ctl.sim, c.a, c.b);
+    } else if (c.kind === 'stub') {
+      if (c.from !== undefined) {
+        // A paid road the move removed is bought back first, so the stub takes it over again.
+        if (c.refunded) placeRoads(ctl.sim, [c.from]);
+        moveHouseStub(ctl.sim, c.house, c.from);
+        for (const p of c.partners) linkTiles(ctl.sim, c.from, p);
+      }
     } else if (c.wasRoad === 0) {
       removeRoads(ctl.sim, [c.index]);
     } else {
@@ -486,4 +583,30 @@ export function applyIntent(
     default:
       return false;
   }
+}
+
+/** How many tiles a stroke has laid and removed so far, and whether a tile refused it. */
+export function strokeTally(stroke: Controller['stroke']): {
+  placed: number;
+  erased: number;
+  halted: boolean;
+  motorwaysErased: number;
+} {
+  if (!stroke) {
+    return { placed: 0, erased: 0, halted: false, motorwaysErased: 0 };
+  }
+  let placed = 0;
+  let erased = 0;
+  let motorwaysErased = 0;
+  for (const change of stroke.changes) {
+    if (change.kind === 'motorway') motorwaysErased += 1;
+    // Moving a house's stub taps like laying a tile.
+    if (change.kind === 'stub') placed += 1;
+    // Cutting a stub's link taps like erasing a tile.
+    if (change.kind === 'unlink') erased += 1;
+    if (change.kind !== 'tile') continue;
+    if (change.wasRoad === 0) placed += 1;
+    else erased += 1;
+  }
+  return { placed, erased, halted: stroke.halted, motorwaysErased };
 }

@@ -5,6 +5,7 @@ import {
   type SoundEvent,
 } from './catalog.ts';
 import { volumeToGain } from './levels.ts';
+import { allowPlay, MIN_GAP_S } from './throttle.ts';
 
 /** The volume level of each bus, from 0 to 10. */
 export interface AudioLevels {
@@ -28,6 +29,8 @@ export class AudioManager {
   private buses: Record<BusName, GainNode> | null = null;
   private readonly buffers = new Map<string, Promise<AudioBuffer | null>>();
   private levels: AudioLevels;
+  /** When each effect last played, in audio-clock seconds, for throttling. */
+  private readonly lastPlayed = new Map<SoundEvent, number>();
   private wanted: MusicTrack | null = null;
   private playing: { track: MusicTrack; source: AudioBufferSourceNode } | null =
     null;
@@ -62,6 +65,9 @@ export class AudioManager {
   playEffect(event: SoundEvent): void {
     const context = this.ensureContext();
     if (!context || context.state !== 'running' || !this.buses) return;
+    const now = context.currentTime;
+    if (!allowPlay(this.lastPlayed.get(event), now, MIN_GAP_S[event])) return;
+    this.lastPlayed.set(event, now);
     const effects = this.buses.effects;
     void this.load(soundUrl(event, this.baseUrl)).then((buffer) => {
       if (!buffer) return;

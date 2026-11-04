@@ -66,13 +66,15 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 - **Kinds:** houses (where cars start and end) and destinations (where cars go). A house occupies one tile; a destination occupies a 3×3 building inside its 5×3 lot (see Parking lots and building kinds).
 - **Colours:** `BUILDING_COLOR_COUNT` colours. A house pairs with destinations of its own colour. `approximated`
+- **Who places them:** never the player. Every house and destination is spawned by the game at random, inside a build boundary that grows slowly through the game (the open districts; see Expansion). The boundary keeps a new building within reach of the existing city, so none appears at an impossible distance. The random spawn system arrives with M14 (see Business arrival and house supply); until then the test map's buildings are hand-placed for testing.
 - **Placement:** on land or park, on a tile with no road or building. Water and mountains are refused.
-- **Entrance:** each building has one entrance side. It is connected only while the neighbour on that side is a road. A building can be placed before its road.
+- **Entrance:** each building has one entrance side. A destination connects through its lot's inlet road. A house connects through its stub (below).
+- **House stub:** every house comes with a stub, one road tile beside it, placed free on the tile its entrance faces. The stub is part of the house: it costs no budget, and erasing never removes it. Erasing over the stub cuts its links instead, so the road is disconnected and the stub stays behind (a roundabout or light on it can still be taken back). The player moves it by dragging from the house to any of its 8 neighbours, by an edge or a corner; the move is free, and the drag then draws on from the stub. A stub may take over a road already on that tile; moving away leaves that road while other roads are joined to it, and otherwise removes it with a refund, as erasing it would; a stub on empty land goes with the house, with no refund, since it was never paid for. A stub can't go on water, mountain, a building, a lot, or another house's stub, or on land not yet open. A house whose facing tile can't take a stub connects through that tile, as before.
 - **Roads:** a road cannot be placed on a building tile.
 - **Removal:** buildings are never removed in M3.
 
-- **Driveway:** a house's road extension is drawn as wide as the house body (`BUILDING_SCALE` of a tile), from the house to the road tile in front of its entrance. It is drawn only while that road exists. It is view only: the sim is unchanged. `approximated`
-- **Open for M14:** a house connects only through its fixed entrance tile today. Connecting it from any of its 8 neighbours, with the entrance following the road, changes the sim's building rules and the road graph, and is deferred to M14.
+- **Driveway:** a house's road extension is drawn at road width, from the house to the road tile in front of its entrance, so the road tile's own disc rounds its end the way a lot's inlet tab is rounded. It is drawn only while that road exists. It is view only: the sim is unchanged. `approximated`
+- **Hidden stubs:** a house on land not yet open keeps its stub there, hidden with it, and roads can't join it until the district opens. A run saved before stubs gives each house one on load.
 
 ### Score and clock
 
@@ -101,6 +103,7 @@ Elevated links for faster travel between two points on the ground network. `appr
 
 - **Districts:** the map is split into districts numbered from 0. District 0 is open at the start. `EXPANSION_WEEK_1` (3) opens district 1 and `EXPANSION_WEEK_2` (6) opens district 2, and `EXPANSION_WEEK_3` (9) opens district 3. All three are live debug-panel values. `approximated`
 - **Locked land:** tiles in a district that isn't open take no roads. Buildings on locked land are inactive (they send and collect nothing) and are hidden. The land is dimmed.
+- **Build boundary:** the open districts are where buildings may spawn, so the city grows outward as districts open.
 - **Opening only:** districts never close. A district beyond the schedule stays locked for the whole game. Bridges and tunnels cannot land on locked land.
 - **Test map:** three districts west of the river, plus one east of it that opens at `EXPANSION_WEEK_3`.
 

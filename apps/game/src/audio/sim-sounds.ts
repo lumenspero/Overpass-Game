@@ -8,6 +8,16 @@ export function soundForSimEvent(event: SimEvent): SoundEvent | null {
       return 'building.spawn';
     case 'game-over':
       return 'game.over';
+    case 'pin-appeared':
+      return 'pin.appeared';
+    case 'car-arrived':
+      return 'car.arrived';
+    case 'overflow-started':
+      return 'overflow.started';
+    case 'overflow-countdown':
+      return 'overflow.countdown';
+    case 'week-ended':
+      return 'week.ended';
     default:
       return null;
   }

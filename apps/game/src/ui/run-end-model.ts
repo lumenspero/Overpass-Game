@@ -18,6 +18,8 @@ export interface RunEndNext {
   open: boolean;
   /** What opens the next map, for a locked one. Null once it is open. */
   hint: string | null;
+  /** Whether this run is the one that opened it, so the end screen can celebrate once. */
+  unlockedNow: boolean;
 }
 
 export interface RunEndModel {
@@ -52,8 +54,19 @@ export function runEndModel(input: RunEndInput): RunEndModel {
 
   const name = maps.find((m) => m.id === nextId)?.name ?? nextId;
   const open = openCampaignMaps(order, best).includes(nextId);
+  // Open before this run: the best scores with this map's entry as it was.
+  const key = bestKey('campaign', mapId);
+  const bestBefore: Record<string, number> = { ...best };
+  if (previousBest === null) delete bestBefore[key];
+  else bestBefore[key] = previousBest;
+  const unlockedNow =
+    open && !openCampaignMaps(order, bestBefore).includes(nextId);
   const hint = open
     ? null
     : `Reach ${tuning.CAMPAIGN_UNLOCK_TRIPS} trips here to unlock ${name}`;
-  return { best: bestNow, newBest, next: { id: nextId, name, open, hint } };
+  return {
+    best: bestNow,
+    newBest,
+    next: { id: nextId, name, open, hint, unlockedNow },
+  };
 }

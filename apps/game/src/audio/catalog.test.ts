@@ -7,7 +7,13 @@ import {
   soundCreditLines,
   soundSourceUrl,
   soundUrl,
+  type SoundSource,
 } from './catalog.ts';
+
+const allSources: SoundSource[] = [
+  ...SOUND_EVENTS.map((event) => SOUND_CATALOG[event].source),
+  ...MUSIC_TRACKS.map((track) => track.source),
+];
 
 describe('sound catalog', () => {
   it('has one entry for every event', () => {
@@ -25,11 +31,8 @@ describe('sound catalog', () => {
   });
 
   it('keeps the Freesound details for attribution', () => {
-    const sources = [
-      ...SOUND_EVENTS.map((event) => SOUND_CATALOG[event].source),
-      ...MUSIC_TRACKS.map((track) => track.source),
-    ];
-    for (const source of sources) {
+    for (const source of allSources) {
+      if (source.kind !== 'freesound') continue;
       expect(source.freesoundId).toBeGreaterThan(0);
       expect(source.title).not.toBe('');
       expect(source.creator).not.toBe('');
@@ -37,31 +40,44 @@ describe('sound catalog', () => {
     }
   });
 
+  it('names the generator entry for each generated tone, matching its file', () => {
+    for (const event of SOUND_EVENTS) {
+      const { file, source } = SOUND_CATALOG[event];
+      if (source.kind !== 'generated') continue;
+      expect(file).toBe(`${source.name}.wav`);
+    }
+  });
+
+  it('uses a generated tone for every sound effect', () => {
+    for (const event of SOUND_EVENTS) {
+      expect(SOUND_CATALOG[event].source.kind).toBe('generated');
+    }
+  });
+
   it('builds the Freesound link', () => {
-    expect(soundSourceUrl(SOUND_CATALOG['game.over'].source)).toBe(
-      'https://freesound.org/s/497702/',
+    expect(soundSourceUrl(MUSIC_TRACKS[0].source)).toBe(
+      'https://freesound.org/s/518198/',
     );
   });
 
   it('builds the game URLs from the base URL', () => {
-    expect(soundUrl('menu.next', '/')).toBe('/audio/sfx/menu-next.wav');
-    expect(soundUrl('menu.next', '/overpass/')).toBe(
-      '/overpass/audio/sfx/menu-next.wav',
+    expect(soundUrl('menu.enter', '/')).toBe('/audio/sfx/menu-enter.wav');
+    expect(soundUrl('map.next', '/overpass/')).toBe(
+      '/overpass/audio/sfx/map-next.wav',
     );
     expect(musicUrl(MUSIC_TRACKS[0], '/')).toBe(
       '/audio/music/music-synth-pad-chords.mp3',
     );
   });
 
-  it('lists each source once in credits: seven effects and seven music tracks', () => {
+  it('credits each Freesound source once and leaves out generated tones', () => {
     const lines = soundCreditLines();
     expect(lines.length).toBe(new Set(lines).size);
-    expect(lines.length).toBe(14);
-    expect(lines.some((line) => line.includes('miksmusic, CC BY 3.0'))).toBe(
-      true,
-    );
+    // Only the seven music tracks: every effect is generated.
+    expect(lines.length).toBe(7);
     expect(lines.some((line) => line.includes('nnaudio, CC BY 4.0'))).toBe(
       true,
     );
+    expect(lines.some((line) => line.includes('Hi-Tech Click'))).toBe(false);
   });
 });

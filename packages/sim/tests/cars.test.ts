@@ -49,7 +49,8 @@ describe('addCar', () => {
 
   it('refuses when a building is not connected', () => {
     const sim = world();
-    drawRoads(sim, [t(sim, 2, 2), t(sim, 3, 2)]);
+    // The house always has its stub, so leave the destination's road out instead.
+    drawRoads(sim, [t(sim, 1, 2), t(sim, 2, 2)]);
     expect(addCar(sim, 0, 1)).toEqual({ ok: false, reason: 'not-connected' });
   });
 

@@ -4,7 +4,12 @@
  */
 export type SimEvent =
   | { kind: 'building-spawned'; building: number }
-  | { kind: 'game-over'; destination: number };
+  | { kind: 'game-over'; destination: number }
+  | { kind: 'pin-appeared'; destination: number }
+  | { kind: 'car-arrived'; destination: number }
+  | { kind: 'overflow-started'; destination: number }
+  | { kind: 'overflow-countdown'; destination: number; ticksLeft: number }
+  | { kind: 'week-ended'; week: number };
 
 let pending: SimEvent[] = [];
 

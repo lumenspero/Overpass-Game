@@ -49,6 +49,9 @@ describe('placing buildings', () => {
         color: 0,
         tile: at(sim.grid, 2, 2),
         entrance: 's',
+        // Its stub, a free road on the tile it faces.
+        stub: at(sim.grid, 2, 3),
+        stubAdopted: false,
       },
     ]);
     expect(sim.buildingAt[at(sim.grid, 2, 2)]).toBe(0);
@@ -167,8 +170,9 @@ describe('roads and buildings share tiles', () => {
     expect(sim.roads[at(sim.grid, 2, 2)]).toBe(0);
   });
 
-  it('a building next to a road is connected only when its entrance faces that road', () => {
+  it('a house connects through its stub, which starts free on the tile its entrance faces', () => {
     const sim = newSim();
+    const budget = sim.budget;
     const house = placeBuilding(sim, {
       kind: 'house',
       color: 0,
@@ -177,13 +181,11 @@ describe('roads and buildings share tiles', () => {
     });
     if (!house.ok) throw new Error('setup failed');
     const b = sim.buildings[house.id];
+    if (!b) throw new Error('setup failed');
 
-    expect(isConnected(sim, b)).toBe(false);
-    // A road on the north side does not connect a house whose entrance faces east.
-    placeRoads(sim, [at(sim.grid, 2, 1)]);
-    expect(isConnected(sim, b)).toBe(false);
-    // A road on the entrance side does.
-    placeRoads(sim, [at(sim.grid, 3, 2)]);
+    expect(b.stub).toBe(at(sim.grid, 3, 2));
+    expect(sim.roads[at(sim.grid, 3, 2)]).toBe(1);
+    expect(sim.budget).toBe(budget);
     expect(isConnected(sim, b)).toBe(true);
   });
 

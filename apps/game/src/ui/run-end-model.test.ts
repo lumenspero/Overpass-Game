@@ -74,6 +74,7 @@ describe('runEndModel', () => {
       name: 'Beta',
       open: false,
       hint: 'Reach 15 trips here to unlock Beta',
+      unlockedNow: false,
     });
   });
 
@@ -101,5 +102,27 @@ describe('runEndModel', () => {
     });
     expect(m.next).toBeNull();
     expect(m.best).toBe(50);
+  });
+
+  it('marks the next map as unlocked by this run only when this run opened it', () => {
+    tuning.CAMPAIGN_UNLOCK_TRIPS = 15;
+    const now = runEndModel({
+      mapId: 'a',
+      trips: 20,
+      previousBest: 9,
+      best: { 'campaign/a': 20 },
+      maps: MAPS,
+    });
+    expect(now.next?.open).toBe(true);
+    expect(now.next?.unlockedNow).toBe(true);
+    const already = runEndModel({
+      mapId: 'a',
+      trips: 25,
+      previousBest: 20,
+      best: { 'campaign/a': 25 },
+      maps: MAPS,
+    });
+    expect(already.next?.open).toBe(true);
+    expect(already.next?.unlockedNow).toBe(false);
   });
 });

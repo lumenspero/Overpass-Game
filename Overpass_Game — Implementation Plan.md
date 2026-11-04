@@ -344,7 +344,7 @@ Done when: a run survives a reload mid-game, and a save exported on one host imp
 - [ ] Pick the 25 locations and their unlock order (variety of water, mountains, grid shapes)
 - [ ] Author the remaining 22 maps in the Studio; per-map rules and palettes
 - [ ] Challenge set with starter roads
-- [ ] Houses connect from any of their 8 neighbours, with the entrance following the road (today a house connects only through its fixed entrance tile; see the Buildings section of the spec)
+- [x] Houses connect through a free, permanent stub that the player can drag to any of their 8 neighbours (pulled forward from M14 on 2026-11-03; see the Buildings section of the spec)
 - [ ] Balance pass using fast-forward and recorded seeds
 
 > **Checkpoint F · Full campaign.** Play through the unlock path; sign off on difficulty curve and each map.

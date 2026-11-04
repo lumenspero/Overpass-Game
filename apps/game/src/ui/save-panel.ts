@@ -5,6 +5,7 @@ import {
   storageStatus,
 } from '../game/progress.ts';
 import { encodeSaveCode, importSaveText, saveFileText } from '../save/codec.ts';
+import { audio } from '../audio/shared.ts';
 
 /**
  * The menu's save section: export the progress as a file or a code, and import one. An import
@@ -80,7 +81,10 @@ export function buildSavePanel(onImported: () => void): HTMLElement {
   const copy = button('Copy save code', () => {
     void navigator.clipboard
       .writeText(code.value)
-      .then(() => show('Save code copied.'))
+      .then(() => {
+        audio.playEffect('save.done');
+        show('Save code copied.');
+      })
       .catch(() => {
         code.select();
         show('Select the code and copy it.');
@@ -95,6 +99,7 @@ export function buildSavePanel(onImported: () => void): HTMLElement {
   });
   const downloadFile = button('Download save file', () => {
     download(FILE_NAME, saveFileText(exportBundle()));
+    audio.playEffect('save.done');
     show('Save file downloaded.');
   });
 
@@ -114,6 +119,7 @@ export function buildSavePanel(onImported: () => void): HTMLElement {
       const text = chosen ? await chosen.text() : paste.value;
       bundle = importSaveText(text);
     } catch (err) {
+      audio.playEffect('notice.error');
       show(explain(err));
       return;
     }
@@ -122,6 +128,7 @@ export function buildSavePanel(onImported: () => void): HTMLElement {
     );
     if (!ok) return;
     replaceProgress(bundle);
+    audio.playEffect('save.done');
     onImported();
   };
 

@@ -1,5 +1,6 @@
 import { chooseUpgrade, type SimState } from '@overpass-game/sim';
 import { offerView } from '../view/offer.ts';
+import { audio } from '../audio/shared.ts';
 
 /**
  * The weekly choice (spec: Upgrades). A small panel at the bottom of the screen offers the
@@ -51,6 +52,7 @@ export function createOfferPanel(getSim: () => SimState): OfferPanel {
       b.style.cssText =
         'margin:4px;font:14px sans-serif;padding:6px 12px;cursor:pointer';
       b.addEventListener('click', () => {
+        audio.playEffect('upgrade.pick');
         chooseUpgrade(getSim(), c.kind);
         shown = null;
         sync();

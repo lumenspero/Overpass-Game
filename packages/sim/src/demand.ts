@@ -24,6 +24,7 @@ export function generateDemand(state: SimState): void {
     demand.cooldown = Math.max(0, demand.cooldown - 1);
     if (demand.cooldown > 0) continue;
     demand.pins += 1;
+    emitEvent({ kind: 'pin-appeared', destination: b.id });
     demand.cooldown = cooldownFor(demand, b.shape);
   }
 }
@@ -71,9 +72,18 @@ export function updateOverflow(state: SimState): void {
     }
     if (demand.overflow === 0) {
       demand.overflow = tuning.OVERFLOW_TICKS;
+      emitEvent({ kind: 'overflow-started', destination: b.id });
       continue;
     }
     demand.overflow -= 1;
+    // Once a second while the countdown runs, so the sound can tick without a call every tick.
+    if (demand.overflow % tuning.TICKS_PER_SECOND === 0) {
+      emitEvent({
+        kind: 'overflow-countdown',
+        destination: b.id,
+        ticksLeft: demand.overflow,
+      });
+    }
     if (demand.overflow === 0 && state.over === null) {
       state.over = { tick: state.tick, destination: b.id };
       emitEvent({ kind: 'game-over', destination: b.id });

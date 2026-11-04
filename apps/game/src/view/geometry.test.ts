@@ -10,7 +10,6 @@ import {
 import { describe, expect, it } from 'vitest';
 import {
   buildingShapes,
-  BUILDING_SCALE,
   carShapes,
   DESTINATION_RADIUS,
   entranceStubShapes,
@@ -141,7 +140,7 @@ describe('entranceStubShapes', () => {
         y1: centre(1, 0).y,
         x2: centre(0, 0).x,
         y2: centre(0, 0).y,
-        w: BUILDING_SCALE * TILE_SIZE,
+        w: ROAD_WIDTH_TILES * TILE_SIZE,
       },
     ]);
   });

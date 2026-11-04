@@ -1,6 +1,8 @@
 import { tuning, demandIntervalFor } from './config.ts';
 import { colourUnlocked } from './rules.ts';
-import { type Grid, isBuildable, isInBounds } from './grid.ts';
+import { type Grid, isAdjacent, isBuildable, isInBounds } from './grid.ts';
+import { isOpenTile } from './expansion.ts';
+import { updateRoadGraph } from './graph.ts';
 import { emitEvent } from './events.ts';
 import type { SimState } from './sim.ts';
 import {
@@ -10,13 +12,15 @@ import {
   type LotReason,
   lotBlocker,
   lotRoads,
+  reservedLotTiles,
 } from './lots.ts';
 import { nextFloat } from './rng.ts';
 
 /**
  * Buildings: houses (where cars start and end) and destinations (where they go).
- * A house occupies one tile, and its entrance faces one side. It is connected only while the
- * neighbour on that side is a road. A destination is a 3×3 building in a lot (spec: Parking lots
+ * A house occupies one tile and keeps a stub: one free road tile beside it, which the player can
+ * move to any of its 8 neighbours but never erase (spec: Buildings). A house without a stub (its
+ * facing tile could not take one) connects through the tile its entrance faces, as before. A destination is a 3×3 building in a lot (spec: Parking lots
  * and building kinds). Its lot's inlet is its only connection, and its lot is reserved when it
  * spawns. Buildings are never removed in M3.
  */
@@ -43,6 +47,13 @@ export interface Building {
   placedTick?: number;
   /** A destination's shape: square is the slower-demand kind, round the faster one. */
   shape?: DestinationShape;
+  /**
+   * A house's stub: the road tile it connects through. Free, never erased, and movable to any of
+   * the house's 8 neighbours. Absent when the house could not take one.
+   */
+  stub?: number;
+  /** True when the stub took over a road that was already there, so moving away leaves that road. */
+  stubAdopted?: boolean;
 }
 
 /** A destination's demand. `pins` are waiting requests; one is used up when a car arrives. */
@@ -105,7 +116,7 @@ export function entranceTile(
  */
 export function accessTile(grid: Grid, b: Building): number | null {
   if (b.kind === 'destination') return destinationLot(grid, b)?.road ?? null;
-  return entranceTile(grid, b.tile, b.entrance);
+  return b.stub ?? entranceTile(grid, b.tile, b.entrance);
 }
 
 /** Every road tile a building connects through: a destination's near road, and its far road where it has one. */
@@ -114,8 +125,72 @@ export function accessTiles(grid: Grid, b: Building): number[] {
     const lot = destinationLot(grid, b);
     return lot ? lotRoads(lot) : [];
   }
-  const e = entranceTile(grid, b.tile, b.entrance);
+  const e = b.stub ?? entranceTile(grid, b.tile, b.entrance);
   return e === null ? [] : [e];
+}
+
+/** Why a house's stub cannot go on a tile. */
+export type StubReason =
+  'out-of-bounds' | 'not-adjacent' | 'unbuildable' | 'locked' | 'occupied';
+
+/** True when a tile is a house's stub. */
+export function isHouseStub(state: SimState, tile: number): boolean {
+  return state.buildings.some((b) => b.kind === 'house' && b.stub === tile);
+}
+
+/**
+ * Why a house on `houseTile` cannot keep its stub on `tile`, or null if it can. The tile must touch
+ * the house by an edge or a corner, and be land, park or an existing road, with no building, lot
+ * or other stub on it. `ignoreLock` lets a house placed on land not yet open take its stub there.
+ */
+export function stubBlocker(
+  state: SimState,
+  houseTile: number,
+  tile: number,
+  ignoreLock = false,
+): StubReason | null {
+  if (!isInBounds(state.grid, tile)) return 'out-of-bounds';
+  if (!isAdjacent(state.grid, houseTile, tile)) return 'not-adjacent';
+  if (state.buildingAt[tile] !== -1 || isHouseStub(state, tile)) {
+    return 'occupied';
+  }
+  if (reservedLotTiles(state).has(tile)) return 'occupied';
+  if (state.roads[tile] !== 1 && !isBuildable(state.grid, tile)) {
+    return 'unbuildable';
+  }
+  if (!ignoreLock && !isOpenTile(state, tile)) return 'locked';
+  return null;
+}
+
+/**
+ * Puts a house's stub on a tile, free. A tile that is already a road is taken over as it is, and
+ * remembered, so moving the stub away later leaves that road. The caller checks `stubBlocker`.
+ */
+export function attachStub(
+  state: SimState,
+  house: Building,
+  tile: number,
+): void {
+  house.stub = tile;
+  house.stubAdopted = state.roads[tile] === 1;
+  if (state.roads[tile] !== 1) {
+    state.roads[tile] = 1;
+    updateRoadGraph(state.graph, state.grid, state.roads, state.links, [tile]);
+  }
+}
+
+/**
+ * Gives every house without a stub one on the tile its entrance faces, where that tile can take
+ * one. For runs saved before houses had stubs.
+ */
+export function ensureHouseStubs(state: SimState): void {
+  for (const b of state.buildings) {
+    if (b.kind !== 'house' || b.stub !== undefined) continue;
+    const facing = entranceTile(state.grid, b.tile, b.entrance);
+    if (facing !== null && stubBlocker(state, b.tile, facing, true) === null) {
+      attachStub(state, b, facing);
+    }
+  }
 }
 
 /**
@@ -211,6 +286,17 @@ export function placeBuilding(
         ])
       : [opts.tile];
   for (const t of occupied) state.buildingAt[t] = id;
+  if (opts.kind === 'house') {
+    // A house comes with its stub on the tile it faces, free. Land not yet open still takes it,
+    // so the stub is there, hidden with the house, when the district opens.
+    const facing = entranceTile(state.grid, opts.tile, opts.entrance);
+    if (
+      facing !== null &&
+      stubBlocker(state, opts.tile, facing, true) === null
+    ) {
+      attachStub(state, record, facing);
+    }
+  }
   const shape: DestinationShape | undefined =
     opts.kind === 'destination' ? (opts.shape ?? 'round') : undefined;
   if (opts.kind === 'house') {

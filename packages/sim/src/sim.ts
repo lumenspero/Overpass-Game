@@ -1,5 +1,5 @@
 import { type ControlKind, dropControlsAt } from './controls.ts';
-import { type SimEvent, takeEvents } from './events.ts';
+import { emitEvent, type SimEvent, takeEvents } from './events.ts';
 import type { CrossingRun } from './crossings.ts';
 import { dropMotorwaysAt } from './motorway-placement.ts';
 import type { Motorway } from './motorways.ts';
@@ -20,9 +20,16 @@ import {
   isAdjacent,
   isInBounds,
   removeLink,
+  linkPartners,
 } from './grid.ts';
 import { moveCars } from './movement.ts';
-import { addSecondBuildings } from './buildings.ts';
+import {
+  addSecondBuildings,
+  attachStub,
+  isHouseStub,
+  type StubReason,
+  stubBlocker,
+} from './buildings.ts';
 import { createRng, type RngState } from './rng.ts';
 import { spawnCars, updateTrips } from './trips.ts';
 import {
@@ -166,10 +173,16 @@ export function placeRoads(state: SimState, tiles: number[]): PlaceResult {
   return { ok: true, added: added.length };
 }
 
-/** Removes roads from the given tiles and refunds one budget per tile. Returns the count removed. */
+/**
+ * Removes roads from the given tiles and refunds one budget per tile. Returns the count removed. A
+ * house's stub is never removed: it is part of the house (spec: Buildings).
+ */
 export function removeRoads(state: SimState, tiles: number[]): number {
   const removed = [...new Set(tiles)].filter(
-    (i) => isInBounds(state.grid, i) && state.roads[i] === 1,
+    (i) =>
+      isInBounds(state.grid, i) &&
+      state.roads[i] === 1 &&
+      !isHouseStub(state, i),
   );
   for (const i of removed) {
     state.roads[i] = 0;
@@ -183,6 +196,42 @@ export function removeRoads(state: SimState, tiles: number[]): number {
     onRoadsChanged(state, [], removed);
   }
   return removed.length;
+}
+
+export type StubResult =
+  | { ok: true; moved: boolean }
+  | { ok: false; reason: StubReason | 'not-house' };
+
+/**
+ * Moves a house's stub to another of its 8 neighbours. The move is free. The old stub goes with
+ * the house, with no refund, since it was never paid for. A road the stub had taken over stays
+ * while other roads are joined to it; left alone, it is removed and refunded, as an erase would.
+ * Moving to the tile it is already on changes nothing.
+ */
+export function moveHouseStub(
+  state: SimState,
+  houseId: number,
+  tile: number,
+): StubResult {
+  const house = state.buildings[houseId];
+  if (!house || house.kind !== 'house') {
+    return { ok: false, reason: 'not-house' };
+  }
+  if (house.stub === tile) return { ok: true, moved: false };
+  const why = stubBlocker(state, house.tile, tile);
+  if (why) return { ok: false, reason: why };
+  const old = house.stub;
+  const oldWasRoad = house.stubAdopted === true;
+  attachStub(state, house, tile);
+  if (old !== undefined && !oldWasRoad) {
+    // removeRoads refunds the tile; take that refund back, since the stub was free.
+    const removed = removeRoads(state, [old]);
+    state.budget -= removed;
+  } else if (old !== undefined && linkPartners(state.links, old).length === 0) {
+    // A road the stub took over, left with nothing joined to it, goes too, refunded as an erase.
+    removeRoads(state, [old]);
+  }
+  return { ok: true, moved: true };
 }
 
 /**
@@ -218,6 +267,7 @@ export function step(state: SimState): SimEvent[] {
   if (state.over) return [];
   state.tick += 1;
   if (state.tick % tuning.WEEK_TICKS === 0) {
+    emitEvent({ kind: 'week-ended', week: state.tick / tuning.WEEK_TICKS });
     grantWeeklyReward(state);
     growDestinations(state);
     addSecondBuildings(state);

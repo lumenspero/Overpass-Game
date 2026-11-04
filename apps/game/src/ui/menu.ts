@@ -116,8 +116,14 @@ export function showMenu(options: MenuOptions): Menu {
   if (storage.problem !== null) {
     mainInner.append(el('div', NOTE_CSS, storage.problem));
   }
-  const playMain = button('Play', '', () => showSelect());
-  const optionsMain = button('Options', SECONDARY_CSS, () => onSettings());
+  const playMain = button('Play', '', () => {
+    options.sound?.('menu.enter');
+    showSelect();
+  });
+  const optionsMain = button('Options', SECONDARY_CSS, () => {
+    options.sound?.('menu.enter');
+    onSettings();
+  });
   mainInner.append(playMain, optionsMain);
   main.append(mainInner);
 
@@ -134,7 +140,10 @@ export function showMenu(options: MenuOptions): Menu {
   );
   back.type = 'button';
   back.setAttribute('aria-label', 'Back');
-  back.addEventListener('click', () => showMain());
+  back.addEventListener('click', () => {
+    options.sound?.('menu.back');
+    showMain();
+  });
   topBar.append(back);
 
   const track = el(
@@ -165,7 +174,7 @@ export function showMenu(options: MenuOptions): Menu {
     card.append(canvas, name, sub);
     card.addEventListener('click', () => {
       if (index !== selected) {
-        options.sound?.(index > selected ? 'menu.next' : 'menu.previous');
+        options.sound?.(index > selected ? 'map.next' : 'map.previous');
       }
       choose(index, 'smooth');
     });
@@ -305,7 +314,7 @@ export function showMenu(options: MenuOptions): Menu {
   function move(delta: number): void {
     const next = stepIndex(selected, delta, rows.length);
     if (next === selected) return;
-    options.sound?.(delta > 0 ? 'menu.next' : 'menu.previous');
+    options.sound?.(delta > 0 ? 'map.next' : 'map.previous');
     choose(next, 'smooth');
   }
 
@@ -313,7 +322,10 @@ export function showMenu(options: MenuOptions): Menu {
     if (select.style.display === 'none') return;
     if (e.key === 'ArrowLeft') move(-1);
     else if (e.key === 'ArrowRight') move(1);
-    else if (e.key === 'Escape') showMain();
+    else if (e.key === 'Escape') {
+      options.sound?.('menu.back');
+      showMain();
+    }
   };
   document.addEventListener('keydown', onKey);
 
@@ -327,6 +339,7 @@ export function showMenu(options: MenuOptions): Menu {
       root.remove();
     },
     setError(message: string) {
+      if (message) options.sound?.('notice.error');
       error.textContent = message;
       error.style.display = message ? 'block' : 'none';
     },

@@ -136,6 +136,14 @@ import {
 import { overflowRings } from '../view/overflow.ts';
 import { audio } from '../audio/shared.ts';
 import { soundForSimEvent } from '../audio/sim-sounds.ts';
+import { weekEndSound } from '../audio/week-tick.ts';
+import {
+  actionSounds,
+  EMPTY_TALLY,
+  placementReport,
+} from '../audio/action-sounds.ts';
+import { strokeTally } from './controller.ts';
+import { ensureHouseStubs, tuning } from '@overpass-game/sim';
 import {
   createTickMeter,
   sampleTickRate,
@@ -315,6 +323,8 @@ export class GameScene extends Phaser.Scene {
       this.sim = buildDemo(demo);
     } else if (resumed) {
       this.sim = resumed;
+      // A run saved before houses had stubs gets them now.
+      ensureHouseStubs(this.sim);
     } else {
       const testGrid: Grid = buildTestGrid();
       this.sim = createSim({
@@ -471,10 +481,14 @@ export class GameScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     const ticks = advanceClock(this.clock, delta);
     for (let i = 0; i < ticks; i++) {
+      const before = this.sim.tick;
       for (const event of step(this.sim)) {
         const sound = soundForSimEvent(event);
         if (sound) audio.playEffect(sound);
       }
+      // The clock ticks through the last hours of Sunday, before the week ends.
+      const tock = weekEndSound(before, this.sim.tick, tuning.WEEK_TICKS);
+      if (tock) audio.playEffect(tock);
     }
     // Once each week the run is saved, so a reload resumes from the start of that week.
     if (ticks > 0 && weekOf(this.sim.tick) > this.lastSavedWeek) this.saveNow();
@@ -793,9 +807,23 @@ export class GameScene extends Phaser.Scene {
           intent.factor,
           intent.center,
         );
-      } else if (applyIntent(this.controller, intent, this.toTile)) {
-        this.roadsDirty = true;
-        this.overlayDirty = true;
+      } else {
+        // The stroke and the last placement report, before and after, give the action's sounds.
+        const stroke = this.controller.stroke;
+        const tallyBefore = strokeTally(stroke);
+        const reportBefore = placementReport(this.controller.crossing);
+        if (applyIntent(this.controller, intent, this.toTile)) {
+          this.roadsDirty = true;
+          this.overlayDirty = true;
+        }
+        const after = this.controller.stroke ?? stroke;
+        const sounds = actionSounds(
+          after === stroke ? tallyBefore : EMPTY_TALLY,
+          strokeTally(after),
+          reportBefore,
+          placementReport(this.controller.crossing),
+        );
+        for (const sound of sounds) audio.playEffect(sound);
       }
     }
   }
@@ -1010,9 +1038,13 @@ export class GameScene extends Phaser.Scene {
     const visible = this.sim.buildings.filter((b) =>
       isOpenTile(this.sim, b.tile),
     );
+    // A road on land not yet open is a hidden house's stub, so it stays hidden with its house.
+    const roads = Array.from(this.sim.roads, (r, i) =>
+      r === 1 && !isOpenTile(this.sim, i) ? 0 : r,
+    );
     const shapes = [
-      ...roadShapes(this.sim.grid, this.sim.roads, this.sim.links),
-      ...entranceStubShapes(visible, this.sim.grid, this.sim.roads),
+      ...roadShapes(this.sim.grid, roads, this.sim.links),
+      ...entranceStubShapes(visible, this.sim.grid, roads),
       ...lotShapes(visible, this.sim.grid),
     ];
     // Kerb first, a little wider, then the pavement on top, so each road has a thin outline.
@@ -1390,6 +1422,15 @@ export class GameScene extends Phaser.Scene {
       best: currentBest(),
       maps: CAMPAIGN_MAPS,
     });
+    // One celebration, after the game-over sound has rung: a newly opened map, else a new best.
+    const celebration = model.next?.unlockedNow
+      ? 'map.unlocked'
+      : model.newBest
+        ? 'new.best'
+        : null;
+    if (celebration) {
+      window.setTimeout(() => audio.playEffect(celebration), 1300);
+    }
 
     const notes: string[] = [];
     if (model.best !== null) {
@@ -1478,7 +1519,13 @@ export class GameScene extends Phaser.Scene {
   private syncDistricts(): void {
     const open = openDistricts(this.sim.tick);
     if (open === this.openCount) return;
+    // The first sync sets the count when the game starts; only a later rise is a district opening.
+    if (this.openCount >= 0 && open > this.openCount) {
+      audio.playEffect('district.opened');
+    }
     this.openCount = open;
+    // Stubs on the newly opened land appear with their houses.
+    this.roadsDirty = true;
     this.drawLocks();
     this.drawBuildings();
   }
