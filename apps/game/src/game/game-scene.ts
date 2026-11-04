@@ -85,6 +85,7 @@ import {
   type TuningPanel,
 } from '../debug/tuning-panel.ts';
 import { createOfferPanel, type OfferPanel } from '../ui/offer-panel.ts';
+import { createDock, type Dock } from '../ui/dock.ts';
 import { createTopBar, type TopBar } from '../ui/top-bar.ts';
 import { clockFor, type PlayChoice } from '../ui/top-bar-model.ts';
 import { previewRoads } from '../view/crossing-preview.ts';
@@ -300,6 +301,7 @@ export class GameScene extends Phaser.Scene {
   private gridGfx!: Phaser.GameObjects.Graphics;
   private debugText!: Phaser.GameObjects.Text;
   private offerPanel!: OfferPanel;
+  private dock!: Dock;
   private topBar!: TopBar;
   private debugOn = false;
   private overlayDirty = true;
@@ -344,6 +346,13 @@ export class GameScene extends Phaser.Scene {
     });
     this.controller = createController(this.sim);
     this.offerPanel = createOfferPanel(() => this.sim);
+    this.dock = createDock({
+      getSim: () => this.sim,
+      getArmed: () => this.mapper.tool,
+      onArm: (id) => {
+        if (id !== 'tiles') this.pickCrossing(id);
+      },
+    });
     this.topBar = createTopBar({
       onMenu: () => runActions()?.menu(),
       onChoice: this.onPlayChoice,
@@ -529,6 +538,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.showCrossingLine(time);
     this.offerPanel.sync();
+    this.dock.sync();
     if (this.sim.over && !this.ended) this.showEnd();
     if (this.debugOn) {
       if (this.overlayDirty) {
@@ -1667,6 +1677,7 @@ export class GameScene extends Phaser.Scene {
     this.tutorial?.destroy();
     this.tutorial = null;
     this.offerPanel.destroy();
+    this.dock.destroy();
     this.topBar.destroy();
     this.endPanel?.destroy();
     this.endPanel = null;

@@ -12,6 +12,7 @@ import {
   storageStatus,
 } from './game/progress.ts';
 import { setRunActions } from './game/run-actions.ts';
+import { setActiveDemo } from './game/demos.ts';
 import { saveActiveRun, setPendingResume } from './game/run-resume.ts';
 import {
   currentSettings,
@@ -143,6 +144,8 @@ async function playChoice(choice: MenuChoice): Promise<void> {
   } finally {
     loading = false;
   }
+  // A debug demo picked earlier in this page must not replace the map the player chose.
+  setActiveDemo(null);
   setPendingResume(resume);
   menu?.destroy();
   menu = null;

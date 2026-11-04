@@ -161,3 +161,22 @@ describe('drawChoices', () => {
     );
   });
 });
+
+describe('unlocked upgrades', () => {
+  it('marks an upgrade unlocked once an offer puts it in stock, and not before', () => {
+    const sim = createSim({ seed: 1, grid: makeGrid(3, 3), roadBudget: 0 });
+    expect(sim.unlocked.motorway).toBe(false);
+    sim.offers = [['motorway', 'tiles']];
+    chooseOffer(sim, 'motorway');
+    expect(sim.unlocked.motorway).toBe(true);
+    expect(sim.unlocked.bridge).toBe(false);
+  });
+
+  it('keeps an unlocked upgrade unlocked after its stock is used up', () => {
+    const sim = createSim({ seed: 1, grid: makeGrid(3, 3), roadBudget: 0 });
+    sim.offers = [['bridge', 'tiles']];
+    chooseOffer(sim, 'bridge');
+    sim.stock.bridge = 0;
+    expect(sim.unlocked.bridge).toBe(true);
+  });
+});

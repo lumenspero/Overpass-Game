@@ -22,6 +22,19 @@ export type UpgradeKind = (typeof UPGRADE_KINDS)[number];
 /** How many of each upgrade the player holds, ready to place. */
 export type Stock = Record<UpgradeKind, number>;
 
+/** Whether the player has had each upgrade in stock at least once this run. Drives the dock. */
+export type Unlocked = Record<UpgradeKind, boolean>;
+
+export function emptyUnlocked(): Unlocked {
+  return {
+    bridge: false,
+    tunnel: false,
+    motorway: false,
+    roundabout: false,
+    light: false,
+  };
+}
+
 export function emptyStock(): Stock {
   return {
     bridge: 0,
@@ -118,7 +131,9 @@ export function chooseOffer(state: SimState, id: OfferId): ChooseResult {
   const option = OFFER_OPTIONS[id];
   state.offers.shift();
   for (const kind of UPGRADE_KINDS) {
-    state.stock[kind] += option.upgrades[kind] ?? 0;
+    const n = option.upgrades[kind] ?? 0;
+    state.stock[kind] += n;
+    if (n > 0) state.unlocked[kind] = true;
   }
   state.budget += option.tiles;
   return { ok: true };

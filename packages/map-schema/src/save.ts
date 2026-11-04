@@ -11,7 +11,7 @@ import { MapFormatError, parseWith } from './errors.ts';
 export const SAVE_FORMAT = 'overpass-game-save' as const;
 
 /** Version of the save format. Bump it with a migration whenever the shape changes. */
-export const SAVE_SCHEMA_VERSION = 5 as const;
+export const SAVE_SCHEMA_VERSION = 6 as const;
 
 /** Content hashes are eight lower-case hex digits (see map-compiler's contentHash). */
 const HASH = /^[0-9a-f]{8}$/;
@@ -41,6 +41,7 @@ export const SIM_STATE_KEYS = [
   'tripsCompleted',
   'offers',
   'stock',
+  'unlocked',
   'crossingRunOf',
   'crossingRuns',
   'nextCrossingRunId',
@@ -235,11 +236,45 @@ const ADD_AUDIO_SETTINGS: SaveMigration = (save) => {
 };
 
 /** Migrations keyed by the version they upgrade from. */
+/**
+ * Adds the unlocked upgrades to each run in progress. A run saved before this has them wherever
+ * its stock is above zero. The sim sits under each run, not at the top of the bundle.
+ */
+const ADD_UNLOCKED: SaveMigration = (save) => {
+  const runs = save.runs;
+  if (typeof runs !== 'object' || runs === null) return save;
+  return {
+    ...save,
+    runs: Object.fromEntries(
+      Object.entries(runs).map(([key, run]) => [key, addUnlocked(run)]),
+    ),
+  };
+};
+
+function addUnlocked(run: unknown): unknown {
+  if (typeof run !== 'object' || run === null) return run;
+  const sim = (run as { sim?: unknown }).sim;
+  if (typeof sim !== 'object' || sim === null) return run;
+  const stock = (sim as { stock?: unknown }).stock;
+  const counts =
+    typeof stock === 'object' && stock !== null
+      ? (stock as Record<string, unknown>)
+      : {};
+  const unlocked = Object.fromEntries(
+    ['bridge', 'tunnel', 'motorway', 'roundabout', 'light'].map((kind) => [
+      kind,
+      typeof counts[kind] === 'number' && (counts[kind] as number) > 0,
+    ]),
+  );
+  return { ...run, sim: { ...sim, unlocked } };
+}
+
 export const SAVE_MIGRATIONS: Readonly<Record<number, SaveMigration>> = {
   1: ADD_DISPLAY_SETTINGS,
   2: ADD_INPUT_SETTINGS,
   3: DROP_RENDER_SCALE,
   4: ADD_AUDIO_SETTINGS,
+  5: ADD_UNLOCKED,
 };
 
 /**

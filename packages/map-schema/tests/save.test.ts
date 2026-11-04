@@ -224,3 +224,26 @@ describe('save migration to version 5', () => {
     });
   });
 });
+
+describe('save migration to version 6', () => {
+  it('adds the unlocked upgrades to each run of a version 5 save', () => {
+    const sim = savedSim();
+    delete sim.unlocked;
+    (sim.stock as Record<string, number>).bridge = 1;
+    const v5 = {
+      format: 'overpass-game-save',
+      schemaVersion: 5,
+      settings: null,
+      best: {},
+      runs: { [key]: run(sim) },
+    };
+    const parsed = parseSaveBundle(v5);
+    expect(parsed.runs[key].sim.unlocked).toEqual({
+      bridge: true,
+      tunnel: false,
+      motorway: false,
+      roundabout: false,
+      light: false,
+    });
+  });
+});

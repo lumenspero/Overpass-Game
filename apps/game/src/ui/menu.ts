@@ -193,14 +193,11 @@ export function showMenu(options: MenuOptions): Menu {
     if (row?.open) onPick({ kind: 'campaign', id: row.id });
   });
   const locked = el('p', `margin:8px 0;text-align:center;color:${MUTED}`);
-  const test = button('Test map', SECONDARY_CSS, () =>
-    onPick({ kind: 'test' }),
-  );
   const error = el(
     'div',
     'display:none;margin:12px 0;padding:8px;background:#5a1a1a;color:#fff;border-radius:6px',
   );
-  actions.append(resume, play, locked, test, error);
+  actions.append(resume, play, locked, error);
 
   select.append(topBar, track, actions);
   main.style.display = 'block';

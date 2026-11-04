@@ -34,9 +34,11 @@ import { createRng, type RngState } from './rng.ts';
 import { spawnCars, updateTrips } from './trips.ts';
 import {
   emptyStock,
+  emptyUnlocked,
   grantWeeklyReward,
   type OfferId,
   type Stock,
+  type Unlocked,
 } from './upgrades.ts';
 
 /** Everything the simulation remembers. Plain data only, so it serializes to JSON. */
@@ -69,6 +71,8 @@ export interface SimState {
   offers: OfferId[][];
   /** Upgrades the player holds, ready to place. */
   stock: Stock;
+  /** Upgrades the player has had in stock this run. The dock shows only these, plus road tiles. */
+  unlocked: Unlocked;
   /** One entry per grid tile: the id of the crossing run it belongs to, or 0 for none. */
   crossingRunOf: number[];
   /** Crossing runs still standing, by id. A run returns its stock when its last tile goes. */
@@ -134,6 +138,7 @@ export function createSim({
     tripsCompleted: 0,
     offers: [],
     stock: emptyStock(),
+    unlocked: emptyUnlocked(),
     crossingRunOf: new Array<number>(grid.cols * grid.rows).fill(0),
     crossingRuns: {},
     nextCrossingRunId: 1,
