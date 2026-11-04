@@ -521,7 +521,7 @@ export class GameScene extends Phaser.Scene {
     this.drawControls();
     this.drawRings();
     this.topBar.sync({
-      paused: this.clock.paused,
+      paused: this.clock.paused || this.sim.offers.length > 0,
       speed: this.clock.speed,
       enabled: !this.sim.over,
       tick: this.sim.tick,
@@ -617,6 +617,7 @@ export class GameScene extends Phaser.Scene {
       this.scene.restart();
       return;
     }
+    if (this.sim.offers.length > 0) return; // the choice popup waits; the clock is paused
     const sample = this.sample(e);
     try {
       this.canvas.setPointerCapture(e.pointerId);
@@ -704,16 +705,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onRoadKey = (): void => {
+    if (this.sim.offers.length > 0) return;
     setTool(this.mapper, this.mapper.tool === 'draw' ? 'select' : 'draw');
   };
 
   private pickCrossing(
     kind: 'bridge' | 'tunnel' | 'motorway' | 'roundabout' | 'light',
   ): void {
+    if (this.sim.offers.length > 0) return;
     setTool(this.mapper, this.mapper.tool === kind ? 'select' : kind);
   }
 
   private toggleTool = (): void => {
+    if (this.sim.offers.length > 0) return;
     setTool(this.mapper, this.mapper.tool === 'erase' ? 'select' : 'erase');
   };
 

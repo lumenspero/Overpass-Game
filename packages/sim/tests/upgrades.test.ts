@@ -121,9 +121,9 @@ describe('chooseOffer', () => {
   });
 
   it('matches the spec table: six options, tile amounts 10, 20, 20, 20, 20, 30', () => {
-    expect(
-      Object.values(OFFER_OPTIONS).map((o) => o.tiles),
-    ).toEqual([10, 20, 20, 20, 20, 30]);
+    expect(Object.values(OFFER_OPTIONS).map((o) => o.tiles)).toEqual([
+      10, 20, 20, 20, 20, 30,
+    ]);
   });
 });
 
