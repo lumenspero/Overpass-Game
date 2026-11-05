@@ -1,11 +1,17 @@
 import { addCar, dropCar, roadEntrance, sendHome, type Car } from './cars.ts';
-import { isConnected } from './buildings.ts';
+import { type Building, isConnected } from './buildings.ts';
 import { emitEvent } from './events.ts';
 import { tuning } from './config.ts';
 import { servePin, unclaimedPins } from './demand.ts';
 import { isOpenTile } from './expansion.ts';
-import { tileOpen } from './movement.ts';
-import { startLotExit, startLotTrip } from './lot-trips.ts';
+import { houseAcross, houseLeg, joinClear, type Patience } from './movement.ts';
+import {
+  exitRoute,
+  holdingToJoin,
+  replanExit,
+  startLotExit,
+  startLotTrip,
+} from './lot-trips.ts';
 import { nextFloat } from './rng.ts';
 import type { SimState } from './sim.ts';
 
@@ -36,7 +42,7 @@ export function spawnCars(state: SimState): void {
     if (home.cooldown > 0) continue;
     if (!isConnected(state, b)) continue;
     const start = roadEntrance(state, b.id);
-    if (start === null || !tileOpen(state, start, null, null)) continue;
+    if (start === null) continue;
 
     const options = state.buildings.filter(
       (d) =>
@@ -50,18 +56,70 @@ export function spawnCars(state: SimState): void {
     const pick = options[Math.floor(nextFloat(state.rng) * options.length)];
 
     home.cooldown = tuning.SPAWN_INTERVAL_TICKS;
-    if (addCar(state, b.id, pick.id).ok) home.atHome -= 1;
+    const added = addCar(state, b.id, pick.id);
+    if (!added.ok) continue;
+    // The new car pulls out of its house only when its lane, and the other lane if it must cross it, is clear.
+    const car = state.cars[state.cars.length - 1] as Car;
+    if (!pullOutClear(state, b, car)) {
+      state.cars.pop();
+    } else {
+      car.along = 0;
+      home.atHome -= 1;
+    }
   }
 }
 
-/** A car that has driven out of its space joins the road at the lot's node, and drives home from there. */
-function leaveLot(state: SimState, car: Car): void {
+/** How long a car leaving a lot or a kerb waits for traffic about to cross its path before it goes anyway. */
+const JOIN_PATIENCE = tuning.TICKS_PER_SECOND * 5;
+
+/** Where a car from a house crosses the other lane: at the access tile's centre, in tiles from its edge. */
+const HOUSE_CROSS_AT = 0.5;
+/** Where a car leaving a lot crosses the other lane: the inlet's centre, level with the node's centre. */
+const LOT_CROSS_AT = 0.5;
+/** How far a lot's node is drawn for a car leaving it, from the centre to the exit edge, in tiles. */
+const NODE_DRAWN = 0.5;
+
+/** How patient a car waiting to join the road has become, from how long it has waited. */
+function patienceOf(car: Car): Patience {
+  const waited = car.waited ?? 0;
+  if (waited > 2 * JOIN_PATIENCE) return 2;
+  return waited > JOIN_PATIENCE ? 1 : 0;
+}
+
+/** Whether a new car may pull out of house `b` on to the road: it drives from the house to its lane. */
+function pullOutClear(state: SimState, b: Building, car: Car): boolean {
+  const tile = car.route[0] as number;
+  const to = car.route[1];
+  if (to === undefined) return true;
+  const step = { from: tile, to };
+  // A car crossing the other lane from its house crosses it at the tile's centre.
+  return joinClear(
+    state,
+    tile,
+    to,
+    car,
+    houseAcross(state, b, tile, step) ? HOUSE_CROSS_AT : null,
+    houseLeg(state, b, tile, step),
+  );
+}
+
+/** A car that has driven out of its space joins the road at the lot's node, at `along`, and drives home by `home`. */
+function leaveLot(
+  state: SimState,
+  car: Car,
+  along: number,
+  home: Car | null,
+): void {
   car.lot = undefined;
   car.along = 0;
-  const next =
-    state.roads[car.route[car.progress]] === 1 ? sendHome(state, car) : null;
+  car.waited = undefined;
+  const next = state.roads[car.route[car.progress]] === 1 ? home : null;
   if (next) {
+    // The route was planned while the car was still in its lot, so its copy of the car still has the lot.
     Object.assign(car, next);
+    car.lot = undefined;
+    car.waited = undefined;
+    car.along = along;
   } else {
     dropCar(state, car);
     removeCar(state, car);
@@ -88,8 +146,40 @@ export function updateTrips(state: SimState): void {
         car.timer -= 1;
         if (car.timer > 0) continue;
         startLotExit(state, car);
-      } else if (lot.phase === 'out' && lot.s >= lot.length - EPSILON) {
-        leaveLot(state, car);
+      } else if (lot.phase === 'out') {
+        // The car waits just inside the lot's edge until the road is clear, then turns on to it.
+        if (holdingToJoin(car)) {
+          const home = exitRoute(state, car);
+          // Its route home may now leave the node another way, as traffic changes: it turns that way.
+          replanExit(state, car, home);
+          const tile = home?.route[0];
+          const to = home?.route[1];
+          const clear =
+            tile === undefined ||
+            to === undefined ||
+            joinClear(
+              state,
+              tile,
+              to,
+              car,
+              lot.crosses === true ? LOT_CROSS_AT : null,
+              lot.length - lot.s,
+              patienceOf(car),
+              (lot.joinAt ?? 0) * NODE_DRAWN,
+            );
+          if (clear) {
+            lot.cleared = true;
+          } else {
+            car.waited = (car.waited ?? 0) + 1;
+            // Its lane has stayed jammed: it leaves the other way instead, if there is one.
+            if (car.waited > JOIN_PATIENCE && lot.avoid === undefined) {
+              lot.avoid = to;
+            }
+          }
+        }
+        if (lot.cleared === true && lot.s >= lot.length - EPSILON) {
+          leaveLot(state, car, lot.joinAt ?? 0, exitRoute(state, car));
+        }
       }
       continue;
     }
@@ -104,10 +194,23 @@ export function updateTrips(state: SimState): void {
       car.timer -= 1;
       if (car.timer > 0) continue;
       // The car leaves from its destination's entrance edge, so its new route starts at along 0.
-      car.along = 0;
+      // It waits at the kerb, still parked, until its place on the road is clear.
       const next = sendHome(state, car);
+      const tile = next?.route[0];
+      const to = next?.route[1];
+      const clear =
+        tile === undefined ||
+        to === undefined ||
+        joinClear(state, tile, to, car, null, 0, patienceOf(car));
+      if (!clear) {
+        car.timer = 1;
+        car.waited = (car.waited ?? 0) + 1;
+        continue;
+      }
       if (next) {
         Object.assign(car, next);
+        car.along = 0;
+        car.waited = undefined;
       } else {
         dropCar(state, car);
         removeCar(state, car);

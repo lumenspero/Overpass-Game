@@ -31,7 +31,7 @@ Covers M10 from the M9 close through the current committed state (C1 to C6, plus
 - **Houses (M14):** a house connects only through its fixed entrance tile. Connecting it from any of its 8 neighbours changes the sim's building rules and the road graph, so it is logged in the M14 list.
 - **Audio (M12):** not in settings yet. It arrives with the audio manager.
 - **Persistence (M11):** settings, best scores and progress are held in memory for each page load.
-- **Narrow screens (M13):** the play bar (bottom-left) may overlap the offer panel, and the menus and panels need a phone pass.
+- **Narrow screens (deferred):** the play bar (bottom-left) may overlap the offer panel, and the menus and panels need a phone pass. Mobile testing is deferred, see the decision log.
 
 ## Decisions
 

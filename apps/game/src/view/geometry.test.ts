@@ -311,9 +311,10 @@ describe('carShapes on a bend', () => {
       entrance: 'e',
     };
     const [dot] = carShapes([car], [house], grid, [0xff0000]);
-    // Halfway through the bend, in the right-hand lane: inside the corner, not on the chord to the outer corner.
-    expect(dot.x).toBeCloseTo(42);
-    expect(dot.y).toBeCloseTo(22);
+    // Halfway through the bend, in the right-hand lane: inside the corner, not on the chord to the outer
+    // corner. The curve's control point is where the two lanes meet, so it keeps clear of the other lane.
+    expect(dot.x).toBeCloseTo(41);
+    expect(dot.y).toBeCloseTo(23);
   });
 
   it('is no bigger than the road it drives on', () => {

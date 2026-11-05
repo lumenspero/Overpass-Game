@@ -86,7 +86,7 @@ Goal: rebuild the start menu to match the reference's layout and feel, using ori
 - Built: `ui/tutorial.ts` is a DOM overlay with four steps (draw roads, connect buildings, pan and zoom, weeks and overflow), with Back, Next, Done and Skip. Escape closes it. Left and right arrows move between steps, and those keys stop at the overlay so the map does not pan behind it.
 - Opened two ways: Options > Tutorial (the disabled row is now an Open button; closing returns to Options), and H during play. Game-scene H pauses the clock and restores it on close only if it was running before.
 - Defaults chosen here, to confirm: the overlay re-opens from Options and H at any time; it does not show on first run; text covers the controls in `input/intents.ts` and the waypoint option.
-- Not yet checked in a browser: layout at phone width, the H pause and resume, and that the overlay closes on Escape with the map behind it still.
+- Not yet checked in a browser: layout at phone width (deferred, see the decision log), the H pause and resume, and that the overlay closes on Escape with the map behind it still.
 
 ## Decisions
 

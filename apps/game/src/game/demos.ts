@@ -1,9 +1,15 @@
 import {
+  addCar,
+  chooseOffer,
+  joinAlong,
   createGrid,
   createSim,
+  nextFloat,
   linkTiles,
   placeBuilding,
   placeRoads,
+  laneOfRoute,
+  roadLinks,
   type Grid,
   type LotKind,
   type Side,
@@ -25,7 +31,8 @@ export type DemoId =
   | 'roundabout'
   | 'light'
   | 'lots'
-  | 'buildings';
+  | 'buildings'
+  | 'cars';
 
 export interface Demo {
   id: DemoId;
@@ -68,6 +75,11 @@ export const DEMOS: readonly Demo[] = [
     id: 'buildings',
     title: 'Buildings: square and round',
     hint: 'Demo · Buildings: a square destination (left), a round one (middle) and a round double lot (right). Square pins more slowly. The second building of the double lot arrives after its delay (debug panel).',
+  },
+  {
+    id: 'cars',
+    title: '300 cars',
+    hint: 'Demo · 300 cars: five streets, with 300 cars already driving and no new ones spawning. Frame and sim times are in the debug line.',
   },
 ];
 
@@ -145,8 +157,150 @@ function building(
   return r.id;
 }
 
+/** Cars the 300-car demo starts with, and the streets it lays. */
+const CAR_DEMO_COUNT = 300;
+const CAR_DEMO_COLS = 48;
+const CAR_DEMO_ROWS = 32;
+const CAR_DEMO_STREETS = [3, 9, 15, 21, 27];
+
+/**
+ * A performance demo (spec: Performance). Houses sit on the row above each street and
+ * destinations on the row below, so every trip runs along the street. Spawning from the houses
+ * is off, so the car count stays at the demo's 300.
+ */
+function buildCarDemo(): SimState {
+  const grid = createGrid(CAR_DEMO_COLS, CAR_DEMO_ROWS, Terrain.Land);
+  const sim = createSim({ seed: 7, grid, roadBudget: 100000 });
+  const tile = (x: number, y: number): number => y * CAR_DEMO_COLS + x;
+  const place = (
+    kind: 'house' | 'destination',
+    x: number,
+    y: number,
+    entrance: Side,
+    lot?: LotKind,
+    shape?: 'square' | 'round',
+  ): void => {
+    const r = placeBuilding(sim, {
+      kind,
+      color: 0,
+      tile: tile(x, y),
+      entrance,
+      lot,
+      shape,
+    });
+    if (!r.ok) throw new Error(`car demo building refused: ${r.reason}`);
+  };
+  for (const y of CAR_DEMO_STREETS) {
+    const row: number[] = [];
+    for (let x = 0; x < CAR_DEMO_COLS; x++) row.push(tile(x, y));
+    road(sim, row);
+    for (let x = 0; x + 6 < CAR_DEMO_COLS; x += 5) {
+      place('destination', x, y + 1, 'n', 'single', 'square');
+      place('house', x + 1, y - 1, 's');
+    }
+  }
+  const houses = sim.buildings.filter((b) => b.kind === 'house');
+  const destinations = sim.buildings.filter((b) => b.kind === 'destination');
+  let added = 0;
+  for (let attempt = 0; attempt < 50000 && added < CAR_DEMO_COUNT; attempt++) {
+    const h = houses[Math.floor(nextFloat(sim.rng) * houses.length)];
+    const d =
+      destinations[Math.floor(nextFloat(sim.rng) * destinations.length)];
+    if (addDemoCarOnRoute(sim, h.id, d.id)) added += 1;
+  }
+  for (const h of houses) {
+    const home = sim.homes[h.id];
+    if (home) home.atHome = 0;
+  }
+  return sim;
+}
+
+/**
+ * Adds cars back to the 300-car demo as trips finish, so its load holds at 300. A few attempts
+ * per call keep a frame from spiking; a missed pair is simply tried again on the next frame.
+ */
+export function keepCarDemoFull(sim: SimState): void {
+  // The clock waits on an open offer. The stress demo has no one to pick one, so it takes the first option.
+  while (
+    sim.offers.length > 0 &&
+    sim.offers[0] &&
+    sim.offers[0][0] !== undefined
+  ) {
+    chooseOffer(sim, sim.offers[0][0]);
+  }
+  if (sim.cars.length >= CAR_DEMO_COUNT) return;
+  const houses = sim.buildings.filter((b) => b.kind === 'house');
+  const destinations = sim.buildings.filter((b) => b.kind === 'destination');
+  if (houses.length === 0 || destinations.length === 0) return;
+  for (
+    let attempt = 0;
+    attempt < 20 && sim.cars.length < CAR_DEMO_COUNT;
+    attempt++
+  ) {
+    const h = houses[Math.floor(nextFloat(sim.rng) * houses.length)];
+    const d =
+      destinations[Math.floor(nextFloat(sim.rng) * destinations.length)];
+    addDemoCar(sim, h.id, d.id);
+  }
+}
+
+/**
+ * Adds a starting demo car part way along its trip, on a tile with no other car in its lane, so the demo
+ * starts full without cars stacked at the house entrances. It sits mid-tile on a plain road tile, never on a
+ * junction or near either end of its route.
+ */
+function addDemoCarOnRoute(
+  sim: SimState,
+  house: number,
+  destination: number,
+): boolean {
+  if (!addCar(sim, house, destination).ok) return false;
+  const car = sim.cars[sim.cars.length - 1];
+  if (!car) return false;
+  const n = car.route.length;
+  const k = n >= 4 ? 1 + Math.floor(nextFloat(sim.rng) * (n - 3)) : -1;
+  // One car per lane per tile, each at the tile's middle, keeps a whole tile between cars in a lane.
+  const lane = k > 0 ? laneOfRoute(sim.grid, car.route, k) : -1;
+  const clear =
+    k > 0 &&
+    roadLinks(sim.roads, sim.links, car.route[k] as number).length < 3 &&
+    !sim.cars.some(
+      (o) =>
+        o !== car &&
+        o.lot === undefined &&
+        o.route[o.progress] === car.route[k] &&
+        laneOfRoute(sim.grid, o.route, o.progress) === lane,
+    );
+  if (!clear) {
+    sim.cars.pop();
+    return false;
+  }
+  car.progress = k;
+  car.along = 0.5;
+  return true;
+}
+
+/** Adds a demo car at its house, joining the road only where it is clear, as a car from a house does. */
+function addDemoCar(
+  sim: SimState,
+  house: number,
+  destination: number,
+): boolean {
+  if (!addCar(sim, house, destination).ok) return false;
+  const car = sim.cars[sim.cars.length - 1];
+  if (!car) return false;
+  const along = joinAlong(sim, car.route[0] as number, car, null);
+  if (along === null) {
+    sim.cars.pop();
+    return false;
+  }
+  car.along = along;
+  return true;
+}
+
 /** Builds the demo's map, with its stock and its starting pins. */
 export function buildDemo(id: DemoId): SimState {
+  if (id === 'cars') return buildCarDemo();
   const grid = createGrid(COLS, ROWS, Terrain.Land);
   const sim = createSim({ seed: 1, grid });
   // A destination is 3×3 with a 5×3 lot. The coordinates given are the lot's origin (its top-left

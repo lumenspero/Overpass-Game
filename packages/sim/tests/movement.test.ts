@@ -70,7 +70,9 @@ describe('car movement', () => {
     const follower = carOn(sim, route, 4, 0);
     for (let i = 0; i < 600; i++) moveCars(sim);
     expect(lead.progress).toBe(route.length - 1);
-    expect(dist(follower)).toBeCloseTo(dist(lead) - CAR_GAP, 6);
+    // The last tile is drawn only to the building's centre, half a tile, so a gap of CAR_GAP
+    // drawn road is twice as long in `along` units there.
+    expect(dist(follower)).toBeCloseTo(dist(lead) - CAR_GAP / 0.5, 6);
   });
 
   it('is deterministic for the same starting cars', () => {

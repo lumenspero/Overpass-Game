@@ -47,11 +47,11 @@ See `docs/decisions.md`, the 2026-11-03 rows from "The player never places build
 
 - **Stem tuning:** the crossover (250–400 Hz) and the stem thresholds are first values. `lofi-bells-145` has no content below 400 Hz, so its pad stem is silent. Tuning is by ear, with the constants in `music-stems.ts`.
 - **Credits team list:** still a placeholder (M12a; feeds M15).
-- **Phone-width layout:** the carousel, the tutorial overlay and the top bar are not yet checked at phone width (M13).
+- **Phone-width layout:** the carousel, the tutorial overlay and the top bar are not yet checked at phone width (deferred, see the decision log).
 - **Tutorial:** the H pause and resume, and Escape with the map behind, not yet checked in a browser.
 - **M12a status:** its Audio & Video, Game, Controls, Save Data, Language and Tutorial items are now built. Its Credits item stays open. The doc's status line still says "in progress" and needs updating.
 - **M14:** the remaining 22 maps, challenges, and balance.
 
 ## Next
 
-M13 (mobile and performance), with the phone-width checks above.
+M13 (performance). The phone-width checks above are deferred, see the decision log.

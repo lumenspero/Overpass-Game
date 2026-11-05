@@ -46,6 +46,10 @@ export interface Car {
   timer: number;
   /** While the car is in its destination's parking lot, its trip through the lot. Absent on the road. */
   lot?: LotTrip | undefined;
+  /** Set once the car has driven onto its destination's node, on its way into the lot. */
+  entering?: boolean;
+  /** Ticks spent waiting to join the road from a lot or a kerb. */
+  waited?: number;
 }
 
 /** A car's trip through a destination's lot: in to a space, parked, then out to the road node. */
@@ -64,6 +68,18 @@ export interface LotTrip {
   s: number;
   /** Total length of `path`, in tiles. */
   length: number;
+  /** On the way out: how far along `path` the car waits, just inside the lot, until it may join the road. */
+  hold?: number;
+  /** On the way out: set once the road is clear and the car has started its turn on to it. */
+  cleared?: boolean;
+  /** On the way out: the turn on to the road crosses the other lane, as the lot is on the far side of it. */
+  crosses?: boolean;
+  /** On the way out: how far along the node the car is when it joins the road, as `along`. */
+  joinAt?: number;
+  /** On the way out: the road tile its planned turn on to the road heads for. */
+  toward?: number;
+  /** On the way out: a first step it has given up on, as that lane stayed jammed, so it leaves another way. */
+  avoid?: number;
 }
 
 export type AddCarResult =
@@ -168,6 +184,35 @@ export function dropCar(state: SimState, car: Car): void {
   const home = state.homes[car.house];
   if (home) home.owned -= 1;
 }
+
+/**
+ * Plans a route home from the tile the car is on, as if the step on to `avoid` were jammed solid, so the
+ * route leaves another way where there is one. Null when there is no way home.
+ */
+export function sendHomeAvoiding(
+  state: SimState,
+  car: Car,
+  avoid: number,
+): Car | null {
+  const home = roadEntrance(state, car.house);
+  if (home === null) return null;
+  const waiting = waitingCounts(state);
+  waiting[avoid] = (waiting[avoid] ?? 0) + JAMMED;
+  const route = findRoute(
+    state.grid,
+    state.roads,
+    state.links,
+    car.route[car.progress],
+    home,
+    state.motorways,
+    waiting,
+  );
+  if (!route) return null;
+  return { ...car, state: 'returning', route, progress: 0, along: car.along };
+}
+
+/** How many waiting cars a jammed tile counts as, for a route planned to avoid it. */
+const JAMMED = 1000;
 
 /** Plans a route home from the tile the car is on. Null when there is no way home. */
 export function sendHome(state: SimState, car: Car): Car | null {

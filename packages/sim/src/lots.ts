@@ -306,13 +306,16 @@ export function spacePath(
   phase: 'in' | 'out',
   kind: LotKind = 'single',
   inlet: Inlet = 'near',
+  tabA?: number,
 ): FramePoint[] {
-  if (inlet === 'far') return spacePathFar(k, phase, kind);
+  if (inlet === 'far') return spacePathFar(k, phase, kind, tabA);
   const space = spacesFor(kind)[k];
   if (!space) throw new Error(`no parking space ${k}`);
   const dk = space.reduce((sum, p) => sum + p.d, 0) / space.length;
   const node = { a: 0.5, d: -0.5 };
-  const lane = phase === 'in' ? 0.25 : 0.625;
+  // Where the car crosses the lot's edge: given by the caller, so the car turns on to or off the road
+  // the way it is going, or a default either side of the inlet's centre.
+  const lane = tabA ?? (phase === 'in' ? 0.25 : 0.625);
   const tab = { a: lane, d: 0 };
   const centre = { a: 1.25, d: dk };
   // The back point lies on the space's slope (1, 0.25) back from the centre, so the last leg follows it.
@@ -345,6 +348,7 @@ export function spacePathFar(
   k: number,
   phase: 'in' | 'out',
   kind: LotKind = 'double',
+  tabA: number = FAR_TAB_A,
 ): FramePoint[] {
   const space = spacesFor(kind)[k];
   if (!space) throw new Error(`no parking space ${k}`);
@@ -352,7 +356,7 @@ export function spacePathFar(
   const dk = space.reduce((sum, p) => sum + p.d, 0) / space.length;
   const node = { a: 0.5, d: depth + 0.5 };
   const edge = depth - FAR_EDGE_INSET;
-  const tab = { a: FAR_TAB_A, d: edge };
+  const tab = { a: tabA, d: edge };
   const turn = { a: FAR_TURN_A, d: edge };
   // On the space's slope back from the centre, so the last leg follows the same line.
   const back = { a: FAR_TURN_A, d: dk + (FAR_TURN_A - SPACE_CENTRE_A) * 0.25 };
@@ -421,6 +425,7 @@ export function lotPath(
   k: number,
   phase: 'in' | 'out',
   inlet: Inlet = 'near',
+  tabA?: number,
 ): LotPoint[] | null {
   const kind = b.lot ?? 'single';
   const lot = lotAt(grid, b.tile, b.entrance, kind);
@@ -429,7 +434,7 @@ export function lotPath(
   const ox = b.tile % grid.cols;
   const oy = Math.floor(b.tile / grid.cols);
   const depth = lotDepth(kind);
-  return spacePath(k, phase, kind, inlet).map(({ a, d }) => {
+  return spacePath(k, phase, kind, inlet, tabA).map(({ a, d }) => {
     const p = boxPoint(b.entrance, a, d, depth);
     return { x: ox + p.x, y: oy + p.y };
   });

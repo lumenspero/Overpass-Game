@@ -100,7 +100,8 @@ describe('trips', () => {
     expect(sim.cars).toContain(a);
     expect(b.state).toBe('driving');
     expect(b.progress).toBe(route.length - 1);
-    expect(b.along).toBeCloseTo(a.along - CAR_GAP, 6);
+    // The entrance tile is drawn to the building's centre, half a tile, so CAR_GAP is twice as long in `along`.
+    expect(b.along).toBeCloseTo(a.along - CAR_GAP / 0.5, 6);
   });
 
   it('a car that loses its way home is dropped, and its house owns one fewer', () => {
@@ -166,7 +167,8 @@ describe('leaving the destination', () => {
       if (!car) break;
       if (before === 'parked' && car.state === 'returning') {
         expect(car.progress).toBe(0);
-        expect(car.along).toBe(0);
+        // It turns out of the lot into its lane a turn's radius past the node's centre, half way to the exit edge.
+        expect(car.along).toBeCloseTo(0.5);
         parkedAt = i;
         break;
       }

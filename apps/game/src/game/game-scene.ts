@@ -2,7 +2,13 @@ import { lotAt, stripLayout, weekOf } from '@overpass-game/sim';
 import { showTutorial, type TutorialScreen } from '../ui/tutorial.ts';
 import { greenIsHorizontal, ROUNDABOUT_RING_TILES } from '@overpass-game/sim';
 import type { CompiledMap, OutlinePath } from '@overpass-game/map-schema';
-import { activeDemo, buildDemo, DEMOS, setActiveDemo } from './demos.ts';
+import {
+  activeDemo,
+  buildDemo,
+  DEMOS,
+  keepCarDemoFull,
+  setActiveDemo,
+} from './demos.ts';
 import Phaser from 'phaser';
 import {
   advanceClock,
@@ -103,6 +109,7 @@ import {
   motorwayParts,
   shieldOutline,
 } from '../view/motorway-view.ts';
+import { FrameMeter } from '../debug/frame-meter.ts';
 import { guideWorldLines } from '../view/guide.ts';
 import {
   buildingSymbol,
@@ -304,6 +311,9 @@ export class GameScene extends Phaser.Scene {
   /** Tile grid for building. Shown while a tool is picked, so placement lines up with tiles. */
   private gridGfx!: Phaser.GameObjects.Graphics;
   private debugText!: Phaser.GameObjects.Text;
+  private frames = new FrameMeter();
+  /** The 300-car demo tops its cars back up as trips finish. */
+  private keepCars = false;
   private offerPanel!: OfferPanel;
   private dock!: Dock;
   /** A piece being dragged from the dock: its item, and whether its stroke has started on the map. */
@@ -327,6 +337,7 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     this.settings = currentSettings();
     const demo = activeDemo();
+    this.keepCars = demo === 'cars';
     // A saved run from the menu replaces the new board. It is taken once, so a restart begins fresh.
     const resumed = takePendingResume();
     if (demo) {
@@ -503,6 +514,7 @@ export class GameScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     const ticks = advanceClock(this.clock, delta);
+    const simStart = performance.now();
     for (let i = 0; i < ticks; i++) {
       const before = this.sim.tick;
       for (const event of step(this.sim)) {
@@ -513,6 +525,8 @@ export class GameScene extends Phaser.Scene {
       const tock = weekEndSound(before, this.sim.tick, tuning.WEEK_TICKS);
       if (tock) audio.playEffect(tock);
     }
+    if (this.keepCars) keepCarDemoFull(this.sim);
+    this.frames.record(delta, performance.now() - simStart);
     // The music's stems follow traffic, pin pressure and the week.
     const demands = Object.values(this.sim.demand);
     audio.setStems(
@@ -559,8 +573,9 @@ export class GameScene extends Phaser.Scene {
         this.overlayDirty = false;
       }
       const rate = sampleTickRate(this.meter, time, this.sim.tick);
+      const f = this.frames.summary();
       this.debugText.setText(
-        `ticks/s ${rate.toFixed(1)}  tick ${this.sim.tick}  budget ${this.sim.budget}  bridges ${this.sim.stock.bridge}  tunnels ${this.sim.stock.tunnel}${this.controller.note ? `  last: ${this.controller.note}` : ''}`,
+        `frame ${f.frameAvg.toFixed(1)} ms (worst ${f.frameWorst.toFixed(0)})  sim ${f.simAvg.toFixed(2)} ms (worst ${f.simWorst.toFixed(1)})  cars ${this.sim.cars.length}  ticks/s ${rate.toFixed(1)}  tick ${this.sim.tick}  budget ${this.sim.budget}  bridges ${this.sim.stock.bridge}  tunnels ${this.sim.stock.tunnel}${this.controller.note ? `  last: ${this.controller.note}` : ''}`,
       );
     }
     this.applyTransform();
