@@ -16,7 +16,10 @@ import {
   createClock,
   createSim,
   isOpenTile,
-  openDistricts,
+  fenceEdge,
+  fenceSteps,
+  placeStartingPair,
+  type FenceEdge,
   placeBuilding,
   type Grid,
   SPEED_OPTIONS,
@@ -39,6 +42,7 @@ import { carOutline, headingBetween } from '../view/car-shape.ts';
 import {
   BUILDING_COLORS,
   DEBUG_PALETTE,
+  FENCE_EDGE,
   STANDARD_BUILDING_PALETTE,
   labelColour,
   resolvePalette,
@@ -65,7 +69,8 @@ import {
 } from '../input/intents.ts';
 import type { TileXY } from '../input/path.ts';
 import {
-  createFittedCamera,
+  createFocusedCamera,
+  type WorldRect,
   fitBox,
   type CameraState,
   panCamera,
@@ -168,7 +173,7 @@ import {
   createController,
 } from './controller.ts';
 import {
-  buildTestDistricts,
+  buildTestFence,
   buildTestGrid,
   testMapGuide,
   testMapRules,
@@ -246,6 +251,14 @@ const SIDE_BY_FACE = new Map(
  * and position are set from the camera model, so the screen mapping is exactly
  * the one camera.ts tests.
  */
+/** How far the painted border reaches past the grid, in world units. Far beyond any zoom. */
+const OUTSIDE_PAD = 100000;
+
+/** A seed for a new run. Each run starts with its own map layout, so starts differ. */
+function newRunSeed(): number {
+  return Math.floor(Math.random() * 0x7fffffff) + 1;
+}
+
 export class GameScene extends Phaser.Scene {
   private sim!: SimState;
   private clock!: Clock;
@@ -327,8 +340,13 @@ export class GameScene extends Phaser.Scene {
   private meter!: TickMeter;
   private canvas!: HTMLCanvasElement;
   private lockGfx!: Phaser.GameObjects.Graphics;
-  /** How many districts were open when the map was last drawn. -1 forces a first draw. */
-  private openCount = -1;
+  /** The fence growth steps when the map was last drawn. -1 forces a first draw. */
+  private shownSteps = -1;
+  /** The fence edge when the boundary, dimming and grid mask were last drawn. */
+  private shownEdge = '';
+  private boundaryGfx!: Phaser.GameObjects.Graphics;
+  /** Background-coloured border outside the grid, so map outlines that run past its edge never show. */
+  private outsideGfx!: Phaser.GameObjects.Graphics;
   private panel: TuningPanel | null = null;
   private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null = null;
 
@@ -351,9 +369,9 @@ export class GameScene extends Phaser.Scene {
     } else {
       const testGrid: Grid = buildTestGrid();
       this.sim = createSim({
-        seed: 1,
+        seed: newRunSeed(),
         grid: testGrid,
-        districts: buildTestDistricts(),
+        startFence: buildTestFence(),
         rules: testMapRules(),
       });
     }
@@ -382,12 +400,14 @@ export class GameScene extends Phaser.Scene {
       onChoice: this.onPlayChoice,
     });
     this.mapSize = worldSize(grid.cols, grid.rows);
-    this.view = createFittedCamera(
+    this.view = createFocusedCamera(
       this.mapSize,
+      this.focusRect(),
       this.viewport(),
       this.settings.zoomLevel,
     );
-    this.openCount = -1;
+    this.shownSteps = -1;
+    this.shownEdge = '';
     this.debugOn = false;
 
     this.layer = this.add.container(0, 0);
@@ -406,12 +426,15 @@ export class GameScene extends Phaser.Scene {
     this.previewGfx.setAlpha(0.4);
     this.ringGfx = this.add.graphics();
     this.overlayGfx = this.add.graphics().setVisible(false);
+    this.outsideGfx = this.add.graphics();
     this.gridGfx = this.add.graphics();
-    this.drawBuildGrid(this.gridGfx, grid);
     this.gridGfx.setVisible(false);
+    this.boundaryGfx = this.add.graphics().setVisible(false);
     this.layer.add([
       terrainGfx,
+      this.outsideGfx,
       this.gridGfx,
+      this.boundaryGfx,
       this.guideGfx,
       this.lockGfx,
       this.roundaboutKerbGfx,
@@ -432,6 +455,7 @@ export class GameScene extends Phaser.Scene {
       this.waterId,
     );
     this.cameras.main.setBackgroundColor(this.pal.background);
+    this.drawOutside(this.outsideGfx, grid, this.pal.background);
     this.terrainOutlines = demo ? null : playedMap().outlines;
     this.mapLabels = demo ? [] : playedMap().labels;
     this.guideLines = demo ? null : testMapGuide();
@@ -442,6 +466,9 @@ export class GameScene extends Phaser.Scene {
     // Demo maps bring their own buildings. Only the test map places the hand-listed ones;
     // Studio maps have none until the spawn field (M14).
     if (!demo && isTestMap()) this.placeTestBuildings();
+    // A played map starts with one house and one destination (spec: Starting pair). A resumed run already has its buildings.
+    if (!demo && !resumed && !isTestMap())
+      placeStartingPair(this.sim, playedMap().spawnWeights);
     this.drawBuildings();
 
     // Screen-space text, not in the scaled layer, so it stays readable at any zoom.
@@ -552,12 +579,14 @@ export class GameScene extends Phaser.Scene {
     this.panWithArrows(delta);
     // Debug mode draws its own grid, so this one hides then.
     this.gridGfx.setVisible(!this.debugOn && this.mapper.tool !== 'select');
+    this.boundaryGfx.setVisible(!this.debugOn && this.mapper.tool !== 'select');
 
     if (this.roadsDirty) {
-      this.drawRoads();
+      // A house's stub and doorframe tick sit in the building layer, so it redraws with the roads.
+      this.drawBuildings();
       this.roadsDirty = false;
     }
-    this.syncDistricts();
+    this.syncFence();
     this.drawCars(); // cars move every tick, so they are redrawn every frame
     this.drawCrossingPreview();
     this.drawMotorways();
@@ -827,12 +856,41 @@ export class GameScene extends Phaser.Scene {
     setTool(this.mapper, this.mapper.tool === 'erase' ? 'select' : 'erase');
   };
 
+  /** Paints the area outside the grid in the background colour. Drawn once per map. */
+  private drawOutside(
+    gfx: Phaser.GameObjects.Graphics,
+    grid: Grid,
+    colour: number,
+  ): void {
+    const pad = OUTSIDE_PAD;
+    const w = grid.cols * TILE_SIZE;
+    const h = grid.rows * TILE_SIZE;
+    gfx.clear();
+    gfx.fillStyle(colour, 1);
+    gfx.fillRect(-pad, -pad, w + 2 * pad, pad);
+    gfx.fillRect(-pad, h, w + 2 * pad, pad);
+    gfx.fillRect(-pad, 0, pad, h);
+    gfx.fillRect(w, 0, pad, h);
+  }
+
+  /** The current fence edge in world units. The camera opens on it, and refits to it. */
+  private focusRect(): WorldRect {
+    const e = fenceEdge(this.sim, this.sim.tick);
+    return {
+      x: e.left * TILE_SIZE,
+      y: e.top * TILE_SIZE,
+      w: (e.right - e.left) * TILE_SIZE,
+      h: (e.bottom - e.top) * TILE_SIZE,
+    };
+  }
+
   private onResize = (): void => {
     this.view = resizeCamera(
       this.view,
       this.mapSize,
       this.viewport(),
       this.settings.zoomLevel,
+      this.focusRect(),
     );
     this.crossingText.setX(this.scale.width / 2);
     if (this.ended) this.showEnd();
@@ -1078,7 +1136,7 @@ export class GameScene extends Phaser.Scene {
   private drawBuildings(): void {
     const gfx = this.buildingGfx;
     gfx.clear();
-    // Buildings in a locked district are hidden until it opens.
+    // Buildings outside the fence are hidden until it grows over them.
     const visible = this.sim.buildings.filter((b) =>
       isOpenTile(this.sim, b.tile),
     );
@@ -1159,7 +1217,7 @@ export class GameScene extends Phaser.Scene {
     const visible = this.sim.buildings.filter((b) =>
       isOpenTile(this.sim, b.tile),
     );
-    // A road on land not yet open is a hidden house's stub, so it stays hidden with its house.
+    // A road outside the fence is a hidden house's stub, so it stays hidden with its house.
     const roads = Array.from(this.sim.roads, (r, i) =>
       r === 1 && !isOpenTile(this.sim, i) ? 0 : r,
     );
@@ -1666,32 +1724,51 @@ export class GameScene extends Phaser.Scene {
     this.setGameSpeed(next.speed);
   };
 
-  /** Redraws the dimmed land and the buildings when a district opens. */
-  private syncDistricts(): void {
-    const open = openDistricts(this.sim.tick);
-    if (open === this.openCount) return;
-    // The first sync sets the count when the game starts; only a later rise is a district opening.
-    if (this.openCount >= 0 && open > this.openCount) {
-      audio.playEffect('district.opened');
+  /**
+   * Runs every frame. The edge slides with the sim's tick, so the boundary, the dimming and the
+   * grid mask are redrawn whenever it moves. Roads and buildings change only when a step finishes.
+   */
+  private syncFence(): void {
+    const steps = fenceSteps(this.sim.tick);
+    if (steps !== this.shownSteps) {
+      // The first sync sets the count when the game starts; only a later rise is growth.
+      if (this.shownSteps >= 0 && steps > this.shownSteps) {
+        audio.playEffect('fence.grew');
+      }
+      this.shownSteps = steps;
+      // Stubs on the newly open land appear with their houses.
+      this.roadsDirty = true;
+      this.drawBuildings();
     }
-    this.openCount = open;
-    // Stubs on the newly opened land appear with their houses.
-    this.roadsDirty = true;
-    this.drawLocks();
-    this.drawBuildings();
+    const edge = fenceEdge(this.sim, this.sim.tick);
+    const key = [edge.left, edge.top, edge.right, edge.bottom].join(',');
+    if (key === this.shownEdge) return;
+    this.shownEdge = key;
+    this.drawLocks(edge);
+    this.drawBoundary(edge);
+    this.drawBuildGrid(this.gridGfx, edge);
   }
 
-  private drawLocks(): void {
+  private drawLocks(edge: FenceEdge): void {
     const gfx = this.lockGfx;
     gfx.clear();
     gfx.fillStyle(0x000000, 0.45);
-    for (const r of lockedTileRects(
-      this.sim.grid,
-      this.sim.districtOf,
-      this.sim.tick,
-    )) {
+    for (const r of lockedTileRects(this.sim.grid, edge)) {
       gfx.fillRect(r.x, r.y, r.w, r.h);
     }
+  }
+
+  /** The fence edge, drawn in draw mode only. */
+  private drawBoundary(edge: FenceEdge): void {
+    const gfx = this.boundaryGfx;
+    gfx.clear();
+    gfx.lineStyle(FENCE_EDGE.width, FENCE_EDGE.colour, FENCE_EDGE.alpha);
+    gfx.strokeRect(
+      edge.left * TILE_SIZE,
+      edge.top * TILE_SIZE,
+      (edge.right - edge.left) * TILE_SIZE,
+      (edge.bottom - edge.top) * TILE_SIZE,
+    );
   }
 
   /** The debug panel and the overlays it goes with. D toggles all of them. */
@@ -1756,14 +1833,25 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Tile grid lines, drawn once. */
-  private drawBuildGrid(gfx: Phaser.GameObjects.Graphics, grid: Grid): void {
+  /**
+   * Tile grid lines inside the fence edge only. Lines are drawn between the edges, so nothing
+   * outside the boundary shows the grid. Redrawn whenever the edge moves.
+   */
+  private drawBuildGrid(
+    gfx: Phaser.GameObjects.Graphics,
+    edge: FenceEdge,
+  ): void {
+    gfx.clear();
     gfx.lineStyle(1, DEBUG_PALETTE.grid, 0.6);
-    for (let c = 0; c <= grid.cols; c++) {
-      gfx.lineBetween(c * TILE_SIZE, 0, c * TILE_SIZE, grid.rows * TILE_SIZE);
+    const top = edge.top * TILE_SIZE;
+    const bottom = edge.bottom * TILE_SIZE;
+    const left = edge.left * TILE_SIZE;
+    const right = edge.right * TILE_SIZE;
+    for (let c = Math.ceil(edge.left); c <= Math.floor(edge.right); c++) {
+      gfx.lineBetween(c * TILE_SIZE, top, c * TILE_SIZE, bottom);
     }
-    for (let r = 0; r <= grid.rows; r++) {
-      gfx.lineBetween(0, r * TILE_SIZE, grid.cols * TILE_SIZE, r * TILE_SIZE);
+    for (let r = Math.ceil(edge.top); r <= Math.floor(edge.bottom); r++) {
+      gfx.lineBetween(left, r * TILE_SIZE, right, r * TILE_SIZE);
     }
   }
 

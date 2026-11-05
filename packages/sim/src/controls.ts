@@ -1,6 +1,7 @@
 import { tuning } from './config.ts';
 import { isOpenTile } from './expansion.ts';
 import { type Grid, isBuildable, isInBounds } from './grid.ts';
+import { reservedLotTiles } from './lots.ts';
 import { type CurvePoint, tileCentre } from './motorways.ts';
 import type { SimState } from './sim.ts';
 
@@ -170,6 +171,35 @@ export function placeControl(
   }
   if (!isOpenTile(state, tile)) return fail('locked');
   if (state.controls[tile] !== undefined) return fail('occupied');
+  if (kind === 'roundabout') {
+    // The ring reaches the four neighbours of its tile, so each must be open land or road, with no
+    // building, lot or other roundabout on it.
+    const reserved = reservedLotTiles(state);
+    const x = tile % state.grid.cols;
+    const y = Math.floor(tile / state.grid.cols);
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= state.grid.cols || ny >= state.grid.rows) {
+        return fail('out-of-bounds');
+      }
+      const n = ny * state.grid.cols + nx;
+      if (
+        !isBuildable(state.grid, n) ||
+        state.buildingAt[n] !== -1 ||
+        reserved.has(n)
+      ) {
+        return fail('bad-endpoint');
+      }
+      if (!isOpenTile(state, n)) return fail('locked');
+      if (state.controls[n] === 'roundabout') return fail('occupied');
+    }
+  }
   if (state.stock[kind] < 1) return fail('no-stock');
   state.controls[tile] = kind;
   state.stock[kind] -= 1;

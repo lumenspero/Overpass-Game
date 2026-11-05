@@ -296,7 +296,7 @@ export function contentHash(text: string): string {
  * Compiles a validated source map into the compiled map the game loads.
  *
  * Terrain is painted in layers, later layers winning: parks, then mountains, then water.
- * Districts default to 0; later district regions win. Spawn weights add up where spawn zones
+ * Spawn weights add up where spawn zones
  * overlap, and only land and park tiles take weight.
  */
 export function compileMap(src: SourceMap): CompiledMap {
@@ -309,11 +309,6 @@ export function compileMap(src: SourceMap): CompiledMap {
   for (const s of src.layers.parks) paint(s, Terrain.Park);
   for (const s of src.layers.mountains) paint(s, Terrain.Mountain);
   for (const s of src.layers.water) paint(s, Terrain.Water);
-
-  const districts = new Array<number>(n).fill(0);
-  for (const d of src.grid.districts) {
-    for (const t of shapeTiles(d.region, cols, rows)) districts[t] = d.district;
-  }
 
   const spawnWeights = new Array<number>(n).fill(0);
   for (const z of src.layers.spawnZones) {
@@ -332,7 +327,7 @@ export function compileMap(src: SourceMap): CompiledMap {
     cols,
     rows,
     terrain,
-    districts,
+    fence: { ...src.grid.fence },
     spawnWeights,
     outlines: {
       water: src.layers.water.map(outlineOf),
@@ -357,11 +352,11 @@ export function compileMap(src: SourceMap): CompiledMap {
 /** What the sim needs to start a map. */
 export interface SimMap {
   grid: Grid;
-  districts: number[];
+  startFence: { col: number; row: number; cols: number; rows: number };
   rules: MapRule[];
 }
 
-/** Turns a compiled map into the grid, districts and rules the sim starts from. */
+/** Turns a compiled map into the grid, fence and rules the sim starts from. */
 export function toSimMap(map: CompiledMap): SimMap {
   return {
     grid: {
@@ -369,7 +364,7 @@ export function toSimMap(map: CompiledMap): SimMap {
       rows: map.rows,
       terrain: map.terrain.slice() as TerrainKind[],
     },
-    districts: map.districts.slice(),
+    startFence: { ...map.fence },
     rules: map.rules.map((r) => ({ ...r })),
   };
 }

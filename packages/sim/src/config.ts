@@ -41,12 +41,14 @@ export const DEFAULT_TUNING = {
   OVERFLOW_TICKS: 900, // approximated
   /** Ticks in one week. The clock counts weeks; the first week is week 1. */
   WEEK_TICKS: 2700, // approximated: 90 seconds at 1x (30 ticks a second)
-  /** Week at which district 1 opens. District 0 is open from the start. */
-  EXPANSION_WEEK_1: 3, // approximated
-  /** Week at which district 2 opens. Districts beyond it stay locked (for example, land across a river until bridges). */
-  EXPANSION_WEEK_2: 6, // approximated
-  /** Week at which district 3 opens: land across a river, reachable by bridge (spec: Expansion). */
-  EXPANSION_WEEK_3: 9, // approximated
+  /** Nodes the fence grows on each side every week (spec: Expansion). Growth lands one node a side at a time, spread across the week. */
+  FENCE_GROWTH_PER_WEEK: 2, // approximated
+  /** Ticks a fence edge takes to slide across its strip before the tiles open (spec: Expansion). */
+  FENCE_REVEAL_TICKS: 45, // approximated: 1.5 seconds at 1x
+  /** The starting destination lies at least this many tiles (Chebyshev) from the starting house (spec: Starting pair). */
+  START_PAIR_MIN_TILES: 5, // approximated
+  /** ...and at most this many (spec: Starting pair). */
+  START_PAIR_MAX_TILES: 12, // approximated
   /** Relative chance each upgrade kind is offered. Zero means never offered (spec: Upgrades). */
   UPGRADE_WEIGHT_BRIDGE: 1, // approximated
   UPGRADE_WEIGHT_TUNNEL: 1, // approximated
@@ -108,9 +110,10 @@ export const DEMAND_INTERVAL_TICKS = DEFAULT_TUNING.DEMAND_INTERVAL_TICKS;
 export const OVERFLOW_PIN_LIMIT = DEFAULT_TUNING.OVERFLOW_PIN_LIMIT;
 export const OVERFLOW_TICKS = DEFAULT_TUNING.OVERFLOW_TICKS;
 export const WEEK_TICKS = DEFAULT_TUNING.WEEK_TICKS;
-export const EXPANSION_WEEK_1 = DEFAULT_TUNING.EXPANSION_WEEK_1;
-export const EXPANSION_WEEK_2 = DEFAULT_TUNING.EXPANSION_WEEK_2;
-export const EXPANSION_WEEK_3 = DEFAULT_TUNING.EXPANSION_WEEK_3;
+export const FENCE_GROWTH_PER_WEEK = DEFAULT_TUNING.FENCE_GROWTH_PER_WEEK;
+export const FENCE_REVEAL_TICKS = DEFAULT_TUNING.FENCE_REVEAL_TICKS;
+export const START_PAIR_MIN_TILES = DEFAULT_TUNING.START_PAIR_MIN_TILES;
+export const START_PAIR_MAX_TILES = DEFAULT_TUNING.START_PAIR_MAX_TILES;
 export const UPGRADE_WEIGHT_BRIDGE = DEFAULT_TUNING.UPGRADE_WEIGHT_BRIDGE;
 export const UPGRADE_WEIGHT_TUNNEL = DEFAULT_TUNING.UPGRADE_WEIGHT_TUNNEL;
 export const UPGRADE_WEIGHT_MOTORWAY = DEFAULT_TUNING.UPGRADE_WEIGHT_MOTORWAY;

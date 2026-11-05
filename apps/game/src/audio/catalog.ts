@@ -35,7 +35,7 @@ export const SOUND_EVENTS = [
   'toggle.off',
   'options.tab',
   'motorway.erase',
-  'district.opened',
+  'fence.grew',
   'new.best',
   'map.unlocked',
   'save.done',
@@ -178,7 +178,7 @@ export const SOUND_CATALOG: Readonly<Record<SoundEvent, SoundEntry>> = {
     file: 'motorway-erase.wav',
     source: { kind: 'generated', name: 'motorway-erase' },
   },
-  'district.opened': {
+  'fence.grew': {
     file: 'district-opened.wav',
     source: { kind: 'generated', name: 'district-opened' },
   },

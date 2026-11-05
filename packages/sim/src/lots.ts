@@ -315,7 +315,8 @@ export function spacePath(
   const node = { a: 0.5, d: -0.5 };
   // Where the car crosses the lot's edge: given by the caller, so the car turns on to or off the road
   // the way it is going, or a default either side of the inlet's centre.
-  const lane = tabA ?? (phase === 'in' ? 0.25 : 0.625);
+  // The inlet road is centred on a = 0.5 and each lane is a quarter-tile wide, so the lanes sit at 0.375 and 0.625.
+  const lane = tabA ?? (phase === 'in' ? 0.375 : 0.625);
   const tab = { a: lane, d: 0 };
   const centre = { a: 1.25, d: dk };
   // The back point lies on the space's slope (1, 0.25) back from the centre, so the last leg follows it.

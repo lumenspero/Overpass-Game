@@ -71,7 +71,7 @@ describe('roadShapes', () => {
     });
   });
 
-  it('rounds an L-shaped corner with a disc at the corner tile', () => {
+  it('rounds an L-shaped corner with a quarter circle of discs, not a disc at the corner tile', () => {
     const grid = createGrid(2, 2);
     const shapes = roadShapes(
       grid,
@@ -82,7 +82,16 @@ describe('roadShapes', () => {
       ]),
     );
     const corner = centre(1, 0);
-    expect(shapes).toContainEqual({ kind: 'circle', ...corner, r: R });
+    expect(shapes).not.toContainEqual({ kind: 'circle', ...corner, r: R });
+    // The bend turns round the tile corner (32, 32), half a tile from each edge midpoint.
+    const o = { x: 32, y: 32 };
+    const arc = shapes.flatMap((s) =>
+      s.kind === 'circle' &&
+      Math.abs(Math.hypot(s.x - o.x, s.y - o.y) - R * 2) < 1e-6
+        ? [s]
+        : [],
+    );
+    expect(arc).toHaveLength(7);
     expect(shapes.filter((s) => s.kind === 'line')).toHaveLength(2);
   });
 
@@ -311,10 +320,10 @@ describe('carShapes on a bend', () => {
       entrance: 'e',
     };
     const [dot] = carShapes([car], [house], grid, [0xff0000]);
-    // Halfway through the bend, in the right-hand lane: inside the corner, not on the chord to the outer
-    // corner. The curve's control point is where the two lanes meet, so it keeps clear of the other lane.
-    expect(dot.x).toBeCloseTo(41);
-    expect(dot.y).toBeCloseTo(23);
+    // Halfway through the bend, in the right-hand (inside) lane: on the quarter circle round the corner
+    // (32, 32), 12 px from it. The road's inside edge is 8 px from that corner, so the car keeps clear of it.
+    expect(dot.x).toBeCloseTo(32 + 12 * Math.SQRT1_2);
+    expect(dot.y).toBeCloseTo(32 - 12 * Math.SQRT1_2);
   });
 
   it('is no bigger than the road it drives on', () => {
@@ -390,5 +399,33 @@ describe('lotShapes', () => {
       entrance: 'e',
     };
     expect(lotShapes([house], big)).toEqual([]);
+  });
+});
+
+describe('cars entering a house', () => {
+  it('drives in on its lane of the road, then on its own lane into the doorway', () => {
+    // A road comes down from the north into the stub at tile (1,1), and the house at (2,1) lies east of it.
+    const grid = createGrid(4, 3);
+    const car: Car = {
+      id: 0,
+      house: 0,
+      destination: 0,
+      state: 'returning',
+      route: [1, 5],
+      progress: 1,
+      along: 1,
+      timer: 0,
+    };
+    const house: Building = {
+      id: 0,
+      kind: 'house',
+      color: 0,
+      tile: 6,
+      entrance: 'w',
+    };
+    const [dot] = carShapes([car], [house], grid, [0xff0000]);
+    // Travelling east into the house, the right-hand lane is the south side of the house's centre line.
+    expect(dot?.y).toBeCloseTo(1.5 * TILE_SIZE + LANE_OFFSET, 3);
+    expect(dot?.x).toBeCloseTo(2.5 * TILE_SIZE, 3);
   });
 });

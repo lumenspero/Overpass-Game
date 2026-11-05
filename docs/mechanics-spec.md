@@ -67,7 +67,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 - **Kinds:** houses (where cars start and end) and destinations (where cars go). A house occupies one tile; a destination occupies a 3×3 building inside its 5×3 lot (see Parking lots and building kinds).
 - **Colours:** `BUILDING_COLOR_COUNT` colours. A house pairs with destinations of its own colour. `approximated`
-- **Who places them:** never the player. Every house and destination is spawned by the game at random, inside a build boundary that grows slowly through the game (the open districts; see Expansion). The boundary keeps a new building within reach of the existing city, so none appears at an impossible distance. The random spawn system arrives with M14 (see Business arrival and house supply); until then the test map's buildings are hand-placed for testing.
+- **Who places them:** never the player. Every house and destination is spawned by the game at random, inside the fence, which grows slowly through the game (see Expansion), so a new building always appears near the existing city. The random spawn system arrives with M14 (see Business arrival and house supply); until then the test map's buildings are hand-placed for testing.
 - **Placement:** on land or park, on a tile with no road or building. Water and mountains are refused.
 - **Entrance:** each building has one entrance side. A destination connects through its lot's inlet road. A house connects through its stub (below).
 - **House stub:** every house comes with a stub, one road tile beside it, placed free on the tile its entrance faces. The stub is part of the house: it costs no budget, and erasing never removes it. Erasing over the stub cuts its links instead, so the road is disconnected and the stub stays behind (a roundabout or light on it can still be taken back). The player moves it by dragging from the house to any of its 8 neighbours, by an edge or a corner; the move is free, and the drag then draws on from the stub. A stub may take over a road already on that tile; moving away leaves that road while other roads are joined to it, and otherwise removes it with a refund, as erasing it would; a stub on empty land goes with the house, with no refund, since it was never paid for. A stub can't go on water, mountain, a building, a lot, or another house's stub, or on land not yet open. A house whose facing tile can't take a stub connects through that tile, as before.
@@ -75,7 +75,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Removal:** buildings are never removed in M3.
 
 - **Driveway:** a house's road extension is drawn at road width, from the house to the road tile in front of its entrance, so the road tile's own disc rounds its end the way a lot's inlet tab is rounded. It is drawn only while that road exists. It is view only: the sim is unchanged. `approximated`
-- **Hidden stubs:** a house on land not yet open keeps its stub there, hidden with it, and roads can't join it until the district opens. A run saved before stubs gives each house one on load.
+- **Hidden stubs:** a house outside the fence keeps its stub there, hidden with it, and roads can't join it until the fence grows over it. A run saved before stubs gives each house one on load.
 
 ### Score and clock
 
@@ -102,11 +102,19 @@ Elevated links for faster travel between two points on the ground network. `appr
 
 ### Expansion
 
-- **Districts:** the map is split into districts numbered from 0. District 0 is open at the start. `EXPANSION_WEEK_1` (3) opens district 1 and `EXPANSION_WEEK_2` (6) opens district 2, and `EXPANSION_WEEK_3` (9) opens district 3. All three are live debug-panel values. `approximated`
-- **Locked land:** tiles in a district that isn't open take no roads. Buildings on locked land are inactive (they send and collect nothing) and are hidden. The land is dimmed.
-- **Build boundary:** the open districts are where buildings may spawn, so the city grows outward as districts open.
-- **Opening only:** districts never close. A district beyond the schedule stays locked for the whole game. Bridges and tunnels cannot land on locked land.
-- **Test map:** three districts west of the river, plus one east of it that opens at `EXPANSION_WEEK_3`.
+- **Fence:** each map has a starting fence: a rectangle of grid nodes (tiles) set per map in the Studio. Only tiles inside the fence take roads, buildings and spawns. Land outside it stays visible, dimmed and locked. Replaces the district schedule. `planned`
+- **Weekly growth:** each week the fence grows by `FENCE_GROWTH_PER_WEEK` (2) nodes on each side (north, south, east and west), stopping at the map edge. `approximated`
+- **Visible growth:** each step's new edge slides across its strip over `FENCE_REVEAL_TICKS` (1.5 seconds at 1x). In draw mode the edge is drawn as a boundary that is not locked to the grid: the grid shows only inside it, and land outside is dimmed. Tiles open once the edge has passed over them. `approximated`
+- **Frame shape:** 16:9 is the target shape of the window that frames the fence. It is not the node count: the fence's starting width and height are set per map.
+- **Blocking:** roads and buildings cannot be placed beyond the fence, and roads cannot cross it. Bridges and tunnels cannot land outside it.
+- **Opening only:** the fence never shrinks.
+- **Spawning:** houses and destinations spawn only inside the fence (see Business arrival and house supply once written).
+
+### Starting pair and opening view
+
+- **Starting pair:** a played map starts with one house and one destination of the same colour. The house is picked by spawn weight inside the fence, or uniformly inside the fence when no weights are painted. The destination lies 5 to 12 tiles away (`START_PAIR_MIN_TILES` and `START_PAIR_MAX_TILES`), inside the fence. Timed spawns follow with the spawn field. `approximated`
+- **Opening view:** the camera centres on the starting fence and zooms so the fence fills the screen. The player can zoom out to the whole map.
+- **Clipping:** terrain outlines are clipped to the grid, so shapes that run past its edge do not show.
 
 ### Upgrades
 

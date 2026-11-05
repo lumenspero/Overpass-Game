@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "los-angeles-los-angeles-county-california-united-states",
   "name": "Los Angeles, Los Angeles County, California, United States",
   "region": {
@@ -12,7 +12,12 @@
   "grid": {
     "cols": 171,
     "rows": 148,
-    "districts": []
+    "fence": {
+      "col": 0,
+      "row": 0,
+      "cols": 171,
+      "rows": 148
+    }
   },
   "layers": {
     "water": [

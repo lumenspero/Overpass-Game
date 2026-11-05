@@ -7,11 +7,11 @@ import { exportMap } from './export-proxy.ts';
 
 function sourceMap(id: string) {
   return parseSourceMap({
-    schemaVersion: 1,
+    schemaVersion: 2,
     id,
     name: 'Tulsa',
     region: { bbox: [-96.1, 36.0, -95.8, 36.3], rotationDeg: 0 },
-    grid: { cols: 16, rows: 16, districts: [] },
+    grid: { cols: 16, rows: 16, fence: { col: 0, row: 0, cols: 16, rows: 16 } },
     layers: {
       water: [],
       mountains: [],

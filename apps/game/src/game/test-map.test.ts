@@ -3,12 +3,15 @@ import {
   createSim,
   entranceTile,
   isBuildable,
+  isOpenTile,
   placeBuilding,
+  tuning,
   type Grid,
+  WEEK_TICKS,
 } from '@overpass-game/sim';
 import { describe, expect, it } from 'vitest';
 import {
-  buildTestDistricts,
+  buildTestFence,
   buildTestGrid,
   TEST_BUILDINGS,
   type TestBuilding,
@@ -87,11 +90,12 @@ describe('test map', () => {
     }
   });
 
-  it('puts every building on a district the schedule can open', () => {
+  it('puts every building inside the fence by week 2, when the first growth reaches it', () => {
     const grid = buildTestGrid();
-    const districts = buildTestDistricts();
+    const sim = createSim({ seed: 1, grid, startFence: buildTestFence() });
+    sim.tick = 2 * WEEK_TICKS + tuning.FENCE_REVEAL_TICKS;
     for (const b of TEST_BUILDINGS) {
-      expect(districts[tileOf(grid, b)]).toBeLessThan(3);
+      expect(isOpenTile(sim, tileOf(grid, b))).toBe(true);
     }
   });
 });

@@ -4,11 +4,11 @@ import { draftKey, isDraftKey, makeDraft, readDraft } from './draft.ts';
 
 function sampleMap(): SourceMap {
   return parseSourceMap({
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: 'tulsa',
     name: 'Tulsa',
     region: { bbox: [-96.1, 36.0, -95.8, 36.3], rotationDeg: 0 },
-    grid: { cols: 16, rows: 16, districts: [] },
+    grid: { cols: 16, rows: 16, fence: { col: 0, row: 0, cols: 16, rows: 16 } },
     layers: {
       water: [],
       mountains: [],

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "test",
   "name": "Test map",
   "region": {
@@ -9,86 +9,12 @@
   "grid": {
     "cols": 24,
     "rows": 16,
-    "districts": [
-      {
-        "district": 1,
-        "region": {
-          "id": "district-1",
-          "kind": "closedSpline",
-          "origin": "painted",
-          "points": [
-            {
-              "x": 10,
-              "y": 0
-            },
-            {
-              "x": 14,
-              "y": 0
-            },
-            {
-              "x": 14,
-              "y": 8
-            },
-            {
-              "x": 10,
-              "y": 8
-            }
-          ]
-        }
-      },
-      {
-        "district": 2,
-        "region": {
-          "id": "district-2",
-          "kind": "closedSpline",
-          "origin": "painted",
-          "points": [
-            {
-              "x": 10,
-              "y": 8
-            },
-            {
-              "x": 14,
-              "y": 8
-            },
-            {
-              "x": 14,
-              "y": 16
-            },
-            {
-              "x": 10,
-              "y": 16
-            }
-          ]
-        }
-      },
-      {
-        "district": 3,
-        "region": {
-          "id": "district-3",
-          "kind": "closedSpline",
-          "origin": "painted",
-          "points": [
-            {
-              "x": 14,
-              "y": 0
-            },
-            {
-              "x": 24,
-              "y": 0
-            },
-            {
-              "x": 24,
-              "y": 16
-            },
-            {
-              "x": 14,
-              "y": 16
-            }
-          ]
-        }
-      }
-    ]
+    "fence": {
+      "col": 0,
+      "row": 0,
+      "cols": 10,
+      "rows": 16
+    }
   },
   "layers": {
     "water": [

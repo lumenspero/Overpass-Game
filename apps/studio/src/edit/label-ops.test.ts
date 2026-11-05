@@ -15,11 +15,11 @@ import { labelBox, pickLabel } from './labels.ts';
 
 function makeMap(labels: MapLabel[] = []): SourceMap {
   return parseSourceMap({
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: 'test',
     name: 'Test',
     region: { bbox: [-100, 30, -99, 31], rotationDeg: 0 },
-    grid: { cols: 20, rows: 20, districts: [] },
+    grid: { cols: 20, rows: 20, fence: { col: 0, row: 0, cols: 20, rows: 20 } },
     layers: {
       water: [],
       mountains: [],

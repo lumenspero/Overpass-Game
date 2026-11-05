@@ -202,9 +202,8 @@ function axes(dir: { dx: number; dy: number }): {
 }
 
 /**
- * Where across the inlet a car crosses the lot's edge, in the lot frame. On a road running past the lot,
- * `ahead` tiles along the lane from `lanePt` (behind it, for a negative `ahead`), so the car turns on to
- * or off the road the way it is going. On a road running away from the lot, in line with the lane.
+ * The lane-edge crossing for a car entering or leaving a lot. It is placed so the car's first turn meets its
+ * lane at the node, and kept inside the inlet's two lanes, so it never crosses on a road edge or the centre.
  */
 function tabFor(
   grid: Grid,
@@ -234,7 +233,7 @@ function tabFor(
     const across = dot(u, n);
     a = Math.abs(across) > 1e-9 ? -dot(minus(t0, lanePt), n) / across : 0.5;
   }
-  return Math.min(0.8, Math.max(0.2, a));
+  return Math.min(0.625, Math.max(0.375, a));
 }
 
 /**
@@ -462,29 +461,13 @@ function planExit(state: SimState, car: Car, home: Car | null): void {
   if (building && from !== undefined && to !== undefined) {
     const dir = stepDir(state.grid, from, to);
     const end = lanePoint(state.grid, from, dir);
-    const tabA = tabFor(
-      state.grid,
-      building,
-      lot.space,
-      'out',
-      lot.inlet,
-      end,
-      dir,
-      0,
-    );
-    const lane = lotPath(
-      state.grid,
-      building,
-      lot.space,
-      'out',
-      lot.inlet,
-      tabA,
-    );
+    const lane = lotPath(state.grid, building, lot.space, 'out', lot.inlet);
     if (lane) {
       const body = roundedPath(lane.slice(0, -1));
       const edge = body[body.length - 1];
       const { d, n } = axes(dir);
-      const t = dot(minus(edge, end), d);
+      // The turn never starts behind the node, so a car leaving the lot's edge meets its lane at the node.
+      const t = Math.max(0, dot(minus(edge, end), d));
       const corner = { x: end.x + d.x * t, y: end.y + d.y * t };
       // On a road running past the lot the car turns into its lane a turn's radius past the node's centre,
       // and joins the road there. On a road running away from the lot it drives straight on to the centre.

@@ -41,7 +41,7 @@ function terrainAscii(map: CompiledMap): string {
 }
 
 /** The M5 test map, hand-built tile by tile. The compiled file must reproduce it exactly. */
-function legacyTestMap(): { terrain: number[]; districts: number[] } {
+function legacyTestMap(): { terrain: number[] } {
   const cols = 24;
   const rows = 16;
   const terrain = new Array<number>(cols * rows).fill(Terrain.Land);
@@ -60,16 +60,7 @@ function legacyTestMap(): { terrain: number[]; districts: number[] } {
   fill(3, 2, 6, 5, Terrain.Water);
   fill(18, 10, 21, 13, Terrain.Mountain);
   fill(2, 9, 8, 12, Terrain.Park);
-  const districts = new Array<number>(cols * rows).fill(0);
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      let district = 0;
-      if (col >= 14) district = 3;
-      else if (col >= 10) district = row < 8 ? 1 : 2;
-      districts[row * cols + col] = district;
-    }
-  }
-  return { terrain, districts };
+  return { terrain };
 }
 
 describe('@overpass-game/map-compiler', () => {
@@ -85,7 +76,7 @@ describe('@overpass-game/map-compiler', () => {
     const map = compileMap(coast());
     expect({
       terrain: terrainAscii(map),
-      districts: map.districts,
+      fence: map.fence,
       spawnWeights: map.spawnWeights.filter((w) => w > 0),
       guide: map.motorwayGuide,
       starterRoads: map.starterRoads,
@@ -98,11 +89,11 @@ describe('@overpass-game/map-compiler', () => {
     }).toMatchSnapshot();
   });
 
-  it('gives the test map exactly the terrain and districts of the M5 hand-built grid', () => {
+  it('gives the test map exactly the terrain of the M5 hand-built grid, and its ten-column fence', () => {
     const map = compileMap(testSource());
     const legacy = legacyTestMap();
     expect(map.terrain).toEqual(legacy.terrain);
-    expect(map.districts).toEqual(legacy.districts);
+    expect(map.fence).toEqual({ col: 0, row: 0, cols: 10, rows: 16 });
   });
 
   it('keeps the committed maps/test.map.json up to date with its source', () => {
@@ -143,13 +134,13 @@ describe('@overpass-game/map-compiler', () => {
     expect(compileMap(moved).contentHash).not.toBe(a.contentHash);
   });
 
-  it('turns a compiled map into the sim grid, districts and rules', () => {
+  it('turns a compiled map into the sim grid, fence and rules', () => {
     const map = compileMap(coast());
     const sim = toSimMap(map);
     expect(sim.grid.cols).toBe(14);
     expect(sim.grid.rows).toBe(10);
     expect(sim.grid.terrain).toEqual(map.terrain);
-    expect(sim.districts).toEqual(map.districts);
+    expect(sim.startFence).toEqual(map.fence);
     expect(sim.rules).toEqual([{ kind: 'unlockColour', colour: 2, week: 4 }]);
   });
 

@@ -30,6 +30,14 @@ export interface CameraState {
   moved: boolean;
 }
 
+/** A rectangle in world units. */
+export interface WorldRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export function worldSize(cols: number, rows: number): Size {
   return { width: cols * TILE_SIZE, height: rows * TILE_SIZE };
 }
@@ -69,6 +77,29 @@ export function createFittedCamera(
   };
 }
 
+/**
+ * A camera centred on a focus rectangle and zoomed so the rectangle fills the viewport. The game
+ * opens on the starting fence this way. `zoomLevel` multiplies that zoom, within the limits.
+ */
+export function createFocusedCamera(
+  world: Size,
+  focus: WorldRect,
+  viewport: Size,
+  zoomLevel = 1,
+): CameraState {
+  const { min, max } = limits(world, viewport);
+  const w = Math.max(1, viewport.width - 2 * FIT_PADDING_PX);
+  const h = Math.max(1, viewport.height - 2 * FIT_PADDING_PX);
+  const fill = Math.min(w / Math.max(1, focus.w), h / Math.max(1, focus.h));
+  return {
+    zoom: Math.min(max, Math.max(min, fill * zoomLevel)),
+    center: { x: focus.x + focus.w / 2, y: focus.y + focus.h / 2 },
+    minZoom: min,
+    maxZoom: max,
+    moved: false,
+  };
+}
+
 /** Keeps the centre over the map so it can't be panned out of sight. */
 function clampCenter(cam: CameraState, world: Size): void {
   cam.center.x = Math.min(world.width, Math.max(0, cam.center.x));
@@ -84,8 +115,13 @@ export function resizeCamera(
   world: Size,
   viewport: Size,
   zoomLevel = 1,
+  focus?: WorldRect,
 ): CameraState {
-  if (!cam.moved) return createFittedCamera(world, viewport, zoomLevel);
+  if (!cam.moved) {
+    return focus
+      ? createFocusedCamera(world, focus, viewport, zoomLevel)
+      : createFittedCamera(world, viewport, zoomLevel);
+  }
   const { min, max } = limits(world, viewport);
   const next: CameraState = {
     ...cam,

@@ -17,7 +17,7 @@ export * from './save.ts';
 export const PACKAGE_NAME = '@overpass-game/map-schema' as const;
 
 /** Version of the source and compiled map formats. Bump with a migration when either changes shape. */
-export const MAP_SCHEMA_VERSION = 1 as const;
+export const MAP_SCHEMA_VERSION = 2 as const;
 
 /** Content hashes are eight lower-case hex digits (see map-compiler's contentHash). */
 const HASH = /^[0-9a-f]{8}$/;
@@ -69,7 +69,7 @@ export const ShapeSchema = ShapeBase.superRefine(checkShape);
 
 const ClosedBase = ShapeBase.extend({ kind: z.literal('closedSpline') });
 
-/** A region with an area: districts and spawn zones are always closed. */
+/** A region with an area: spawn zones are always closed. */
 export const ClosedShapeSchema = ClosedBase.superRefine(checkShape);
 
 /** A spawn zone: a closed region with a relative weight for houses and destinations. */
@@ -97,11 +97,19 @@ export const MapRuleSchema = z.discriminatedUnion('kind', [
   }),
 ]);
 
-/** A district region: tiles inside it belong to `district`. Later entries win. */
-export const DistrictRegionSchema = z.object({
-  district: z.int().min(0),
-  region: ClosedShapeSchema,
+/** The fence a map starts inside: a rectangle of tiles. It grows from here each week (spec: Expansion). */
+export const FenceSchema = z.object({
+  col: z.int().min(0),
+  row: z.int().min(0),
+  cols: z.int().min(1),
+  rows: z.int().min(1),
 });
+export type Fence = z.infer<typeof FenceSchema>;
+
+/** True when a fence lies wholly inside a grid of `cols` by `rows` tiles. */
+function fenceFits(f: Fence, cols: number, rows: number): boolean {
+  return f.col + f.cols <= cols && f.row + f.rows <= rows;
+}
 
 const TerrainCode = z.int().min(0).max(Terrain.OutOfBounds);
 
@@ -130,11 +138,21 @@ export const SourceMapSchema = z.object({
     ]),
     rotationDeg: z.number().finite(),
   }),
-  grid: z.object({
-    cols: z.int().min(1),
-    rows: z.int().min(1),
-    districts: z.array(DistrictRegionSchema),
-  }),
+  grid: z
+    .object({
+      cols: z.int().min(1),
+      rows: z.int().min(1),
+      fence: FenceSchema,
+    })
+    .superRefine((g, ctx) => {
+      if (!fenceFits(g.fence, g.cols, g.rows)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['fence'],
+          message: 'the fence must lie inside the grid',
+        });
+      }
+    }),
   layers: z.object({
     water: z.array(ShapeSchema),
     mountains: z.array(ShapeSchema),
@@ -176,7 +194,7 @@ export const CompiledMapSchema = z
     cols: z.int().min(1),
     rows: z.int().min(1),
     terrain: z.array(TerrainCode),
-    districts: z.array(z.int().min(0)),
+    fence: FenceSchema,
     spawnWeights: z.array(z.number().finite().min(0)),
     outlines: z.object({
       water: z.array(OutlinePathSchema),
@@ -195,9 +213,15 @@ export const CompiledMapSchema = z
   })
   .superRefine((m, ctx) => {
     const n = m.cols * m.rows;
+    if (!fenceFits(m.fence, m.cols, m.rows)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['fence'],
+        message: 'the fence must lie inside the grid',
+      });
+    }
     const sized: [keyof typeof m, number][] = [
       ['terrain', n],
-      ['districts', n],
       ['spawnWeights', n],
     ];
     for (const [key, want] of sized) {

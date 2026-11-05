@@ -6,7 +6,7 @@ import testMapJson from '../../../../maps/test.map.json';
 
 /**
  * Hand-made test map. Not a real city: it exists so the renderer, input and
- * sim rules have something to work on. Its terrain and districts come from the
+ * sim rules have something to work on. Its terrain and fence come from the
  * compiled file; buildings are still listed here until the spawn field (M14) places them.
  */
 export const TEST_MAP: CompiledMap = parseCompiledMap(testMapJson);
@@ -40,8 +40,8 @@ export interface TestBuilding {
 
 /**
  * Three colour pairs, all on the land west of the river. Each pair can connect by land
- * (checked in the tests). Pair 0 opens across two districts; pair 1 is open from the start;
- * pair 2 sits in district 1, which opens at week 3.
+ * (checked in the tests). Pair 1 starts inside the fence; pair 0's destination and pair 2's
+ * house start outside it and come inside by week 2.
  */
 export const TEST_BUILDINGS: TestBuilding[] = [
   { kind: 'house', color: 0, col: 8, row: 6, entrance: 'e' },
@@ -52,12 +52,9 @@ export const TEST_BUILDINGS: TestBuilding[] = [
   { kind: 'destination', color: 2, col: 9, row: 13, entrance: 'n' },
 ];
 
-/**
- * The district of each tile, from the compiled map (spec: Expansion). The grid argument is
- * kept so callers read the same as before; the districts always come from the map file.
- */
-export function buildTestDistricts(): number[] {
-  return playedMap().districts.slice();
+/** The fence the test map starts inside, from the compiled map file (spec: Expansion). */
+export function buildTestFence() {
+  return { ...playedMap().fence };
 }
 
 /** A fresh grid for the test map, built from the compiled file. */

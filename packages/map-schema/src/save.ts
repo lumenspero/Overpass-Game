@@ -11,7 +11,7 @@ import { MapFormatError, parseWith } from './errors.ts';
 export const SAVE_FORMAT = 'overpass-game-save' as const;
 
 /** Version of the save format. Bump it with a migration whenever the shape changes. */
-export const SAVE_SCHEMA_VERSION = 6 as const;
+export const SAVE_SCHEMA_VERSION = 7 as const;
 
 /** Content hashes are eight lower-case hex digits (see map-compiler's contentHash). */
 const HASH = /^[0-9a-f]{8}$/;
@@ -32,7 +32,7 @@ export const SIM_STATE_KEYS = [
   'graph',
   'buildings',
   'buildingAt',
-  'districtOf',
+  'startFence',
   'homes',
   'demand',
   'cars',
@@ -69,7 +69,12 @@ export const SimSaveSchema = z
     links: z.record(z.string(), z.array(Count)),
     budget: Count,
     buildingAt: z.array(z.int().min(-1)),
-    districtOf: z.array(Count),
+    startFence: z.looseObject({
+      col: Count,
+      row: Count,
+      cols: z.int().min(1),
+      rows: z.int().min(1),
+    }),
     crossingRunOf: z.array(Count),
     tripsCompleted: Count,
     nextCarId: Count,
@@ -92,7 +97,6 @@ export const SimSaveSchema = z
       ['grid.terrain', sim.grid.terrain.length],
       ['roads', sim.roads.length],
       ['buildingAt', sim.buildingAt.length],
-      ['districtOf', sim.districtOf.length],
       ['crossingRunOf', sim.crossingRunOf.length],
     ];
     for (const [path, length] of sized) {
@@ -269,12 +273,41 @@ function addUnlocked(run: unknown): unknown {
   return { ...run, sim: { ...sim, unlocked } };
 }
 
+/**
+ * Version 7: the fence replaces the per-tile districts. A save from before has no fence, so its
+ * whole grid starts open, as a map with no districts did.
+ */
+const FENCE_FOR_DISTRICTS: SaveMigration = (save) => {
+  const runs = save.runs;
+  if (typeof runs !== 'object' || runs === null) return save;
+  return {
+    ...save,
+    runs: Object.fromEntries(
+      Object.entries(runs).map(([key, run]) => [key, fenceForDistricts(run)]),
+    ),
+  };
+};
+
+function fenceForDistricts(run: unknown): unknown {
+  if (typeof run !== 'object' || run === null) return run;
+  const sim = (run as { sim?: unknown }).sim;
+  if (typeof sim !== 'object' || sim === null) return run;
+  const grid = (sim as { grid?: { cols?: unknown; rows?: unknown } }).grid;
+  const next: Record<string, unknown> = {
+    ...sim,
+    startFence: { col: 0, row: 0, cols: grid?.cols, rows: grid?.rows },
+  };
+  delete next.districtOf;
+  return { ...run, sim: next };
+}
+
 export const SAVE_MIGRATIONS: Readonly<Record<number, SaveMigration>> = {
   1: ADD_DISPLAY_SETTINGS,
   2: ADD_INPUT_SETTINGS,
   3: DROP_RENDER_SCALE,
   4: ADD_AUDIO_SETTINGS,
   5: ADD_UNLOCKED,
+  6: FENCE_FOR_DISTRICTS,
 };
 
 /**

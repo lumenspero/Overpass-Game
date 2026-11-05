@@ -380,6 +380,9 @@ export const BUILDING_COLORS: readonly number[] = STANDARD_BUILDING_PALETTE.map(
   (style) => style.face,
 );
 
+/** The fence edge, drawn in draw mode only, where roads and features can be placed (spec: Expansion). */
+export const FENCE_EDGE = { colour: 0xb8c4d6, width: 2, alpha: 0.85 } as const;
+
 /** Colours for the debug overlay only. Never shown to players. */
 export const DEBUG_PALETTE = {
   grid: 0x3a4048,

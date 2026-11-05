@@ -35,7 +35,11 @@ export function buildSourceMap(input: BuildInput): SourceMap {
     id: slugify(input.name),
     name: input.name,
     region: { bbox: frameBBox(frame), rotationDeg: frame.rotationDeg },
-    grid: { cols: frame.cols, rows: frame.rows, districts: [] },
+    grid: {
+      cols: frame.cols,
+      rows: frame.rows,
+      fence: { col: 0, row: 0, cols: frame.cols, rows: frame.rows },
+    },
     layers: {
       water: layers.water,
       mountains: input.mountains ?? [],

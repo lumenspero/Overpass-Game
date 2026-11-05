@@ -8,7 +8,8 @@ import { type Car, onRoadsChanged } from './cars.ts';
 import { tuning } from './config.ts';
 import { generateDemand, growDestinations, updateOverflow } from './demand.ts';
 import { type MapRule, offerCandidates } from './rules.ts';
-import { isOpenTile } from './expansion.ts';
+import { type Fence, isOpenTile } from './expansion.ts';
+import { reservedLotTiles } from './lots.ts';
 import { buildRoadGraph, type RoadGraph, updateRoadGraph } from './graph.ts';
 import {
   addLink,
@@ -55,8 +56,8 @@ export interface SimState {
   buildings: Building[];
   /** One entry per grid tile: the id of the building on it, or -1. */
   buildingAt: number[];
-  /** One entry per grid tile: the district it belongs to (spec: Expansion). */
-  districtOf: number[];
+  /** The fence the map started inside. It grows from here each week (spec: Expansion). */
+  startFence: Fence;
   /** Car bookkeeping for each house, keyed by building id. */
   homes: Record<number, Home>;
   /** Demand bookkeeping for each destination, keyed by building id. */
@@ -98,8 +99,8 @@ export interface CreateSimOptions {
   seed: number;
   grid: Grid;
   roadBudget?: number;
-  /** District of each tile. Defaults to district 0 everywhere, so the whole map is open. */
-  districts?: number[];
+  /** The fence the map starts inside. Defaults to the whole grid, so the whole map is open. */
+  startFence?: Fence;
   rules?: MapRule[];
 }
 
@@ -114,7 +115,7 @@ export function createSim({
   seed,
   grid,
   roadBudget = tuning.ROAD_BUDGET_START,
-  districts,
+  startFence,
   rules = [],
 }: CreateSimOptions): SimState {
   const roads = new Array<number>(grid.cols * grid.rows).fill(0);
@@ -129,7 +130,12 @@ export function createSim({
     graph: buildRoadGraph(roads, links),
     buildings: [],
     buildingAt: new Array<number>(grid.cols * grid.rows).fill(-1),
-    districtOf: districts ?? new Array<number>(grid.cols * grid.rows).fill(0),
+    startFence: startFence ?? {
+      col: 0,
+      row: 0,
+      cols: grid.cols,
+      rows: grid.rows,
+    },
     homes: {},
     demand: {},
     cars: [],
@@ -155,9 +161,13 @@ export function createSim({
  */
 export function placeRoads(state: SimState, tiles: number[]): PlaceResult {
   const unique = [...new Set(tiles)];
+  // A destination's lot is off limits to roads: its only inlet is the road tile in front of it (spec: Lots).
+  const lotTiles = reservedLotTiles(state);
   for (const i of unique) {
     if (!isInBounds(state.grid, i))
       return { ok: false, reason: 'out-of-bounds' };
+    if (state.roads[i] === 0 && lotTiles.has(i))
+      return { ok: false, reason: 'unbuildable' };
     // A tile that already has a road (a bridge or tunnel) is always accepted; it is free.
     if (
       state.roads[i] === 0 &&

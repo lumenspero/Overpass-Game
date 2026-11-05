@@ -5,6 +5,7 @@ import {
   Terrain,
   LIGHT_GREEN_TICKS,
   linkTiles,
+  placeBuilding,
   placeControl,
   placeRoads,
   removeRoads,
@@ -144,5 +145,52 @@ describe('a traffic light', () => {
     sim.tick = 0;
     sim.cars.push(carOn(1, centre, 0.5));
     expect(tileOpen(sim, centre, null, EAST)).toBe(false);
+  });
+});
+
+describe('roundabout footprint', () => {
+  function plain(): SimState {
+    const sim = createSim({ seed: 1, grid: makeGrid(7, 7), roadBudget: 80 });
+    sim.stock.roundabout = 2;
+    return sim;
+  }
+
+  it('refuses a roundabout whose ring would cover a building', () => {
+    const sim = plain();
+    const r = placeBuilding(sim, {
+      kind: 'house',
+      color: 0,
+      tile: at(sim.grid, 4, 3),
+      entrance: 'e',
+    });
+    expect(r.ok).toBe(true);
+    expect(placeControl(sim, at(sim.grid, 3, 3), 'roundabout')).toEqual({
+      ok: false,
+      reason: 'bad-endpoint',
+    });
+  });
+
+  it('allows a roundabout beside a building its ring does not reach', () => {
+    const sim = plain();
+    placeBuilding(sim, {
+      kind: 'house',
+      color: 0,
+      tile: at(sim.grid, 4, 4),
+      entrance: 's',
+    });
+    expect(placeControl(sim, at(sim.grid, 3, 3), 'roundabout')).toEqual({
+      ok: true,
+    });
+  });
+
+  it('refuses a roundabout that would overlap another', () => {
+    const sim = plain();
+    expect(placeControl(sim, at(sim.grid, 3, 3), 'roundabout')).toEqual({
+      ok: true,
+    });
+    expect(placeControl(sim, at(sim.grid, 4, 3), 'roundabout')).toEqual({
+      ok: false,
+      reason: 'occupied',
+    });
   });
 });

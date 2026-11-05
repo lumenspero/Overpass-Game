@@ -39,7 +39,7 @@ export type RoadShape =
  * Shapes that cover every road tile. Each tile gets a disc at its centre, which
  * rounds every end and junction. Each stored link gets a bar between its two tile
  * centres, the same width as the disc diameter, so an edge link is a rectangle and a
- * corner link a diagonal line. Filled opaquely, the union looks like one rounded road network.
+ * bend a quarter circle of discs around its corner. Filled opaquely, the union looks like one rounded road network.
  */
 export function roadShapes(
   grid: Grid,
@@ -47,23 +47,72 @@ export function roadShapes(
   links: Links,
 ): RoadShape[] {
   const r = (ROAD_WIDTH_TILES * TILE_SIZE) / 2;
+  const half = TILE_SIZE / 2;
   const out: RoadShape[] = [];
   const centre = (i: number) => ({
     x: ((i % grid.cols) + 0.5) * TILE_SIZE,
     y: (Math.floor(i / grid.cols) + 0.5) * TILE_SIZE,
   });
+  /** Unit step from tile a to its neighbour b. */
+  const unit = (a: number, b: number) => ({
+    x: Math.sign((b % grid.cols) - (a % grid.cols)),
+    y: Math.sign(Math.floor(b / grid.cols) - Math.floor(a / grid.cols)),
+  });
+  /** A tile linked to exactly two neighbours at right angles is a bend. */
+  const bendOf = (i: number): [number, number] | null => {
+    const ns = links[i] ?? [];
+    if (ns.length !== 2) return null;
+    const d1 = unit(i, ns[0]);
+    const d2 = unit(i, ns[1]);
+    return d1.x * d2.x + d1.y * d2.y === 0 ? [ns[0], ns[1]] : null;
+  };
+  /** Where a link leaves a tile: its centre, or a bend's edge midpoint toward the link. */
+  const endOf = (i: number, toward: number) => {
+    const c = centre(i);
+    if (bendOf(i) === null) return c;
+    const d = unit(i, toward);
+    return { x: c.x + d.x * half, y: c.y + d.y * half };
+  };
+  const SEGMENTS = 6;
   for (let i = 0; i < roads.length; i++) {
     if (roads[i] !== 1) continue;
+    const bend = bendOf(i);
+    if (bend === null) {
+      const c = centre(i);
+      out.push({ kind: 'circle', x: c.x, y: c.y, r });
+      continue;
+    }
+    // A bend is a quarter circle of radius half a tile, centred on the tile corner the arms turn round,
+    // so its inside edge is rounded rather than a sharp corner.
     const c = centre(i);
-    out.push({ kind: 'circle', x: c.x, y: c.y, r });
+    const d1 = unit(i, bend[0]);
+    const d2 = unit(i, bend[1]);
+    const o = {
+      x: c.x + (d1.x + d2.x) * half,
+      y: c.y + (d1.y + d2.y) * half,
+    };
+    const from = { x: -d2.x * half, y: -d2.y * half };
+    const to = { x: -d1.x * half, y: -d1.y * half };
+    for (let k = 0; k <= SEGMENTS; k++) {
+      const t = k / SEGMENTS;
+      const vx = (1 - t) * from.x + t * to.x;
+      const vy = (1 - t) * from.y + t * to.y;
+      const len = Math.hypot(vx, vy);
+      out.push({
+        kind: 'circle',
+        x: o.x + (vx / len) * half,
+        y: o.y + (vy / len) * half,
+        r,
+      });
+    }
   }
   // Each link once: from the tile to a partner further on in the index.
   for (const key of Object.keys(links)) {
     const a = Number(key);
     for (const b of links[key]) {
       if (b <= a) continue;
-      const from = centre(a);
-      const to = centre(b);
+      const from = endOf(a, b);
+      const to = endOf(b, a);
       out.push({
         kind: 'line',
         x1: from.x,
@@ -405,12 +454,31 @@ export function carShapes(
       // A turn's control point is where its two lanes meet, so the opposite lanes of a corner
       // don't cross in the middle. A straight run keeps its control point at the lane.
       const perpendicular = inDir.dx * outDir.dx + inDir.dy * outDir.dy === 0;
-      const k = perpendicular ? 1 : 0.5;
-      const cx = c.x + k * (nIn.x + nOut.x);
-      const cy = c.y + k * (nIn.y + nOut.y);
-      const u = 1 - along;
-      x = u * u * ax + 2 * u * along * cx + along * along * bx;
-      y = u * u * ay + 2 * u * along * cy + along * along * by;
+      if (perpendicular && inHalf === half && outHalf === half) {
+        // A bend follows the road's quarter circle, centred on the tile corner the arms turn round.
+        // Each lane sits at its offset from that circle, so the car stays inside the rounded road.
+        const o = {
+          x: c.x + (outDir.dx - inDir.dx) * half,
+          y: c.y + (outDir.dy - inDir.dy) * half,
+        };
+        const l0 = { x: ax - o.x, y: ay - o.y };
+        const l1 = { x: bx - o.x, y: by - o.y };
+        const r0 = Math.hypot(l0.x, l0.y);
+        const r1 = Math.hypot(l1.x, l1.y);
+        const vx = (1 - along) * (l0.x / r0) + along * (l1.x / r1);
+        const vy = (1 - along) * (l0.y / r0) + along * (l1.y / r1);
+        const vl = Math.hypot(vx, vy);
+        const radius = (1 - along) * r0 + along * r1;
+        x = o.x + (vx / vl) * radius;
+        y = o.y + (vy / vl) * radius;
+      } else {
+        const k = perpendicular ? 1 : 0.5;
+        const cx = c.x + k * (nIn.x + nOut.x);
+        const cy = c.y + k * (nIn.y + nOut.y);
+        const u = 1 - along;
+        x = u * u * ax + 2 * u * along * cx + along * along * bx;
+        y = u * u * ay + 2 * u * along * cy + along * along * by;
+      }
     }
     // A car enters its building on arrival, parks at its centre, and leaves from that
     // centre, so it never appears in the gap beside the road.
@@ -517,10 +585,19 @@ export function carShapes(
         ? { x: c.x - inRaw.dx * half + nIn.x, y: c.y - inRaw.dy * half + nIn.y }
         : c;
       if (arrival.kind === 'house') {
-        // A house is turned into from the car's own lane at the access tile's centre, so the car stays in
-        // its lane until it turns, and crosses the other lane square on rather than cutting across it.
+        // The car keeps its lane on the road, then takes the lane of its own travel into the doorway. Where the
+        // road turns into the house, the two lanes meet at a corner, so the car turns on its own side.
+        const facing = houseFacing(grid, arrival);
+        const into = { dx: -facing.dx, dy: -facing.dy };
+        const nInto = rightOfTravel(into);
+        const door = anchorOf(arrival, c);
+        const turns =
+          inRaw !== null && inRaw.dx * into.dx + inRaw.dy * into.dy === 0;
+        const corner = turns
+          ? { x: c.x + nIn.x + nInto.x, y: c.y + nIn.y + nInto.y }
+          : { x: c.x + nInto.x, y: c.y + nInto.y };
         const path = roundedPath(
-          [edgeIn, { x: c.x + nIn.x, y: c.y + nIn.y }, anchorOf(arrival, c)],
+          [edgeIn, corner, { x: door.x + nInto.x, y: door.y + nInto.y }],
           0.3 * TILE_SIZE,
         );
         const spot = pointAtDistance(path, along * polylineLength(path));
@@ -550,7 +627,10 @@ export function carShapes(
         // access tile's centre, so it never cuts across the other lane on a slant.
         const path = roundedPath(
           [
-            anchorOf(departure, c),
+            {
+              x: anchorOf(departure, c).x + nOut.x,
+              y: anchorOf(departure, c).y + nOut.y,
+            },
             { x: c.x + nOut.x, y: c.y + nOut.y },
             edgeOut,
           ],

@@ -49,19 +49,19 @@ describe('@overpass-game/map-schema', () => {
   });
 
   it('rejects a source map with a wrong schema version', () => {
-    const src = { ...(testSource() as object), schemaVersion: 2 };
+    const src = { ...(testSource() as object), schemaVersion: 1 };
     expect(() => parseSourceMap(src)).toThrow(/schemaVersion/);
   });
 
   it('rejects a compiled map whose terrain does not cover the grid', () => {
     const map = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       id: 'tiny',
       name: 'Tiny',
       cols: 2,
       rows: 2,
       terrain: [0, 0, 0],
-      districts: [0, 0, 0, 0],
+      fence: { col: 0, row: 0, cols: 2, rows: 2 },
       spawnWeights: [0, 0, 0, 0],
       outlines: { water: [], mountains: [], parks: [] },
       motorwayGuide: [],
@@ -76,13 +76,13 @@ describe('@overpass-game/map-schema', () => {
 
   it('rejects a path whose tiles do not touch', () => {
     const map = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       id: 'tiny',
       name: 'Tiny',
       cols: 3,
       rows: 3,
       terrain: new Array<number>(9).fill(0),
-      districts: new Array<number>(9).fill(0),
+      fence: { col: 0, row: 0, cols: 3, rows: 3 },
       spawnWeights: new Array<number>(9).fill(0),
       outlines: { water: [], mountains: [], parks: [] },
       motorwayGuide: [],

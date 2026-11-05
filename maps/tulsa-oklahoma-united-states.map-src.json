@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "tulsa-oklahoma-united-states",
   "name": "Tulsa, Oklahoma, United States",
   "region": {
@@ -12,7 +12,12 @@
   "grid": {
     "cols": 96,
     "rows": 96,
-    "districts": []
+    "fence": {
+      "col": 36,
+      "row": 41,
+      "cols": 24,
+      "rows": 14
+    }
   },
   "layers": {
     "water": [

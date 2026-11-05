@@ -6,11 +6,7 @@ import {
   WEEK_TICKS,
 } from '@overpass-game/sim';
 import { describe, expect, it } from 'vitest';
-import {
-  buildTestDistricts,
-  buildTestGrid,
-  TEST_BUILDINGS,
-} from './test-map.ts';
+import { buildTestFence, buildTestGrid, TEST_BUILDINGS } from './test-map.ts';
 
 /**
  * Checkpoint B smoke test: a full-length game on the test map with every upgrade in stock
@@ -23,7 +19,7 @@ describe('a full game with every upgrade', () => {
     const sim = createSim({
       seed: 1,
       grid,
-      districts: buildTestDistricts(),
+      startFence: buildTestFence(),
     });
     for (const b of TEST_BUILDINGS) {
       const r = placeBuilding(sim, {

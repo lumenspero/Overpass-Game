@@ -1,35 +1,107 @@
 import { tuning } from './config.ts';
-import { weekOf } from './score.ts';
 import type { SimState } from './sim.ts';
 
 /**
- * Map expansion (spec: Expansion). The map is split into districts. District 0 is open at
- * the start, EXPANSION_WEEK_1 opens district 1, and EXPANSION_WEEK_2 opens district 2. Locked
- * tiles take no roads, and buildings on them are inactive and hidden. Districts only ever
- * open, never close.
+ * Map expansion (spec: Expansion). Each map starts inside a fence: a rectangle of grid tiles.
+ * Every week the fence grows FENCE_GROWTH_PER_WEEK nodes on each side, one node a side per step,
+ * the steps spread across the week. A step's new edge slides across its strip over
+ * FENCE_REVEAL_TICKS. Tiles open once the edge has passed over them. The fence stops at the map
+ * edge and never shrinks. Tiles outside it take no roads, and buildings on them are inactive
+ * and hidden.
  */
 
-/** Whether a tick starts a week in which a new district opens. */
-export function isExpansionWeek(tick: number): boolean {
-  const week = weekOf(tick);
-  return (
-    week === tuning.EXPANSION_WEEK_1 ||
-    week === tuning.EXPANSION_WEEK_2 ||
-    week === tuning.EXPANSION_WEEK_3
-  );
+/** A rectangle of grid tiles: `col` and `row` are its top-left tile, `cols` and `rows` its size. */
+export interface Fence {
+  col: number;
+  row: number;
+  cols: number;
+  rows: number;
 }
 
-/** How many districts, counted from district 0, are open at a tick. */
-export function openDistricts(tick: number): number {
-  const week = weekOf(tick);
-  let open = 1;
-  if (week >= tuning.EXPANSION_WEEK_1) open += 1;
-  if (week >= tuning.EXPANSION_WEEK_2) open += 1;
-  if (week >= tuning.EXPANSION_WEEK_3) open += 1;
-  return open;
+/** The fence edge in grid units, where tile c spans [c, c + 1). Fractional while a step slides. */
+export interface FenceEdge {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
 }
 
-/** True when a tile is in an open district. */
+/** Growth steps finished by a tick. A step is finished once its edge has finished sliding. */
+export function fenceSteps(tick: number): number {
+  if (tuning.FENCE_GROWTH_PER_WEEK <= 0) return 0;
+  const done =
+    ((tick - tuning.FENCE_REVEAL_TICKS) * tuning.FENCE_GROWTH_PER_WEEK) /
+    tuning.WEEK_TICKS;
+  return Math.max(0, Math.floor(done));
+}
+
+/** The fence after `steps` finished steps, kept inside the grid. */
+function fenceAtSteps(state: SimState, steps: number): Fence {
+  const { cols, rows } = state.grid;
+  const start = state.startFence;
+  const left = Math.max(0, start.col - steps);
+  const top = Math.max(0, start.row - steps);
+  const right = Math.min(cols - 1, start.col + start.cols - 1 + steps);
+  const bottom = Math.min(rows - 1, start.row + start.rows - 1 + steps);
+  return {
+    col: left,
+    row: top,
+    cols: right - left + 1,
+    rows: bottom - top + 1,
+  };
+}
+
+/** The tile fence at a tick: the tiles the edge has fully passed. */
+export function fenceAt(state: SimState, tick: number): Fence {
+  return fenceAtSteps(state, fenceSteps(tick));
+}
+
+// Tile checks run many times a tick, so the fence is worked out once per tick and kept.
+const fenceCache = new WeakMap<SimState, { tick: number; fence: Fence }>();
+
+/** The tile fence now. Cached per state and tick. */
+export function currentFence(state: SimState): Fence {
+  const hit = fenceCache.get(state);
+  if (hit && hit.tick === state.tick) return hit.fence;
+  const fence = fenceAt(state, state.tick);
+  fenceCache.set(state, { tick: state.tick, fence });
+  return fence;
+}
+
+/**
+ * The fence edge at a tick, in grid units. It slides from the last finished fence to the next
+ * one while a step is revealed, so it is the boundary the player sees. Tiles open only when it
+ * has passed them, so the edge leads the tile fence by at most one reveal.
+ */
+export function fenceEdge(state: SimState, tick: number): FenceEdge {
+  const done = fenceSteps(tick);
+  let f = 0;
+  if (tuning.FENCE_GROWTH_PER_WEEK > 0) {
+    // The step after the finished ones starts at this tick, and slides over its reveal.
+    const started =
+      ((done + 1) * tuning.WEEK_TICKS) / tuning.FENCE_GROWTH_PER_WEEK;
+    f = Math.min(1, Math.max(0, (tick - started) / tuning.FENCE_REVEAL_TICKS));
+  }
+  const from = fenceAtSteps(state, done);
+  const to = fenceAtSteps(state, done + 1);
+  const mix = (a: number, b: number): number => a + (b - a) * f;
+  return {
+    left: mix(from.col, to.col),
+    top: mix(from.row, to.row),
+    right: mix(from.col + from.cols, to.col + to.cols),
+    bottom: mix(from.row + from.rows, to.row + to.rows),
+  };
+}
+
+/** True when a tile is inside the tile fence now. */
 export function isOpenTile(state: SimState, tile: number): boolean {
-  return state.districtOf[tile] < openDistricts(state.tick);
+  const fence = currentFence(state);
+  const col = tile % state.grid.cols;
+  const row = (tile - col) / state.grid.cols;
+  return (
+    col >= fence.col &&
+    col < fence.col + fence.cols &&
+    row >= fence.row &&
+    row < fence.row + fence.rows
+  );
 }

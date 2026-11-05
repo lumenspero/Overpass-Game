@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "coast",
   "name": "Coast fixture",
   "region": {
@@ -9,34 +9,12 @@
   "grid": {
     "cols": 14,
     "rows": 10,
-    "districts": [
-      {
-        "district": 1,
-        "region": {
-          "id": "north-east",
-          "kind": "closedSpline",
-          "origin": "painted",
-          "points": [
-            {
-              "x": 7,
-              "y": 0
-            },
-            {
-              "x": 14,
-              "y": 0
-            },
-            {
-              "x": 14,
-              "y": 10
-            },
-            {
-              "x": 7,
-              "y": 10
-            }
-          ]
-        }
-      }
-    ]
+    "fence": {
+      "col": 0,
+      "row": 0,
+      "cols": 14,
+      "rows": 10
+    }
   },
   "layers": {
     "water": [

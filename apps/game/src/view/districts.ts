@@ -1,8 +1,10 @@
 import { TILE_SIZE } from '@overpass-game/render-style';
-import { type Grid, openDistricts } from '@overpass-game/sim';
+import { type FenceEdge, type Grid } from '@overpass-game/sim';
 
 /**
- * Locked districts are dimmed (spec: Expansion). Pure: no Phaser, so it is unit-tested directly.
+ * The dimmed land: everything outside the fence edge (spec: Expansion). The edge is not locked to
+ * the grid, so a strip part-way across a tile is dimmed part-way. Pure: no Phaser, so it is
+ * unit-tested directly.
  */
 
 export interface TileRect {
@@ -12,22 +14,20 @@ export interface TileRect {
   h: number;
 }
 
-/** The rectangles covering every tile in a district that is not open at this tick. */
-export function lockedTileRects(
-  grid: Grid,
-  districtOf: readonly number[],
-  tick: number,
-): TileRect[] {
-  const open = openDistricts(tick);
+/** Up to four rectangles, in pixels, that together cover everything outside the edge. */
+export function lockedTileRects(grid: Grid, edge: FenceEdge): TileRect[] {
+  const width = grid.cols * TILE_SIZE;
+  const height = grid.rows * TILE_SIZE;
+  const left = edge.left * TILE_SIZE;
+  const top = edge.top * TILE_SIZE;
+  const right = edge.right * TILE_SIZE;
+  const bottom = edge.bottom * TILE_SIZE;
   const out: TileRect[] = [];
-  for (let i = 0; i < districtOf.length; i++) {
-    if (districtOf[i] < open) continue;
-    out.push({
-      x: (i % grid.cols) * TILE_SIZE,
-      y: Math.floor(i / grid.cols) * TILE_SIZE,
-      w: TILE_SIZE,
-      h: TILE_SIZE,
-    });
-  }
+  if (top > 0) out.push({ x: 0, y: 0, w: width, h: top });
+  if (bottom < height)
+    out.push({ x: 0, y: bottom, w: width, h: height - bottom });
+  if (left > 0) out.push({ x: 0, y: top, w: left, h: bottom - top });
+  if (right < width)
+    out.push({ x: right, y: top, w: width - right, h: bottom - top });
   return out;
 }
