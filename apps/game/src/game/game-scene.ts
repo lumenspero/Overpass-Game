@@ -290,6 +290,10 @@ export class GameScene extends Phaser.Scene {
   private carGfx!: Phaser.GameObjects.Graphics;
   /** Each car's heading when last drawn, by car id, so a stopped car keeps facing the way it was going. */
   private carHeadings = new Map<number, number>();
+  /** When the last update ran, in wall-clock milliseconds, for the frame meter. */
+  private lastUpdateAt = 0;
+  /** Reused point objects for drawing a car's outline, so a frame does not allocate them. */
+  private outlinePoints: Phaser.Math.Vector2[] = [];
   private ringGfx!: Phaser.GameObjects.Graphics;
   private crossingText!: Phaser.GameObjects.Text;
   /** Which crossing report is on screen, and when its message stops showing (ms). */
@@ -526,7 +530,12 @@ export class GameScene extends Phaser.Scene {
       if (tock) audio.playEffect(tock);
     }
     if (this.keepCars) keepCarDemoFull(this.sim);
-    this.frames.record(delta, performance.now() - simStart);
+    // Frame time is the real gap between updates. Phaser's delta is capped when frames run slow, which
+    // would hide a slow frame rate, and the sim's pace follows that cap.
+    const now = performance.now();
+    if (this.lastUpdateAt > 0)
+      this.frames.record(now - this.lastUpdateAt, now - simStart);
+    this.lastUpdateAt = now;
     // The music's stems follow traffic, pin pressure and the week.
     const demands = Object.values(this.sim.demand);
     audio.setStems(
@@ -1392,10 +1401,11 @@ export class GameScene extends Phaser.Scene {
         2 * shape.r,
       );
       gfx.fillStyle(shape.color, 1);
-      gfx.fillPoints(
-        outline.map((p) => new Phaser.Math.Vector2(p.x, p.y)),
-        true,
-      );
+      // The points are reused from one pool across frames, so a frame does not allocate a point per corner.
+      const pts = this.outlinePoints;
+      while (pts.length < outline.length) pts.push(new Phaser.Math.Vector2());
+      outline.forEach((p, k) => pts[k]?.set(p.x, p.y));
+      gfx.fillPoints(pts.slice(0, outline.length), true);
     });
     this.carHeadings = headings;
   }

@@ -160,9 +160,8 @@ function roomAhead(state: SimState, car: Car): number {
   const lane = laneOf(state.grid, car);
   let room = 1;
   const mine = drawnTiles(state, car);
-  for (const d of state.cars) {
-    if (d === car || d.lot !== undefined || d.route[d.progress] !== tile)
-      continue;
+  for (const d of carsOn(state, tile)) {
+    if (d === car || d.lot !== undefined) continue;
     if (laneOf(state.grid, d) !== lane) continue;
     const ahead =
       d.along > car.along || (d.along === car.along && d.id < car.id);
@@ -176,9 +175,8 @@ function roomAhead(state: SimState, car: Car): number {
   const next = car.route[car.progress + 1];
   if (next !== undefined) {
     const into = stepCode(state.grid, tile, next);
-    for (const d of state.cars) {
-      if (d === car || d.lot !== undefined || d.route[d.progress] !== next)
-        continue;
+    for (const d of carsOn(state, next)) {
+      if (d === car || d.lot !== undefined) continue;
       if (laneOf(state.grid, d) !== into) continue;
       const short = tuning.CAR_GAP - d.along * drawnTiles(state, d);
       room = Math.min(room, 1 - short / mine);
@@ -219,9 +217,8 @@ export function tileOpen(
   // A junction or a light holds one car at a time, whatever the lane.
   const single = junction || control === 'light';
   let here = 0;
-  for (const d of state.cars) {
-    if (d === mover || d.lot !== undefined || d.route[d.progress] !== tile)
-      continue;
+  for (const d of carsOn(state, tile)) {
+    if (d === mover || d.lot !== undefined) continue;
     // A car waiting on its destination's last tile for a lot space does not hold the tile: a car
     // leaving that lot needs the node, and the waiting car needs that lot's lane.
     if (
@@ -525,6 +522,43 @@ function boxBlocked(state: SimState, car: Car, next: number): boolean {
   return !tileOpen(state, after, car, stepCode(state.grid, next, after));
 }
 
+/** The cars on each tile, while `moveCars` runs. Null otherwise, when `carsOn` scans every car. */
+let tilesIndex: Map<number, Car[]> | null = null;
+
+function indexAdd(index: Map<number, Car[]>, tile: number, car: Car): void {
+  const list = index.get(tile);
+  if (list) list.push(car);
+  else index.set(tile, [car]);
+}
+
+function indexRemove(index: Map<number, Car[]>, tile: number, car: Car): void {
+  const list = index.get(tile);
+  if (!list) return;
+  const at = list.indexOf(car);
+  if (at >= 0) list.splice(at, 1);
+}
+
+/** The cars, other than lot cars, on `tile`. */
+function carsOn(state: SimState, tile: number): readonly Car[] {
+  if (tilesIndex !== null) return tilesIndex.get(tile) ?? NO_CARS;
+  return state.cars.filter(
+    (d) => d.lot === undefined && d.route[d.progress] === tile,
+  );
+}
+
+const NO_CARS: readonly Car[] = [];
+
+/** Moves a car on to the tile at `progress` of its route, keeping the tile index up to date. */
+function moveToTile(car: Car, progress: number): void {
+  if (tilesIndex !== null && car.lot === undefined) {
+    indexRemove(tilesIndex, car.route[car.progress] as number, car);
+    car.progress = progress;
+    indexAdd(tilesIndex, car.route[car.progress] as number, car);
+  } else {
+    car.progress = progress;
+  }
+}
+
 /** Moves one car as far as its budget and the cars around it allow this tick. Parked cars stay put. */
 function advance(state: SimState, car: Car): void {
   if (car.state === 'parked') return;
@@ -559,7 +593,7 @@ function advance(state: SimState, car: Car): void {
     // Box rule: a car enters a junction or light only if it can also leave it, so two junctions
     // can never each hold a car that needs the other's tile.
     if (boxBlocked(state, car, next)) return;
-    car.progress += 1;
+    moveToTile(car, car.progress + 1);
     car.along = 0;
     // Onto its destination's node: a car on its way into the lot, which holds the node until it starts.
     if (car.progress === car.route.length - 1) car.entering = true;
@@ -571,8 +605,18 @@ export function moveCars(state: SimState): void {
   const order = [...state.cars].sort(
     (a, b) => b.progress + b.along - (a.progress + a.along) || a.id - b.id,
   );
-  for (const car of order) {
-    if (car.lot) advanceLot(car);
-    else advance(state, car);
+  // Cars by the tile they are on, kept up to date as cars move, so each car looks only at its own tile.
+  tilesIndex = new Map();
+  for (const c of state.cars) {
+    if (c.lot === undefined)
+      indexAdd(tilesIndex, c.route[c.progress] as number, c);
+  }
+  try {
+    for (const car of order) {
+      if (car.lot) advanceLot(car);
+      else advance(state, car);
+    }
+  } finally {
+    tilesIndex = null;
   }
 }

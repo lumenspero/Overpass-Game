@@ -2,7 +2,7 @@ import { addCar, dropCar, roadEntrance, sendHome, type Car } from './cars.ts';
 import { type Building, isConnected } from './buildings.ts';
 import { emitEvent } from './events.ts';
 import { tuning } from './config.ts';
-import { servePin, unclaimedPins } from './demand.ts';
+import { servePin } from './demand.ts';
 import { isOpenTile } from './expansion.ts';
 import { houseAcross, houseLeg, joinClear, type Patience } from './movement.ts';
 import {
@@ -34,6 +34,21 @@ function removeCar(state: SimState, car: Car): void {
 
 /** Each house with cars at home may send one out when its cooldown has run down. */
 export function spawnCars(state: SimState): void {
+  // Counted once here, and kept up to date as cars are sent, so each house does not rescan every car.
+  let driving: Map<number, number> | null = null;
+  let open: Building[] | null = null;
+  const unclaimed = (id: number): number => {
+    if (driving === null) {
+      driving = new Map();
+      for (const c of state.cars) {
+        if (c.state === 'driving')
+          driving.set(c.destination, (driving.get(c.destination) ?? 0) + 1);
+      }
+    }
+    const demand = state.demand[id];
+    if (!demand) return 0;
+    return demand.pins - (driving.get(id) ?? 0);
+  };
   for (const b of state.buildings) {
     if (b.kind !== 'house' || !isOpenTile(state, b.tile)) continue;
     const home = state.homes[b.id];
@@ -44,13 +59,15 @@ export function spawnCars(state: SimState): void {
     const start = roadEntrance(state, b.id);
     if (start === null) continue;
 
-    const options = state.buildings.filter(
+    // The destinations that could take a car, found once for all houses this tick.
+    open ??= state.buildings.filter(
       (d) =>
         d.kind === 'destination' &&
-        d.color === b.color &&
         isOpenTile(state, d.tile) &&
-        isConnected(state, d) &&
-        unclaimedPins(state, d.id) > 0,
+        isConnected(state, d),
+    );
+    const options = open.filter(
+      (d) => d.color === b.color && unclaimed(d.id) > 0,
     );
     if (options.length === 0) continue;
     const pick = options[Math.floor(nextFloat(state.rng) * options.length)];
@@ -58,15 +75,29 @@ export function spawnCars(state: SimState): void {
     home.cooldown = tuning.SPAWN_INTERVAL_TICKS;
     const added = addCar(state, b.id, pick.id);
     if (!added.ok) continue;
+    const counts = unclaimedCounts(driving, pick.id, 1);
     // The new car pulls out of its house only when its lane, and the other lane if it must cross it, is clear.
     const car = state.cars[state.cars.length - 1] as Car;
     if (!pullOutClear(state, b, car)) {
       state.cars.pop();
+      unclaimedCounts(counts, pick.id, -1);
     } else {
       car.along = 0;
       home.atHome -= 1;
     }
   }
+}
+
+/** Adds `delta` to a destination's driving count in `counts`, when the counts have been made. */
+function unclaimedCounts(
+  counts: Map<number, number> | null,
+  destination: number,
+  delta: number,
+): Map<number, number> | null {
+  if (counts !== null) {
+    counts.set(destination, (counts.get(destination) ?? 0) + delta);
+  }
+  return counts;
 }
 
 /** How long a car leaving a lot or a kerb waits for traffic about to cross its path before it goes anyway. */

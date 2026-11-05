@@ -198,3 +198,11 @@ Short log of choices and why. Newest at the bottom.
 - **Waiting inside the lot:** a leaving car waits just inside the lot's edge, not on the road. It has given its space up, so a car arriving can take it. This keeps two full lots on one road from locking each other.
 - **Patience:** after 5 seconds a waiting car stops waiting for stopped traffic across its path and for cars still to drive on, and a lot car may leave the other way if there is one. After 10 seconds, in gridlock, a lot car merges into a stopped queue in its own lane; it never cuts in on moving traffic. This overlaps briefly, about one lot exit in 50 in the 300-car demo. Chosen so a jam always clears. `approximated`
 - **Demo start:** the 300-car demo places its starting cars part way along their trips, one per lane per tile, so it starts full without cars stacked at house entrances.
+
+## M13 · Performance budget (desktop)
+
+- **Sim cost:** a tick with 300 cars took about 5.8 ms in a profile. Three costs dominated: each car scanning every other car for its tile, counting driving cars for every house every tick, and rebuilding a lot's geometry to check it exists. Now about 1.5 ms per tick, with the same results: the 6,000-tick demo run is unchanged (1,946 trips).
+- **Tile index:** while cars move, the sim keeps a list of cars per tile, so each car looks only at its own tile. Outside a move (spawning, trips) the sim scans as before.
+- **Drawing:** car outline points are reused across frames instead of allocated each frame. Car shapes take about 0.2 ms for 300 cars, so drawing is not the bottleneck.
+- **Not done:** batched drawing and object pooling of car sprites are not needed by these numbers. The 60 fps check on a phone is deferred with mobile testing.
+- **Open:** the frame time in a desktop browser is still to be read from the debug line with the 300-car demo.

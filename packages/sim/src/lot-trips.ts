@@ -59,6 +59,18 @@ export function holdingToJoin(c: Car): boolean {
   );
 }
 
+/** Whether a building's lot lies on the map. Cached per building, since the lot's geometry is costly to rebuild each tick. */
+const lotOnMap = new WeakMap<Building, { key: string; ok: boolean }>();
+
+function hasLotOnMap(grid: Grid, b: Building): boolean {
+  const key = `${b.tile}|${b.entrance}|${b.lot ?? 'single'}|${grid.cols}|${grid.rows}`;
+  const hit = lotOnMap.get(b);
+  if (hit && hit.key === key) return hit.ok;
+  const ok = lotPath(grid, b, 0, 'in') !== null;
+  lotOnMap.set(b, { key, ok });
+  return ok;
+}
+
 /**
  * Whether a car leaving a lot has left its space for good: it waits at the lot's edge or is turning on to
  * the road. Its space is free for a car arriving, so a lot whose leavers wait on traffic still takes cars in.
@@ -311,7 +323,7 @@ export function lotGateOpen(state: SimState, car: Car): boolean {
   const node = car.route[last];
   if (node === undefined) return true;
   const building = state.buildings[car.destination];
-  if (!building || lotPath(state.grid, building, 0, 'in') === null) return true;
+  if (!building || !hasLotOnMap(state.grid, building)) return true;
   const owner = lotOwnerId(building);
   const inlet = inletOf(state, building, node);
   if (!laneFree(state, owner, inlet)) return false;
@@ -336,7 +348,7 @@ export function lotGateOpen(state: SimState, car: Car): boolean {
  */
 export function startLotTrip(state: SimState, car: Car): LotStart {
   const building = state.buildings[car.destination];
-  if (!building || lotPath(state.grid, building, 0, 'in') === null) {
+  if (!building || !hasLotOnMap(state.grid, building)) {
     return 'none';
   }
   // A double lot's two buildings share one lane and one set of spaces, so the lot's owner keys them.
