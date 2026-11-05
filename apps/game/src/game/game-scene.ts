@@ -292,8 +292,6 @@ export class GameScene extends Phaser.Scene {
   private carHeadings = new Map<number, number>();
   /** When the last update ran, in wall-clock milliseconds, for the frame meter. */
   private lastUpdateAt = 0;
-  /** Reused point objects for drawing a car's outline, so a frame does not allocate them. */
-  private outlinePoints: Phaser.Math.Vector2[] = [];
   private ringGfx!: Phaser.GameObjects.Graphics;
   private crossingText!: Phaser.GameObjects.Text;
   /** Which crossing report is on screen, and when its message stops showing (ms). */
@@ -1375,25 +1373,30 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Draws each car as a small rounded rectangle facing its direction of travel. carShapes gives one
-   * shape per car, in the same order, so shapes[i] belongs to cars[i].
+   * Draws every car as a filled outline. The outline is convex, so it is drawn as a fan of
+   * triangles from the car's centre: no triangulation of the outline is needed per car.
    */
   private drawCars(): void {
     const gfx = this.carGfx;
     gfx.clear();
+    const { cars } = this.sim;
     const shapes = carShapes(
-      this.sim.cars,
+      cars,
       this.sim.buildings,
       this.sim.grid,
       BUILDING_COLORS,
       this.sim.motorways,
       this.sim.controls,
     );
+    const roadHeadings = this.roadHeadings(cars);
     const headings = new Map<number, number>();
-    this.sim.cars.forEach((car, i) => {
+    cars.forEach((car, i) => {
       const shape = shapes[i];
       if (!shape) return;
-      const heading = this.carHeading(car) ?? this.carHeadings.get(car.id) ?? 0;
+      const heading =
+        (car.lot ? this.lotHeading(car) : roadHeadings[i]) ??
+        this.carHeadings.get(car.id) ??
+        0;
       headings.set(car.id, heading);
       const outline = carOutline(
         { x: shape.x, y: shape.y },
@@ -1401,49 +1404,68 @@ export class GameScene extends Phaser.Scene {
         2 * shape.r,
       );
       gfx.fillStyle(shape.color, 1);
-      // The points are reused from one pool across frames, so a frame does not allocate a point per corner.
-      const pts = this.outlinePoints;
-      while (pts.length < outline.length) pts.push(new Phaser.Math.Vector2());
-      outline.forEach((p, k) => pts[k]?.set(p.x, p.y));
-      gfx.fillPoints(pts.slice(0, outline.length), true);
+      const n = outline.length;
+      for (let k = 0; k < n; k++) {
+        const a = outline[k];
+        const b = outline[(k + 1) % n];
+        if (a && b) gfx.fillTriangle(shape.x, shape.y, a.x, a.y, b.x, b.y);
+      }
     });
     this.carHeadings = headings;
   }
 
   /**
-   * The way a car faces, from where it is a little before and a little after its current point.
-   * Null when it is not moving (a parked car), so the caller keeps its last heading.
+   * The heading of every car on a road, from where it is a little before and a little after its
+   * current point. Two batched shape calls cover the whole frame, instead of two per car.
+   * Null for a car that is not moving, and for a car in its lot (see lotHeading).
    */
-  private carHeading(car: Car): number | null {
+  private roadHeadings(cars: Car[]): (number | null)[] {
     const eps = 0.05;
-    if (car.lot) {
-      // A car in its lot faces along the lane, so it follows the lane's path rather than its road.
-      const { path, s, length, phase } = car.lot;
-      if (phase === 'parked' || length <= 0) return null;
-      const lo = Math.max(0, s - eps);
-      const hi = Math.min(length, s + eps);
-      if (hi - lo < 1e-9) return null;
-      return headingBetween(
-        pointAtDistance(path, lo),
-        pointAtDistance(path, hi),
-      );
-    }
-    const lo = Math.max(0, car.along - eps);
-    const hi = Math.min(1, car.along + eps);
-    if (hi - lo < 1e-9) return null;
-    const at = (along: number) =>
+    const index: number[] = [];
+    const before: Car[] = [];
+    const after: Car[] = [];
+    cars.forEach((car, i) => {
+      if (car.lot) return;
+      const lo = Math.max(0, car.along - eps);
+      const hi = Math.min(1, car.along + eps);
+      if (hi - lo < 1e-9) return;
+      index.push(i);
+      before.push({ ...car, along: lo });
+      after.push({ ...car, along: hi });
+    });
+    const shapesOf = (list: Car[]) =>
       carShapes(
-        [{ ...car, along }],
+        list,
         this.sim.buildings,
         this.sim.grid,
         BUILDING_COLORS,
         this.sim.motorways,
         this.sim.controls,
-      )[0];
-    const before = at(lo);
-    const after = at(hi);
-    if (!before || !after) return null;
-    return headingBetween(before, after);
+      );
+    const from = shapesOf(before);
+    const to = shapesOf(after);
+    const out: (number | null)[] = cars.map(() => null);
+    index.forEach((i, k) => {
+      const a = from[k];
+      const b = to[k];
+      if (a && b) out[i] = headingBetween(a, b);
+    });
+    return out;
+  }
+
+  /**
+   * The heading of a car in its lot. It faces along the lane, so it follows the lane's path rather
+   * than its road. Null when the car is parked or not in a lot.
+   */
+  private lotHeading(car: Car): number | null {
+    if (!car.lot) return null;
+    const eps = 0.05;
+    const { path, s, length, phase } = car.lot;
+    if (phase === 'parked' || length <= 0) return null;
+    const lo = Math.max(0, s - eps);
+    const hi = Math.min(length, s + eps);
+    if (hi - lo < 1e-9) return null;
+    return headingBetween(pointAtDistance(path, lo), pointAtDistance(path, hi));
   }
 
   /** Draws each overflowing destination's countdown ring. Redrawn every frame, as the countdown moves. */

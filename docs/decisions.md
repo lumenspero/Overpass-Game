@@ -203,6 +203,7 @@ Short log of choices and why. Newest at the bottom.
 
 - **Sim cost:** a tick with 300 cars took about 5.8 ms in a profile. Three costs dominated: each car scanning every other car for its tile, counting driving cars for every house every tick, and rebuilding a lot's geometry to check it exists. Now about 1.5 ms per tick, with the same results: the 6,000-tick demo run is unchanged (1,946 trips).
 - **Tile index:** while cars move, the sim keeps a list of cars per tile, so each car looks only at its own tile. Outside a move (spawning, trips) the sim scans as before.
-- **Drawing:** car outline points are reused across frames instead of allocated each frame. Car shapes take about 0.2 ms for 300 cars, so drawing is not the bottleneck.
-- **Not done:** batched drawing and object pooling of car sprites are not needed by these numbers. The 60 fps check on a phone is deferred with mobile testing.
+- **Drawing:** each car is drawn as a fan of triangles from its centre, so Phaser does not triangulate every outline each frame. Headings are worked out with two batched shape calls per frame, instead of two calls per car. Lot cars still follow their lane path.
+- **Trace:** a desktop trace showed about half the script time in the WebGL renderer, with earcut triangulation and car shape building next. The drawing change targets those; its effect is to be measured with the debug line (D), against the committed build.
+- **Not done:** pooling of car sprites. The 60 fps check on a phone is deferred with mobile testing.
 - **Open:** the frame time in a desktop browser is still to be read from the debug line with the 300-car demo.
