@@ -204,6 +204,13 @@ Short log of choices and why. Newest at the bottom.
 - **Sim cost:** a tick with 300 cars took about 5.8 ms in a profile. Three costs dominated: each car scanning every other car for its tile, counting driving cars for every house every tick, and rebuilding a lot's geometry to check it exists. Now about 1.5 ms per tick, with the same results: the 6,000-tick demo run is unchanged (1,946 trips).
 - **Tile index:** while cars move, the sim keeps a list of cars per tile, so each car looks only at its own tile. Outside a move (spawning, trips) the sim scans as before.
 - **Drawing:** each car is drawn as a fan of triangles from its centre, so Phaser does not triangulate every outline each frame. Headings are worked out with two batched shape calls per frame, instead of two calls per car. Lot cars still follow their lane path.
-- **Trace:** a desktop trace showed about half the script time in the WebGL renderer, with earcut triangulation and car shape building next. The drawing change targets those; its effect is to be measured with the debug line (D), against the committed build.
+- **Trace:** two desktop traces, before and after the triangle fans, averaged 33.5 ms and 34.8 ms a frame. The fans gave no measurable gain. The remaining cost is mostly Phaser's WebGL command processing, with some earcut from per-frame fills (the motorway badges, not yet confirmed).
 - **Not done:** pooling of car sprites. The 60 fps check on a phone is deferred with mobile testing.
-- **Open:** the frame time in a desktop browser is still to be read from the debug line with the 300-car demo.
+- **Closed:** the author checked the 300-car demo in a desktop browser on 2026-11-04 and signed off the performance as acceptable for this milestone.
+
+## M13 · Deferrals
+
+- **Mobile items moved to after M14:** the responsive HUD, large tap targets, safe-area insets and orientation handling. Asked by the author, who wanted the content work (M14) first.
+- **Device tests moved to after M14:** the iPhone, Android and touchscreen laptop checks, and the deferred M2 phone check of drawing roads with touch. They need a public address for the game (see `docs/M13-session-delta.md`).
+- **Why:** the phone checks need the game hosted at a public address, which is not set up yet. Doing the layout before the content would mean redoing it as new maps arrive.
+- **Not deferred:** the performance budget is closed for this milestone (see the performance section above).
