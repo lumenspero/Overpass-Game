@@ -45,7 +45,7 @@ function inFence(tile: number, sim: SimState): boolean {
 describe('the starting pair', () => {
   it('places one house and one destination of the same colour inside the fence', () => {
     const sim = open(1);
-    expect(placeStartingPair(sim, null)).toBe(true);
+    expect(placeStartingPair(sim)).toBe(true);
     expect(sim.buildings).toHaveLength(2);
     const { house, destination } = houseAndDestination(sim);
     expect(house.color).toBe(destination.color);
@@ -55,7 +55,7 @@ describe('the starting pair', () => {
 
   it('keeps the destination a few tiles from the house', () => {
     const sim = open(2);
-    placeStartingPair(sim, null);
+    placeStartingPair(sim);
     const { house, destination } = houseAndDestination(sim);
     const dc = Math.abs((house.tile % 20) - (destination.tile % 20));
     const dr = Math.abs(
@@ -74,7 +74,7 @@ describe('the starting pair', () => {
         roadBudget: 10,
         startFence: { col: 0, row: 0, cols: 9, rows: 9 },
       });
-      if (!placeStartingPair(sim, null)) continue;
+      if (!placeStartingPair(sim)) continue;
       const { destination } = houseAndDestination(sim);
       const lot = lotAt(
         sim.grid,
@@ -98,25 +98,32 @@ describe('the starting pair', () => {
   it('is repeatable for the same seed', () => {
     const a = open(7);
     const b = open(7);
-    placeStartingPair(a, null);
-    placeStartingPair(b, null);
+    placeStartingPair(a);
+    placeStartingPair(b);
     expect(a.buildings.map((x) => [x.kind, x.tile, x.entrance])).toEqual(
       b.buildings.map((x) => [x.kind, x.tile, x.entrance]),
     );
   });
 
-  it('picks the house by spawn weight when weights are given', () => {
-    const sim = createSim({
-      seed: 3,
-      grid: makeGrid(20, 20),
-      roadBudget: 10,
-      startFence: { col: 2, row: 2, cols: 16, rows: 16 },
-    });
-    const weights = new Array<number>(400).fill(0);
-    const only = 9 * 20 + 9; // a tile inside the fence
-    weights[only] = 1;
-    placeStartingPair(sim, weights);
-    expect(houseAndDestination(sim).house.tile).toBe(only);
+  it('puts the destination within START_PAIR_MAX_TILES of the house', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const sim = createSim({
+        seed,
+        grid: makeGrid(20, 20),
+        roadBudget: 10,
+        startFence: { col: 2, row: 2, cols: 16, rows: 16 },
+      });
+      if (!placeStartingPair(sim)) continue;
+      const { house, destination } = houseAndDestination(sim);
+      const d = Math.max(
+        Math.abs((house.tile % 20) - (destination.tile % 20)),
+        Math.abs(
+          Math.floor(house.tile / 20) - Math.floor(destination.tile / 20),
+        ),
+      );
+      expect(d).toBeGreaterThanOrEqual(tuning.START_PAIR_MIN_TILES);
+      expect(d).toBeLessThanOrEqual(tuning.START_PAIR_MAX_TILES);
+    }
   });
 
   it('fails cleanly when no tile in the fence can hold a house', () => {
@@ -128,7 +135,7 @@ describe('the starting pair', () => {
       roadBudget: 10,
       startFence: { col: 0, row: 0, cols: 4, rows: 4 },
     });
-    expect(placeStartingPair(sim, null)).toBe(false);
+    expect(placeStartingPair(sim)).toBe(false);
     expect(sim.buildings).toHaveLength(0);
   });
 });

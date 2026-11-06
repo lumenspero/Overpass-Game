@@ -116,7 +116,6 @@ const LAYER_NAMES: readonly EditableLayer[] = [
   'water',
   'mountains',
   'parks',
-  'spawnZones',
   'motorwayGuide',
   'starterRoads',
 ];
@@ -125,7 +124,6 @@ const LAYER_LABELS: Record<EditableLayer, string> = {
   water: 'Water',
   mountains: 'Mountains',
   parks: 'Parks',
-  spawnZones: 'Spawn zones',
   motorwayGuide: 'Motorway guide',
   starterRoads: 'Starter roads',
 };

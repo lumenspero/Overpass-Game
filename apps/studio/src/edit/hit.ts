@@ -46,7 +46,6 @@ const LAYERS: readonly EditableLayer[] = [
   'water',
   'mountains',
   'parks',
-  'spawnZones',
   'motorwayGuide',
   'starterRoads',
 ];

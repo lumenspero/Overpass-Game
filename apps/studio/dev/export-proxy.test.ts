@@ -16,7 +16,6 @@ function sourceMap(id: string) {
       water: [],
       mountains: [],
       parks: [],
-      spawnZones: [],
       motorwayGuide: [],
       starterRoads: [],
     },

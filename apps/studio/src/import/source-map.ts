@@ -44,7 +44,6 @@ export function buildSourceMap(input: BuildInput): SourceMap {
       water: layers.water,
       mountains: input.mountains ?? [],
       parks: layers.parks,
-      spawnZones: [],
       motorwayGuide: layers.motorwayGuide,
       starterRoads: [],
       labels: layers.labels,

@@ -7,8 +7,8 @@ import type { SimState } from './sim.ts';
 
 /**
  * The starting pair (spec: Starting pair): one house and one destination of the same colour,
- * placed at the start of a played map. The house is picked by spawn weight inside the fence, or
- * anywhere in the fence when no weight is set. The destination lies a few tiles away.
+ * placed at the start of a played map. The house is picked at random inside the fence. The
+ * destination lies within START_PAIR_MIN_TILES to START_PAIR_MAX_TILES of it.
  */
 
 const SIDES: readonly Side[] = ['n', 'e', 's', 'w'];
@@ -19,37 +19,23 @@ const ATTEMPTS = 400;
  * Places the starting house and destination, or neither. The pair is placed on a copy of the sim
  * and copied back only when both fit, so a failed attempt leaves the map as it was.
  */
-export function placeStartingPair(
-  state: SimState,
-  spawnWeights: readonly number[] | null,
-  colour = 0,
-): boolean {
+export function placeStartingPair(state: SimState, colour = 0): boolean {
   const trial = structuredClone(state);
-  const placed = placePair(trial, spawnWeights, colour);
+  const placed = placePair(trial, colour);
   if (placed) Object.assign(state, trial);
   return placed;
 }
 
-function placePair(
-  state: SimState,
-  spawnWeights: readonly number[] | null,
-  colour: number,
-): boolean {
+function placePair(state: SimState, colour: number): boolean {
   const tiles = tilesInFence(state);
-  const house = placeOn(state, tiles, spawnWeights, 'house', colour);
+  const house = placeOn(state, tiles, 'house', colour);
   if (house === null) return false;
   const near = tiles.filter((t) => {
     const d = tileDistance(state, t, house);
     return d >= tuning.START_PAIR_MIN_TILES && d <= tuning.START_PAIR_MAX_TILES;
   });
-  const destination = placeOn(
-    state,
-    near.length > 0 ? near : tiles.filter((t) => t !== house),
-    spawnWeights,
-    'destination',
-    colour,
-  );
-  return destination !== null;
+  if (near.length === 0) return false;
+  return placeOn(state, near, 'destination', colour) !== null;
 }
 
 /**
@@ -62,7 +48,7 @@ export function placeInFence(
   colour: number,
   tiles: number[] = tilesInFence(state),
 ): number | null {
-  return placeOn(state, tiles, null, kind, colour);
+  return placeOn(state, tiles, kind, colour);
 }
 
 /** Every tile inside the fence now, row by row. */
@@ -85,22 +71,17 @@ function tileDistance(state: SimState, a: number, b: number): number {
   return Math.max(dc, dr);
 }
 
-/** Tries random picks from `candidates` (weighted when any has weight) until a building fits. */
+/** Tries random picks from `candidates` until a building fits. */
 function placeOn(
   state: SimState,
   candidates: number[],
-  spawnWeights: readonly number[] | null,
   kind: 'house' | 'destination',
   colour: number,
 ): number | null {
   if (candidates.length === 0) return null;
-  const weights = candidates.map((t) => spawnWeights?.[t] ?? 0);
-  const total = weights.reduce((sum, w) => sum + w, 0);
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
     const tile =
-      total > 0
-        ? weightedPick(candidates, weights, total, state.rng)
-        : candidates[Math.floor(nextFloat(state.rng) * candidates.length)];
+      candidates[Math.floor(nextFloat(state.rng) * candidates.length)];
     for (const side of shuffled(SIDES, state.rng)) {
       if (!fitsInFence(state, kind, tile, side)) continue;
       const result = placeBuilding(state, {
@@ -113,20 +94,6 @@ function placeOn(
     }
   }
   return null;
-}
-
-function weightedPick(
-  tiles: number[],
-  weights: number[],
-  total: number,
-  rng: RngState,
-): number {
-  let r = nextFloat(rng) * total;
-  for (let i = 0; i < tiles.length; i++) {
-    r -= weights[i];
-    if (r < 0) return tiles[i];
-  }
-  return tiles[tiles.length - 1];
 }
 
 function shuffled<T>(items: readonly T[], rng: RngState): T[] {

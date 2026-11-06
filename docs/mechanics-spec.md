@@ -68,7 +68,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 - **Kinds:** houses (where cars start and end) and destinations (where cars go). A house occupies one tile; a destination occupies a 3×3 building inside its 5×3 lot (see Parking lots and building kinds).
 - **Colours:** `BUILDING_COLOR_COUNT` colours. A house pairs with destinations of its own colour. `approximated`
-- **Who places them:** never the player. Every house and destination is spawned by the game at random, inside the fence, which grows slowly through the game (see Expansion), so a new building always appears near the existing city. The random spawn system arrives with M14 (see Business arrival and house supply); until then the test map's buildings are hand-placed for testing.
+- **Who places them:** never the player. Every house and destination is spawned by the game at random, inside the fence, which grows slowly through the game (see Expansion), so a new building always appears near the existing city. The random spawn system is built in M14 (see Business arrival and house supply); until then the test map's buildings are hand-placed for testing.
 - **Placement:** on land or park, on a tile with no road or building. Water and mountains are refused.
 - **Entrance:** each building has one entrance side. A destination connects through its lot's inlet road. A house connects through its stub (below).
 - **House stub:** every house comes with a stub, one road tile beside it, placed free on the tile its entrance faces. The stub is part of the house: it costs no budget, and erasing never removes it. Erasing over the stub cuts its links instead, so the road is disconnected and the stub stays behind (a roundabout or light on it can still be taken back). The player moves it by dragging from the house to any of its 8 neighbours, by an edge or a corner; the move is free, and the drag then draws on from the stub. A stub may take over a road already on that tile; moving away leaves that road while other roads are joined to it, and otherwise removes it with a refund, as erasing it would; a stub on empty land goes with the house, with no refund, since it was never paid for. A stub can't go on water, mountain, a building, a lot, or another house's stub, or on land not yet open. A house whose facing tile can't take a stub connects through that tile, as before.
@@ -113,7 +113,7 @@ Elevated links for faster travel between two points on the ground network. `appr
 
 ### Starting pair and opening view
 
-- **Starting pair:** a played map starts with one house and one destination of the same colour. The house is picked by spawn weight inside the fence, or uniformly inside the fence when no weights are painted. The destination lies 5 to 12 tiles away (`START_PAIR_MIN_TILES` and `START_PAIR_MAX_TILES`), inside the fence. Timed spawns follow with the spawn field. `approximated`
+- **Starting pair:** a played map starts with one house and one destination of the same colour. The house is picked at random inside the fence. The destination lies 5 to 10 tiles away (`START_PAIR_MIN_TILES` and `START_PAIR_MAX_TILES`), inside the fence. Later spawns follow the rules in Business arrival and house supply. `approximated`
 - **Opening view:** the camera centres on the starting fence and zooms so the fence fills the screen. The player can zoom out to the whole map.
 - **Clipping:** terrain outlines are clipped to the grid, so shapes that run past its edge do not show.
 
@@ -226,7 +226,7 @@ These are rules for saving, not gameplay numbers, so they carry no tag.
 
 ### Business arrival and house supply
 
-_Built in M14 (part 2). The spawn field for timed spawns is still to come._
+_Built in M14 (part 2). Painted spawn zones are not used: new buildings are placed by the fence and reach rules below._
 
 - **Arrival:** from `BUSINESS_ARRIVAL_START_WEEK` on, new destinations (businesses) arrive in each week, up to a count set by global tuning. Arrivals are not tied to a map's rules. `approximated`
 - **Colours:** a colour appears when a business of that colour arrives. There is no guarantee of a new colour at each arrival. `approximated`
@@ -235,6 +235,7 @@ _Built in M14 (part 2). The spawn field for timed spawns is still to come._
 - **Supply ratio:** for each colour, the sim keeps houses per destination inside a band, `SUPPLY_RATIO_MIN` to `SUPPLY_RATIO_MAX` (global tuning, `approximated`). Houses are added when the ratio falls below the minimum. None are added above the maximum. This stops a colour being oversupplied with houses where it has no demand, while still allowing new houses in the middle of the week.
 - **Colour choice:** a new business takes a colour picked at random from the colours the map allows that week. Nothing guarantees a new colour. `approximated`
 - **Values (approximated):** arrivals start in week 4, one business a week. A colour is topped up to 3 houses per business when it falls below 2. Supply is checked every 150 ticks (5 seconds). Houses spawn only within 5 tiles of an existing road or 10 tiles of a building (a business counts from every tile of its lot), and inside the fence. They need not be connected. Distances are Chebyshev, in tiles. All in `config.ts`.
+- **No spawn zones:** the map format has no spawn zones or spawn weights, and the Studio does not paint them. Every spawn, the starting pair included, is placed by the fence and the reach rules above. Asked by the author.
 - **Stopgap:** the `unlockColour` map rule still applies to placement until it is removed.
 
 ### Parking lots and building kinds

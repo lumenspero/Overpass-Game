@@ -50,17 +50,6 @@ exports[`@overpass-game/map-compiler > matches the snapshot for the coast fixtur
       "week": 4,
     },
   ],
-  "spawnWeights": [
-    2,
-    2,
-    2,
-    2,
-    2,
-    2,
-    2,
-    2,
-    2,
-  ],
   "starterRoads": [
     [
       92,

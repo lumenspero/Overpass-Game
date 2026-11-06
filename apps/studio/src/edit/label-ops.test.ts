@@ -24,7 +24,6 @@ function makeMap(labels: MapLabel[] = []): SourceMap {
       water: [],
       mountains: [],
       parks: [],
-      spawnZones: [],
       motorwayGuide: [],
       starterRoads: [],
       labels,

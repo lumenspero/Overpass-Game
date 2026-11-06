@@ -6,7 +6,7 @@ import {
 } from '@overpass-game/map-schema';
 import { buildPainted, dedupe } from './paint.ts';
 
-const OPTS = { riverWidth: 0.4, spawnWeight: 2 };
+const OPTS = { riverWidth: 0.4 };
 const a = { x: 0, y: 0 };
 const b = { x: 10, y: 0 };
 const c = { x: 10, y: 10 };
@@ -22,7 +22,6 @@ function emptyMap(water: Shape[] = []): SourceMap {
       water,
       mountains: [],
       parks: [],
-      spawnZones: [],
       motorwayGuide: [],
       starterRoads: [],
     },
@@ -72,12 +71,6 @@ describe('buildPainted', () => {
 
   it('refuses a river with one point', () => {
     expect(buildPainted(emptyMap(), 'river', [a], OPTS)).toBeNull();
-  });
-
-  it('makes a spawn zone with its weight', () => {
-    const built = buildPainted(emptyMap(), 'spawn', [a, b, c], OPTS);
-    expect(built?.layer).toBe('spawnZones');
-    expect(built?.item).toMatchObject({ id: 'spawn-1', weight: 2 });
   });
 
   it('makes a motorway guide as an open polyline with no kind', () => {

@@ -723,7 +723,6 @@ export class Editor {
       this.pending,
       {
         riverWidth: this.river,
-        spawnWeight: EDIT.spawnWeight,
       },
     );
     this.pending = [];

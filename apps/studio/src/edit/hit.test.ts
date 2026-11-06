@@ -48,7 +48,6 @@ function mapWith(water: Shape[], guide = [road]): SourceMap {
       water,
       mountains: [],
       parks: [],
-      spawnZones: [],
       motorwayGuide: guide,
       starterRoads: [],
     },

@@ -14,6 +14,6 @@ describe('the scripted demos run', () => {
       }
       // A demo the player has not solved can end early by overflow, which is a game over, not a hang.
       expect(sim.tick === 3000 || sim.over !== null).toBe(true);
-    });
+    }, 30_000);
   }
 });

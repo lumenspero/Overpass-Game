@@ -48,7 +48,7 @@ export const DEFAULT_TUNING = {
   /** The starting destination lies at least this many tiles (Chebyshev) from the starting house (spec: Starting pair). */
   START_PAIR_MIN_TILES: 5, // approximated
   /** ...and at most this many (spec: Starting pair). */
-  START_PAIR_MAX_TILES: 12, // approximated
+  START_PAIR_MAX_TILES: 10, // approximated
   /** Relative chance each upgrade kind is offered. Zero means never offered (spec: Upgrades). */
   UPGRADE_WEIGHT_BRIDGE: 1, // approximated
   UPGRADE_WEIGHT_TUNNEL: 1, // approximated

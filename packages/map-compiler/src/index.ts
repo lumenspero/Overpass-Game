@@ -296,8 +296,6 @@ export function contentHash(text: string): string {
  * Compiles a validated source map into the compiled map the game loads.
  *
  * Terrain is painted in layers, later layers winning: parks, then mountains, then water.
- * Spawn weights add up where spawn zones
- * overlap, and only land and park tiles take weight.
  */
 export function compileMap(src: SourceMap): CompiledMap {
   const { cols, rows } = src.grid;
@@ -310,16 +308,6 @@ export function compileMap(src: SourceMap): CompiledMap {
   for (const s of src.layers.mountains) paint(s, Terrain.Mountain);
   for (const s of src.layers.water) paint(s, Terrain.Water);
 
-  const spawnWeights = new Array<number>(n).fill(0);
-  for (const z of src.layers.spawnZones) {
-    for (const t of shapeTiles(z, cols, rows)) {
-      const kind = terrain[t];
-      if (kind === Terrain.Land || kind === Terrain.Park) {
-        spawnWeights[t] += z.weight;
-      }
-    }
-  }
-
   const body = {
     schemaVersion: src.schemaVersion,
     id: src.id,
@@ -328,7 +316,6 @@ export function compileMap(src: SourceMap): CompiledMap {
     rows,
     terrain,
     fence: { ...src.grid.fence },
-    spawnWeights,
     outlines: {
       water: src.layers.water.map(outlineOf),
       mountains: src.layers.mountains.map(outlineOf),

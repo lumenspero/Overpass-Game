@@ -1,15 +1,10 @@
-import type {
-  Polyline,
-  Shape,
-  SourceMap,
-  SpawnZone,
-} from '@overpass-game/map-schema';
+import type { Polyline, Shape, SourceMap } from '@overpass-game/map-schema';
 import type { Pt } from './hit.ts';
 import { nextId, type EditableLayer } from './ops.ts';
 
 /** The tools that make a new shape. `select` edits existing shapes instead. */
 export type PaintTool =
-  'lake' | 'river' | 'mountain' | 'park' | 'spawn' | 'guide' | 'road';
+  'lake' | 'river' | 'mountain' | 'park' | 'guide' | 'road';
 
 /**
  * The tool in use. `select` edits shapes and labels, `label` places and moves text labels, and
@@ -40,12 +35,6 @@ export const PAINT_SPECS: Record<PaintTool, PaintSpec> = {
     form: 'closed',
   },
   park: { label: 'Park', layer: 'parks', prefix: 'park', form: 'closed' },
-  spawn: {
-    label: 'Spawn zone',
-    layer: 'spawnZones',
-    prefix: 'spawn',
-    form: 'closed',
-  },
   guide: {
     label: 'Motorway guide',
     layer: 'motorwayGuide',
@@ -65,8 +54,6 @@ export const PAINT_TOOLS = Object.keys(PAINT_SPECS) as PaintTool[];
 export interface PaintOptions {
   /** Width in tiles for a new river. */
   readonly riverWidth: number;
-  /** Relative weight for a new spawn zone. */
-  readonly spawnWeight: number;
 }
 
 const same = (a: Pt, b: Pt): boolean => a.x === b.x && a.y === b.y;
@@ -91,7 +78,7 @@ export function buildPainted(
   tool: PaintTool,
   raw: readonly Pt[],
   opts: PaintOptions,
-): { layer: EditableLayer; item: Shape | SpawnZone | Polyline } | null {
+): { layer: EditableLayer; item: Shape | Polyline } | null {
   const spec = PAINT_SPECS[tool];
   let pts = dedupe(raw);
   if (
@@ -114,16 +101,6 @@ export function buildPainted(
       kind: 'strokeSpline',
       origin: 'painted',
       width: opts.riverWidth,
-      points,
-    };
-    return { layer, item };
-  }
-  if (tool === 'spawn') {
-    const item: SpawnZone = {
-      id,
-      kind: 'closedSpline',
-      origin: 'painted',
-      weight: opts.spawnWeight,
       points,
     };
     return { layer, item };

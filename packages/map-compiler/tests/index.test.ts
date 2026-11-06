@@ -77,7 +77,6 @@ describe('@overpass-game/map-compiler', () => {
     expect({
       terrain: terrainAscii(map),
       fence: map.fence,
-      spawnWeights: map.spawnWeights.filter((w) => w > 0),
       guide: map.motorwayGuide,
       starterRoads: map.starterRoads,
       waterPaths: map.outlines.water.map((p) => ({
@@ -103,27 +102,6 @@ describe('@overpass-game/map-compiler', () => {
 
   it('gives the test map a snapshot of its terrain picture', () => {
     expect(terrainAscii(compileMap(testSource()))).toMatchSnapshot();
-  });
-
-  it('gives spawn weight only to land and park tiles', () => {
-    const src = coast();
-    // Put a spawn zone over the bay: its weight should not reach water tiles.
-    src.layers.spawnZones.push({
-      id: 'in-bay',
-      kind: 'closedSpline',
-      origin: 'painted',
-      weight: 5,
-      points: [
-        { x: 10, y: 3 },
-        { x: 13, y: 3 },
-        { x: 13, y: 6 },
-        { x: 10, y: 6 },
-      ],
-    });
-    const map = compileMap(src);
-    for (let t = 0; t < map.terrain.length; t++) {
-      if (map.terrain[t] === Terrain.Water) expect(map.spawnWeights[t]).toBe(0);
-    }
   });
 
   it('changes the content hash when a shape moves, and not otherwise', () => {

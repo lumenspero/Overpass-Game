@@ -140,32 +140,6 @@
         ]
       }
     ],
-    "spawnZones": [
-      {
-        "id": "north-spawn",
-        "kind": "closedSpline",
-        "origin": "painted",
-        "points": [
-          {
-            "x": 5,
-            "y": 2
-          },
-          {
-            "x": 8,
-            "y": 2
-          },
-          {
-            "x": 8,
-            "y": 5
-          },
-          {
-            "x": 5,
-            "y": 5
-          }
-        ],
-        "weight": 2
-      }
-    ],
     "motorwayGuide": [
       {
         "id": "guide-1",

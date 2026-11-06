@@ -13,7 +13,6 @@ function sampleMap(): SourceMap {
       water: [],
       mountains: [],
       parks: [],
-      spawnZones: [],
       motorwayGuide: [],
       starterRoads: [],
     },

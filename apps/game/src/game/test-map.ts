@@ -7,7 +7,7 @@ import testMapJson from '../../../../maps/test.map.json';
 /**
  * Hand-made test map. Not a real city: it exists so the renderer, input and
  * sim rules have something to work on. Its terrain and fence come from the
- * compiled file; buildings are still listed here until the spawn field (M14) places them.
+ * compiled file; buildings are still listed here by hand.
  */
 export const TEST_MAP: CompiledMap = parseCompiledMap(testMapJson);
 export const TEST_MAP_COLS = TEST_MAP.cols;

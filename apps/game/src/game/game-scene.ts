@@ -467,11 +467,9 @@ export class GameScene extends Phaser.Scene {
     this.drawGuide(this.guideLines);
     this.guideGfx.setVisible(this.settings.motorwayGuide);
     // Demo maps bring their own buildings. Only the test map places the hand-listed ones;
-    // Studio maps have none until the spawn field (M14).
     if (!demo && isTestMap()) this.placeTestBuildings();
     // A played map starts with one house and one destination (spec: Starting pair). A resumed run already has its buildings.
-    if (!demo && !resumed && !isTestMap())
-      placeStartingPair(this.sim, playedMap().spawnWeights);
+    if (!demo && !resumed && !isTestMap()) placeStartingPair(this.sim);
     this.drawBuildings();
 
     // Screen-space text, not in the scaled layer, so it stays readable at any zoom.

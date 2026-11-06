@@ -69,13 +69,8 @@ export const ShapeSchema = ShapeBase.superRefine(checkShape);
 
 const ClosedBase = ShapeBase.extend({ kind: z.literal('closedSpline') });
 
-/** A region with an area: spawn zones are always closed. */
+/** A region with an area, such as a lake or park: always closed. */
 export const ClosedShapeSchema = ClosedBase.superRefine(checkShape);
-
-/** A spawn zone: a closed region with a relative weight for houses and destinations. */
-export const SpawnZoneSchema = ClosedBase.extend({
-  weight: z.number().positive(),
-}).superRefine(checkShape);
 
 export const PolylineSchema = z.object({
   id: z.string().min(1),
@@ -157,7 +152,6 @@ export const SourceMapSchema = z.object({
     water: z.array(ShapeSchema),
     mountains: z.array(ShapeSchema),
     parks: z.array(ShapeSchema),
-    spawnZones: z.array(SpawnZoneSchema),
     motorwayGuide: z.array(PolylineSchema),
     starterRoads: z.array(PolylineSchema),
     labels: z.array(MapLabelSchema).default([]),
@@ -195,7 +189,6 @@ export const CompiledMapSchema = z
     rows: z.int().min(1),
     terrain: z.array(TerrainCode),
     fence: FenceSchema,
-    spawnWeights: z.array(z.number().finite().min(0)),
     outlines: z.object({
       water: z.array(OutlinePathSchema),
       mountains: z.array(OutlinePathSchema),
@@ -220,10 +213,7 @@ export const CompiledMapSchema = z
         message: 'the fence must lie inside the grid',
       });
     }
-    const sized: [keyof typeof m, number][] = [
-      ['terrain', n],
-      ['spawnWeights', n],
-    ];
+    const sized: [keyof typeof m, number][] = [['terrain', n]];
     for (const [key, want] of sized) {
       const got = (m[key] as unknown[]).length;
       if (got !== n) {
@@ -269,7 +259,6 @@ export const CompiledMapSchema = z
 export type SourceMap = z.infer<typeof SourceMapSchema>;
 export type CompiledMap = z.infer<typeof CompiledMapSchema>;
 export type Shape = z.infer<typeof ShapeSchema>;
-export type SpawnZone = z.infer<typeof SpawnZoneSchema>;
 export type Polyline = z.infer<typeof PolylineSchema>;
 export type MapRuleSource = z.infer<typeof MapRuleSchema>;
 export type OutlinePath = z.infer<typeof OutlinePathSchema>;

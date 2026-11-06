@@ -65,8 +65,6 @@ export const EDIT = {
   handlePx: 5,
   /** Width of the bold outline drawn around each shape, in screen pixels. */
   outlinePx: 2,
-  /** Relative weight for a new spawn zone. */
-  spawnWeight: 1,
   /** The preview zooms between these factors. */
   viewZoomMin: 0.5,
   viewZoomMax: 40,

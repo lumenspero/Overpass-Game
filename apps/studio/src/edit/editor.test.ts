@@ -29,7 +29,6 @@ function makeMap(): SourceMap {
       water: [lake],
       mountains: [],
       parks: [],
-      spawnZones: [],
       motorwayGuide: [],
       starterRoads: [],
     },
