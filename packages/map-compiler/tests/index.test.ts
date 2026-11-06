@@ -222,3 +222,20 @@ describe('guide size', () => {
     expect(line).toHaveLength(2);
   });
 });
+
+describe('palette choices in the compiled map', () => {
+  it('carries the terrain palette and water choice from the source into the compiled map', () => {
+    const source = { ...coast(), palette: 'blue', waterPalette: 'green' };
+    const compiled = compileMap(source);
+    expect(compiled.palette).toBe('blue');
+    expect(compiled.waterPalette).toBe('green');
+  });
+
+  it('keeps both choices through a JSON save and parse', () => {
+    const source = { ...coast(), palette: 'violet', waterPalette: 'shared' };
+    const text = JSON.stringify(compileMap(source));
+    const back = parseCompiledMap(JSON.parse(text));
+    expect(back.palette).toBe('violet');
+    expect(back.waterPalette).toBe('shared');
+  });
+});
