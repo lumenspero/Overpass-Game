@@ -481,6 +481,16 @@ export class Editor {
     this.apply((m) => ops.setAllowedOffers(m, options));
   }
 
+  /** Sets the starting fence. Refused fences leave the map as it is. Undoable like any other edit. */
+  setStartingFence(fence: {
+    col: number;
+    row: number;
+    cols: number;
+    rows: number;
+  }): void {
+    this.apply((m) => ops.setStartingFence(m, fence));
+  }
+
   /** Removes every label, for pruning an import in one step. Undo restores them. */
   clearLabels(): void {
     this.apply((m) => ops.clearLabels(m));

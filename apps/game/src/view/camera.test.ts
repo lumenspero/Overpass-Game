@@ -1,6 +1,7 @@
 import { TILE_SIZE } from '@overpass-game/render-style';
 import { describe, expect, it } from 'vitest';
 import {
+  type CameraState,
   createFittedCamera,
   fitBox,
   fitZoom,
@@ -13,57 +14,65 @@ import {
   worldToTile,
   zoomCamera,
 } from './camera.ts';
-import {
-  FIT_PADDING_PX,
-  MAX_TILE_SCREEN_PX,
-  MIN_ZOOM_OF_FIT,
-} from './config.ts';
 
 const world = worldSize(40, 24);
 const landscape: Size = { width: 1920, height: 1080 };
 const portrait: Size = { width: 390, height: 844 };
 
-/** Map corners on screen must sit inside the viewport, with at least the padding. */
-function expectMapFits(viewport: Size): void {
-  const cam = createFittedCamera(world, viewport);
-  const tl = worldToScreen(cam, viewport, { x: 0, y: 0 });
-  const br = worldToScreen(cam, viewport, {
-    x: world.width,
-    y: world.height,
-  });
-  expect(tl.x).toBeGreaterThanOrEqual(FIT_PADDING_PX - 1e-6);
-  expect(tl.y).toBeGreaterThanOrEqual(FIT_PADDING_PX - 1e-6);
-  expect(br.x).toBeLessThanOrEqual(viewport.width - FIT_PADDING_PX + 1e-6);
-  expect(br.y).toBeLessThanOrEqual(viewport.height - FIT_PADDING_PX + 1e-6);
-  // And it is centred.
-  expect(tl.x + br.x).toBeCloseTo(viewport.width);
-  expect(tl.y + br.y).toBeCloseTo(viewport.height);
+/** The four corners of the viewport, in world units, must lie on the grid. */
+function expectInsideGrid(cam: CameraState, viewport: Size): void {
+  const eps = 1e-6;
+  for (const p of [
+    { x: 0, y: 0 },
+    { x: viewport.width, y: 0 },
+    { x: 0, y: viewport.height },
+    { x: viewport.width, y: viewport.height },
+  ]) {
+    const w = screenToWorld(cam, viewport, p);
+    expect(w.x).toBeGreaterThanOrEqual(-eps);
+    expect(w.y).toBeGreaterThanOrEqual(-eps);
+    expect(w.x).toBeLessThanOrEqual(world.width + eps);
+    expect(w.y).toBeLessThanOrEqual(world.height + eps);
+  }
 }
 
-describe('fit', () => {
-  it('fits a landscape map on a landscape screen', () => {
-    expectMapFits(landscape);
+describe('zoom floor', () => {
+  it('opens so the map covers a landscape screen with no edge showing', () => {
+    expectInsideGrid(createFittedCamera(world, landscape), landscape);
   });
 
-  it('fits the same map on a portrait phone', () => {
-    expectMapFits(portrait);
+  it('opens so the map covers a portrait phone with no edge showing', () => {
+    expectInsideGrid(createFittedCamera(world, portrait), portrait);
   });
 
-  it('touches the padding on the limiting axis', () => {
-    const z = fitZoom(world, portrait);
-    expect(world.width * z).toBeCloseTo(portrait.width - 2 * FIT_PADDING_PX);
-  });
-
-  it('sets zoom limits around the fit', () => {
+  it('sets the lowest zoom so the map fills one axis exactly', () => {
     const cam = createFittedCamera(world, landscape);
-    expect(cam.minZoom).toBeCloseTo(cam.zoom * MIN_ZOOM_OF_FIT);
-    expect(cam.maxZoom).toBeCloseTo(MAX_TILE_SCREEN_PX / TILE_SIZE);
+    expect(cam.minZoom).toBeCloseTo(
+      Math.max(landscape.width / world.width, landscape.height / world.height),
+    );
+    // The map's top-left corner sits on one screen edge; on the other axis the map is cropped.
+    const edge = worldToScreen(cam, landscape, { x: 0, y: 0 });
+    expect(Math.max(edge.x, edge.y)).toBeCloseTo(0);
   });
 
   it('never caps max zoom below the fit on a tiny map', () => {
     const tiny = worldSize(2, 2);
     const cam = createFittedCamera(tiny, landscape);
     expect(cam.maxZoom).toBeGreaterThanOrEqual(cam.zoom);
+  });
+
+  it('never shows past the grid when zoomed out and panned to any corner', () => {
+    const cam = createFittedCamera(world, portrait);
+    zoomCamera(cam, world, portrait, 1e-6, { x: 0, y: 0 });
+    for (const d of [
+      [1e6, 1e6],
+      [-1e6, 1e6],
+      [1e6, -1e6],
+      [-1e6, -1e6],
+    ]) {
+      panCamera(cam, world, portrait, d[0], d[1]);
+      expectInsideGrid(cam, portrait);
+    }
   });
 });
 
@@ -91,17 +100,21 @@ describe('pan and zoom', () => {
     const cam = createFittedCamera(world, landscape);
     zoomCamera(cam, world, landscape, 2, { x: 960, y: 540 });
     const before = screenToWorld(cam, landscape, { x: 500, y: 500 });
-    panCamera(cam, world, 30, -20);
+    panCamera(cam, world, landscape, 30, -20);
     const after = worldToScreen(cam, landscape, before);
     expect(after.x).toBeCloseTo(530);
     expect(after.y).toBeCloseTo(480);
     expect(cam.moved).toBe(true);
   });
 
-  it('keeps the centre over the map', () => {
+  it('keeps the view inside the map, centring on an axis the map fills', () => {
     const cam = createFittedCamera(world, landscape);
-    panCamera(cam, world, 1e6, -1e6);
-    expect(cam.center).toEqual({ x: 0, y: world.height });
+    panCamera(cam, world, landscape, 1e6, -1e6);
+    expect(cam.center.x).toBeCloseTo(world.width / 2);
+    expect(cam.center.y).toBeCloseTo(
+      world.height - landscape.height / cam.zoom / 2,
+    );
+    expectInsideGrid(cam, landscape);
   });
 
   it('zooms about the pointer', () => {
@@ -144,13 +157,16 @@ describe('resize', () => {
 });
 
 describe('zoom level', () => {
-  it('opens at the fit zoom at level 1, and multiplies it at 1.5 and 2', () => {
+  it('multiplies the fit zoom at 1, 1.5 and 2, within the limits', () => {
     const fit = fitZoom(world, landscape);
-    expect(createFittedCamera(world, landscape, 1).zoom).toBeCloseTo(fit);
-    expect(createFittedCamera(world, landscape, 1.5).zoom).toBeCloseTo(
-      fit * 1.5,
+    const { minZoom: floor, maxZoom: ceiling } = createFittedCamera(
+      world,
+      landscape,
     );
-    expect(createFittedCamera(world, landscape, 2).zoom).toBeCloseTo(fit * 2);
+    for (const level of [1, 1.5, 2]) {
+      const zoom = createFittedCamera(world, landscape, level).zoom;
+      expect(zoom).toBeCloseTo(Math.min(ceiling, Math.max(floor, fit * level)));
+    }
   });
 
   it('keeps the zoom within the limits', () => {
@@ -163,11 +179,11 @@ describe('zoom level', () => {
 describe('fitBox', () => {
   it('centres on the box and fills the viewport with it', () => {
     const cam = createFittedCamera(world, landscape);
-    const box = { minX: 100, minY: 100, maxX: 300, maxY: 200 };
+    const box = { minX: 600, minY: 350, maxX: 680, maxY: 420 };
     const next = fitBox(cam, world, landscape, box);
     expect(next.moved).toBe(true);
-    expect(next.center.x).toBeCloseTo(200);
-    expect(next.center.y).toBeCloseTo(150);
+    expect(next.center.x).toBeCloseTo(640);
+    expect(next.center.y).toBeCloseTo(385);
     expect(next.zoom).toBeGreaterThan(cam.zoom);
     expect(next.zoom).toBeLessThanOrEqual(next.maxZoom);
   });

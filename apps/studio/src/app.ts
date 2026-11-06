@@ -19,6 +19,7 @@ import type { Metres } from './geo/mercator.ts';
 import { convertFeatures } from './import/convert.ts';
 import { buildSourceMap, slugify } from './import/source-map.ts';
 import { MapPanel } from './map/map-panel.ts';
+import { MIN_FENCE_TILES } from './edit/ops.ts';
 import { loadRegion } from './osm/region.ts';
 import { Editor, type Selection } from './edit/editor.ts';
 import { attachInteraction } from './edit/interaction.ts';
@@ -57,6 +58,15 @@ import {
 } from '@overpass-game/map-schema';
 
 /** Names for the offer checkboxes. */
+/** The starting fence's fields, in the order the Studio shows them. */
+const FENCE_FIELDS = ['col', 'row', 'cols', 'rows'] as const;
+const FENCE_NAMES: Record<(typeof FENCE_FIELDS)[number], string> = {
+  col: 'Left tile',
+  row: 'Top tile',
+  cols: 'Width (tiles)',
+  rows: 'Height (tiles)',
+};
+
 const OFFER_NAMES: Record<RestrictableOffer, string> = {
   motorway: 'Motorways',
   bridge: 'Bridges',
@@ -343,6 +353,17 @@ export function App(): VNode {
   const allowedOffers = editor.current
     ? allowedOffersOf(editor.current.map)
     : [...RESTRICTABLE_OFFERS];
+  const startFence = editor.current?.map.grid.fence ?? null;
+  const gridCols = editor.current?.map.grid.cols ?? 0;
+  const gridRows = editor.current?.map.grid.rows ?? 0;
+  const fenceKey = startFence
+    ? `${startFence.col},${startFence.row},${startFence.cols},${startFence.rows}`
+    : '';
+  useEffect(() => {
+    preview.current?.setFence(startFence);
+    // The key stands for the fence; the map id covers switching between maps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fenceKey, editor.current?.map.id]);
   useEffect(() => {
     preview.current?.setPalette(resolvePalette(paletteId, themeMode, waterId));
   }, [paletteId, waterId, themeMode]);
@@ -987,6 +1008,54 @@ export function App(): VNode {
                   );
                 }),
               ),
+              startFence
+                ? el(
+                    'fieldset',
+                    { class: 'fence' },
+                    el(
+                      'legend',
+                      null,
+                      'Starting fence (only tiles inside take roads, buildings and spawns)',
+                    ),
+                    FENCE_FIELDS.map((key) =>
+                      el(
+                        'label',
+                        { key },
+                        ' ' + FENCE_NAMES[key],
+                        el('input', {
+                          type: 'number',
+                          step: 1,
+                          min:
+                            key === 'cols' || key === 'rows'
+                              ? MIN_FENCE_TILES
+                              : 0,
+                          value: startFence[key],
+                          onChange: (e: Event) =>
+                            editor.current?.setStartingFence({
+                              ...startFence,
+                              [key]: Number(
+                                (e.currentTarget as HTMLInputElement).value,
+                              ),
+                            }),
+                        }),
+                      ),
+                    ),
+                    el(
+                      'button',
+                      {
+                        type: 'button',
+                        onClick: () =>
+                          editor.current?.setStartingFence({
+                            col: 0,
+                            row: 0,
+                            cols: gridCols,
+                            rows: gridRows,
+                          }),
+                      },
+                      'Whole map',
+                    ),
+                  )
+                : null,
             )
           : null,
       ),

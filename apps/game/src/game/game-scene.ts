@@ -1022,7 +1022,13 @@ export class GameScene extends Phaser.Scene {
       }
       this.trackStroke(intent);
       if (intent.type === 'pan') {
-        panCamera(this.view, this.mapSize, intent.dx, intent.dy);
+        panCamera(
+          this.view,
+          this.mapSize,
+          this.viewport(),
+          intent.dx,
+          intent.dy,
+        );
       } else if (intent.type === 'zoom') {
         zoomCamera(
           this.view,
@@ -1791,7 +1797,7 @@ export class GameScene extends Phaser.Scene {
     const dx = (c.left.isDown ? 1 : 0) - (c.right.isDown ? 1 : 0);
     const dy = (c.up.isDown ? 1 : 0) - (c.down.isDown ? 1 : 0);
     if (dx !== 0 || dy !== 0) {
-      panCamera(this.view, this.mapSize, dx * step, dy * step);
+      panCamera(this.view, this.mapSize, this.viewport(), dx * step, dy * step);
     }
   }
 

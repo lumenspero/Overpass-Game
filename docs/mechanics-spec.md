@@ -116,7 +116,7 @@ Elevated links for faster travel between two points on the ground network. `appr
 ### Starting pair and opening view
 
 - **Starting pair:** a played map starts with one house and one destination of the same colour. The house is picked at random inside the fence. The destination lies 5 to 10 tiles away (`START_PAIR_MIN_TILES` and `START_PAIR_MAX_TILES`), inside the fence. Later spawns follow the rules in Business arrival and house supply. `approximated`
-- **Opening view:** the camera centres on the starting fence and zooms so the fence fills the screen. The player can zoom out to the whole map.
+- **Opening view:** the camera centres on the starting fence and zooms so the fence fills the screen. The player can zoom out until the map fills the screen. The area past the grid never shows, so a map whose shape differs from the screen cannot be seen whole. `approximated`
 - **Clipping:** terrain outlines are clipped to the grid, so shapes that run past its edge do not show.
 
 ### Upgrades

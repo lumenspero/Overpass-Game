@@ -1,11 +1,7 @@
 import { TILE_SIZE } from '@overpass-game/render-style';
 import type { Vec2 } from '../input/intents.ts';
 import type { TileXY } from '../input/path.ts';
-import {
-  FIT_PADDING_PX,
-  MAX_TILE_SCREEN_PX,
-  MIN_ZOOM_OF_FIT,
-} from './config.ts';
+import { FIT_PADDING_PX, MAX_TILE_SCREEN_PX } from './config.ts';
 
 /**
  * Camera math, pure and Phaser-free. The scene copies `zoom` and `center` onto
@@ -49,17 +45,24 @@ export function fitZoom(world: Size, viewport: Size): number {
   return Math.min(w / world.width, h / world.height);
 }
 
+/**
+ * Zoom limits. The lowest zoom is the one where the map covers the viewport in at least one
+ * direction, so the area beyond the grid is never on screen. The highest is MAX_TILE_SCREEN_PX.
+ */
 function limits(world: Size, viewport: Size): { min: number; max: number } {
   const fit = fitZoom(world, viewport);
-  const min = fit * MIN_ZOOM_OF_FIT;
-  // Small screens may need more than MAX_TILE_SCREEN_PX just to fit; never cap below the fit.
-  const max = Math.max(fit, MAX_TILE_SCREEN_PX / TILE_SIZE);
+  const min = Math.max(
+    viewport.width / world.width,
+    viewport.height / world.height,
+  );
+  // Small screens may need more than MAX_TILE_SCREEN_PX just to fit; never cap below the limits.
+  const max = Math.max(fit, min, MAX_TILE_SCREEN_PX / TILE_SIZE);
   return { min, max };
 }
 
 /**
- * A camera showing the whole map, centred. `zoomLevel` multiplies the fit zoom (1 shows the whole
- * map), kept within the zoom limits.
+ * A camera centred on the map. `zoomLevel` multiplies the fit zoom, kept within the zoom limits, so
+ * a level of 1 opens at the lowest zoom at which the map still covers the screen.
  */
 export function createFittedCamera(
   world: Size,
@@ -100,10 +103,26 @@ export function createFocusedCamera(
   };
 }
 
-/** Keeps the centre over the map so it can't be panned out of sight. */
-function clampCenter(cam: CameraState, world: Size): void {
-  cam.center.x = Math.min(world.width, Math.max(0, cam.center.x));
-  cam.center.y = Math.min(world.height, Math.max(0, cam.center.y));
+/**
+ * Keeps the view inside the grid, so its edges never pass the map's edges. On an axis where the
+ * view is wider than the map, the map is centred.
+ */
+function clampCenter(cam: CameraState, world: Size, viewport: Size): void {
+  cam.center.x = clampAxis(
+    cam.center.x,
+    world.width,
+    viewport.width / cam.zoom,
+  );
+  cam.center.y = clampAxis(
+    cam.center.y,
+    world.height,
+    viewport.height / cam.zoom,
+  );
+}
+
+function clampAxis(centre: number, size: number, shown: number): number {
+  if (shown >= size) return size / 2;
+  return Math.min(size - shown / 2, Math.max(shown / 2, centre));
 }
 
 /**
@@ -130,7 +149,7 @@ export function resizeCamera(
     maxZoom: max,
     zoom: Math.min(max, Math.max(min, cam.zoom)),
   };
-  clampCenter(next, world);
+  clampCenter(next, world, viewport);
   return next;
 }
 
@@ -166,7 +185,7 @@ export function fitBox(
     zoom: Math.min(max, Math.max(min, Math.min(w / bw, h / bh))),
     moved: true,
   };
-  clampCenter(next, world);
+  clampCenter(next, world, viewport);
   return next;
 }
 
@@ -193,13 +212,14 @@ export function worldToTile(p: Vec2): TileXY {
 export function panCamera(
   cam: CameraState,
   world: Size,
+  viewport: Size,
   dx: number,
   dy: number,
 ): void {
   cam.center.x -= dx / cam.zoom;
   cam.center.y -= dy / cam.zoom;
   cam.moved = true;
-  clampCenter(cam, world);
+  clampCenter(cam, world, viewport);
 }
 
 /** Zooms by `factor`, keeping the world point under `screenPoint` fixed on screen. */
@@ -216,5 +236,5 @@ export function zoomCamera(
   cam.center.x = anchor.x - (screenPoint.x - viewport.width / 2) / cam.zoom;
   cam.center.y = anchor.y - (screenPoint.y - viewport.height / 2) / cam.zoom;
   cam.moved = true;
-  clampCenter(cam, world);
+  clampCenter(cam, world, viewport);
 }

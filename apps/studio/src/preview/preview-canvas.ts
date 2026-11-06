@@ -45,6 +45,12 @@ export class PreviewCanvas {
   private frame: Frame | null = null;
   private inside = true;
   private source: SourceMap | null = null;
+  private fence: {
+    col: number;
+    row: number;
+    cols: number;
+    rows: number;
+  } | null = null;
   private editable = false;
   // Edit outlines for unselected shapes. Off by default so the preview shows the finished look.
   private outlines = false;
@@ -74,6 +80,14 @@ export class PreviewCanvas {
   setFrame(frame: Frame | null, inside: boolean): void {
     this.frame = frame;
     this.inside = inside;
+    this.draw();
+  }
+
+  /** The starting fence in grid tiles, drawn as a dashed outline. Null hides it. */
+  setFence(
+    fence: { col: number; row: number; cols: number; rows: number } | null,
+  ): void {
+    this.fence = fence;
     this.draw();
   }
 
@@ -275,6 +289,15 @@ export class PreviewCanvas {
     ctx.strokeStyle = this.inside ? hex(this.palette.road) : OUTSIDE_COLOUR;
     ctx.lineWidth = 2 / scale;
     ctx.strokeRect(x0, y0, frame.cols, frame.rows);
+
+    if (this.fence) {
+      const f = this.fence;
+      ctx.strokeStyle = hex(this.palette.road);
+      ctx.lineWidth = 3 / scale;
+      ctx.setLineDash([6 / scale, 4 / scale]);
+      ctx.strokeRect(x0 + f.col, y0 + f.row, f.cols, f.rows);
+      ctx.setLineDash([]);
+    }
 
     if (this.editable && this.source) {
       this.drawEditOverlay(this.source, frame, scale);
