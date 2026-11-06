@@ -8,6 +8,8 @@ import {
   sampleSpline,
   tilePaths,
   toSimMap,
+  TRIM_MARGIN,
+  trimSource,
 } from '../src/index.ts';
 import {
   type CompiledMap,
@@ -237,5 +239,137 @@ describe('palette choices in the compiled map', () => {
     const back = parseCompiledMap(JSON.parse(text));
     expect(back.palette).toBe('violet');
     expect(back.waterPalette).toBe('shared');
+  });
+});
+
+describe('label colour in the compiled map', () => {
+  it('carries a label colour override through compiling', () => {
+    const base = coast();
+    const label = {
+      id: 'l1',
+      kind: 'park' as const,
+      colour: 'water' as const,
+      text: 'LaFramboise Island',
+      x: 2,
+      y: 2,
+      size: 1,
+    };
+    const compiled = compileMap({
+      ...base,
+      layers: { ...base.layers, labels: [label] },
+    });
+    expect(compiled.labels[0]?.colour).toBe('water');
+  });
+});
+
+describe('very large shapes', () => {
+  it('compiles a shape with hundreds of thousands of points without overflowing the stack', () => {
+    const base = coast();
+    const n = 200_000;
+    const points = Array.from({ length: n }, (_, i) => {
+      const a = (i / n) * Math.PI * 2;
+      return { x: 7 + 4 * Math.cos(a), y: 5 + 3 * Math.sin(a) };
+    });
+    const lake = {
+      id: 'big-lake',
+      kind: 'closedSpline' as const,
+      origin: 'osm' as const,
+      points,
+    };
+    expect(() =>
+      compileMap({ ...base, layers: { ...base.layers, water: [lake] } }),
+    ).not.toThrow();
+  }, 60_000);
+});
+
+describe('trimming shapes to the map', () => {
+  const closed = (id: string, pts: [number, number][]) => ({
+    id,
+    kind: 'closedSpline' as const,
+    origin: 'osm' as const,
+    points: pts.map(([x, y]) => ({ x, y })),
+  });
+  const withWater = (water: SourceMap['layers']['water']): SourceMap => {
+    const base = coast();
+    return { ...base, layers: { ...base.layers, water } };
+  };
+
+  it('drops a shape that lies wholly beyond the map and its margin', () => {
+    const far = closed('far', [
+      [100, 100],
+      [110, 100],
+      [110, 110],
+    ]);
+    expect(trimSource(withWater([far])).layers.water).toHaveLength(0);
+  });
+
+  it('cuts a shape that runs past the edge to the grid plus the margin, keeping its terrain', () => {
+    const src = withWater([
+      closed('sea', [
+        [-50, -50],
+        [60, -50],
+        [60, 60],
+        [-50, 60],
+      ]),
+    ]);
+    const { cols, rows } = src.grid;
+    const [sea] = trimSource(src).layers.water;
+    for (const p of sea?.points ?? []) {
+      expect(p.x).toBeGreaterThanOrEqual(-TRIM_MARGIN);
+      expect(p.y).toBeGreaterThanOrEqual(-TRIM_MARGIN);
+      expect(p.x).toBeLessThanOrEqual(cols + TRIM_MARGIN);
+      expect(p.y).toBeLessThanOrEqual(rows + TRIM_MARGIN);
+    }
+    expect(compileMap(src).terrain.every((t) => t === Terrain.Water)).toBe(
+      true,
+    );
+  });
+
+  it('splits a stroke into the runs that come near the map', () => {
+    const pts: { x: number; y: number }[] = [];
+    for (let x = -30; x <= 7; x++) pts.push({ x, y: 5 });
+    for (let y = 6; y <= 40; y++) pts.push({ x: 7, y });
+    for (let y = 40; y >= 5; y--) pts.push({ x: 9, y });
+    const river = {
+      id: 'river',
+      kind: 'strokeSpline' as const,
+      origin: 'osm' as const,
+      width: 1,
+      points: pts,
+    };
+    const trimmed = trimSource(withWater([river])).layers.water;
+    expect(trimmed.map((s) => s.id)).toEqual(['river', 'river~1']);
+  });
+
+  it('rounds coordinates to 0.01 tile, and trimming again changes nothing', () => {
+    const lake = closed('lake', [
+      [1.23456, 2.34567],
+      [5.55555, 2.1],
+      [3.3333, 6.6666],
+    ]);
+    const once = trimSource(withWater([lake]));
+    expect(once.layers.water[0]?.points[0]).toEqual({ x: 1.23, y: 2.35 });
+    expect(trimSource(once)).toEqual(once);
+  });
+});
+
+describe('spline sampling by length', () => {
+  it('gives a short segment a couple of samples and a long one up to sixteen', () => {
+    const short = sampleSpline(
+      [
+        { x: 0, y: 0 },
+        { x: 0.3, y: 0 },
+      ],
+      false,
+    );
+    const long = sampleSpline(
+      [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+      ],
+      false,
+    );
+    expect(short).toHaveLength(3);
+    expect(long).toHaveLength(17);
   });
 });

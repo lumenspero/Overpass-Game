@@ -368,7 +368,7 @@ export class PreviewCanvas {
     ctx.font = `${label.size}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = hex(labelColour(this.palette, label.kind));
+    ctx.fillStyle = hex(labelColour(this.palette, label.colour ?? label.kind));
     ctx.fillText(label.text, 0, 0);
     ctx.restore();
   }

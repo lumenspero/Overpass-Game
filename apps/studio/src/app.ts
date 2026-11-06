@@ -18,6 +18,7 @@ import {
 import type { Metres } from './geo/mercator.ts';
 import { convertFeatures } from './import/convert.ts';
 import { buildSourceMap, slugify } from './import/source-map.ts';
+import { smoothShapes } from './import/smooth.ts';
 import { MapPanel } from './map/map-panel.ts';
 import { loadRegion } from './osm/region.ts';
 import { Editor, type Selection } from './edit/editor.ts';
@@ -461,10 +462,20 @@ export function App(): VNode {
     const tab = play ? window.open('', '_blank') : null;
     setMessage(play ? 'Exporting and opening the game…' : 'Exporting…');
     try {
+      let payload: string;
+      try {
+        payload = JSON.stringify(ed.display);
+      } catch (err) {
+        console.error('[map export] preparing the map failed:', err);
+        throw new Error(
+          `Preparing the map failed: ${err instanceof Error ? err.message : String(err)}`,
+          { cause: err },
+        );
+      }
       const res = await fetch('/api/export-map', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(ed.display),
+        body: payload,
       });
       let body: { error?: string; file?: string; playUrl?: string };
       try {
@@ -558,11 +569,13 @@ export function App(): VNode {
   function onMountainThreshold(threshold: number): void {
     const current = imported;
     if (!current?.elevation) return;
-    const mountains = deriveMountains(
-      current.elevation,
-      current.frame.cols,
-      current.frame.rows,
-      threshold,
+    const mountains = smoothShapes(
+      deriveMountains(
+        current.elevation,
+        current.frame.cols,
+        current.frame.rows,
+        threshold,
+      ),
     );
     editor.current?.apply((m) => replaceLayer(m, 'mountains', mountains));
     setMessage(`${mountains.length} mountains at ${threshold} m and above.`);
@@ -691,6 +704,22 @@ export function App(): VNode {
             onClick: () => exportOpenMap(true),
           },
           'Play this map',
+        ),
+        el(
+          'button',
+          {
+            type: 'button',
+            disabled: !imported,
+            title: `Smooths every unlocked shape, keeping ${Math.round(IMPORT.shapeDetail * 100)}% of its points. Undo reverts it.`,
+            onClick: () => {
+              const r = editor.current?.smoothShapes();
+              if (r)
+                setMessage(
+                  `Smoothed shapes: ${r.before} points down to ${r.after}.`,
+                );
+            },
+          },
+          'Smooth shapes',
         ),
         el(
           'label',
@@ -1185,6 +1214,32 @@ export function App(): VNode {
               ? el(
                   'div',
                   null,
+                  el('label', { for: 'label-colour' }, 'Colour'),
+                  el(
+                    'select',
+                    {
+                      id: 'label-colour',
+                      value: selectedLabel.colour ?? '',
+                      onChange: (e: Event) => {
+                        const v = (e.currentTarget as HTMLSelectElement).value;
+                        editor.current?.setLabelColour(
+                          v === '' ? null : (v as LabelKind),
+                        );
+                      },
+                    },
+                    el(
+                      'option',
+                      { value: '' },
+                      `Default (${selectedLabel.kind} colour)`,
+                    ),
+                    LABEL_KIND_OPTIONS.map(([kind, name]) =>
+                      el(
+                        'option',
+                        { key: kind, value: kind },
+                        name + ' colour',
+                      ),
+                    ),
+                  ),
                   el('label', { for: 'label-text' }, 'Text'),
                   el('input', {
                     id: 'label-text',

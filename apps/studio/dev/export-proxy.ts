@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Plugin } from 'vite';
-import { compileMap } from '@overpass-game/map-compiler';
+import { compileMap, trimSource } from '@overpass-game/map-compiler';
 import { parseSourceMap, type SourceMap } from '@overpass-game/map-schema';
 
 /** Map ids the game reserves for its built-in test map. An export may not overwrite it. */
@@ -29,14 +29,25 @@ export interface ExportResult {
  * Writing the source as well keeps `pnpm compile-maps --check` consistent.
  */
 export function exportMap(text: string, options: ExportOptions): ExportResult {
+  // Each stage reports itself, and the full stack goes to the dev server's terminal, so a failure
+  // can be traced to the step and the line that raised it.
+  const fail = (stage: string, err: unknown): ExportResult => {
+    console.error(`[map export] ${stage} failed:`, err);
+    const message = err instanceof Error ? err.message : 'Invalid map.';
+    return { status: 400, body: { error: `${stage} failed: ${message}` } };
+  };
   let source: SourceMap;
   let compiled: string;
   try {
-    source = parseSourceMap(JSON.parse(text));
+    // The written source is trimmed too, so maps made before trimming shrink when exported.
+    source = trimSource(parseSourceMap(JSON.parse(text)));
+  } catch (err) {
+    return fail('Reading the map', err);
+  }
+  try {
     compiled = JSON.stringify(compileMap(source), null, 2) + '\n';
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Invalid map.';
-    return { status: 400, body: { error: message } };
+    return fail('Compiling the map', err);
   }
   if (RESERVED_MAP_IDS.includes(source.id)) {
     return {

@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Label Contrast Review</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #181b1f;
+        color: #e6e9ed;
+        font:
+          14px/1.4 Helvetica,
+          Arial,
+          sans-serif;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 6px;
+      }
+      p.lead {
+        margin: 0 0 20px;
+        color: #b8bfc8;
+        max-width: 860px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 14px;
+      }
+      .card {
+        border-radius: 10px;
+        padding: 12px;
+      }
+      .card h2 {
+        margin: 0 0 10px;
+        font-size: 15px;
+        text-transform: capitalize;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+      .patch,
+      .ground {
+        padding: 10px 8px;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 15px;
+      }
+      .nums {
+        grid-column: 1/3;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        font-size: 11px;
+        color: #111;
+        background: rgba(255, 255, 255, 0.75);
+        border-radius: 4px;
+        padding: 3px 6px;
+      }
+      .nums .low {
+        color: #a11;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Label contrast review</h1>
+    <p class="lead">
+      Stored label colours (LABEL_COLOURS in packages/render-style), one per
+      terrain family, mode and region kind. Left: the label on its own region.
+      Right: the same label on bare land. Every label reaches 4.5:1 on its own
+      region under every water choice; land ratios under 3:1 are marked in red.
+      Before this change, labels were set to 3:1 against land and fell to
+      1.0–1.8:1 on light-mode mountains and on dark-mode water for red, orange,
+      blue, indigo and violet.
+    </p>
+    <div class="grid">
+      <section class="card" style="background: #efccc8">
+        <h2 style="color: #623935">red · light</h2>
+        <div class="row">
+          <div class="patch" style="background: #d5a6a0; color: #623935">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #623935">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#623935</span><span>region 4.5:1</span
+            ><span class="">land 6.6:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #d44434; color: #090505">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #090505">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#090505</span><span>region 4.5:1</span
+            ><span class="">land 13.7:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #bac8e3; color: #73433e">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #73433e">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#73433e</span
+            ><span>region 4.5:1 (worst water)</span
+            ><span class="">land 5.4:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #f0d4c2">
+        <h2 style="color: #5e4433">orange · light</h2>
+        <div class="row">
+          <div class="patch" style="background: #d6b29b; color: #5e4433">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #5e4433">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#5e4433</span><span>region 4.6:1</span
+            ><span class="">land 6.3:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #da6f2a; color: #31231a">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #31231a">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#31231a</span><span>region 4.5:1</span
+            ><span class="">land 10.8:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #bac8e3; color: #664937">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #664937">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#664937</span
+            ><span>region 4.6:1 (worst water)</span
+            ><span class="">land 5.8:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #f3ecc4">
+        <h2 style="color: #605a34">yellow · light</h2>
+        <div class="row">
+          <div class="patch" style="background: #dad19b; color: #605a34">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #605a34">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#605a34</span><span>region 4.5:1</span
+            ><span class="">land 5.9:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #e2c626; color: #5a5330">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #5a5330">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#5a5330</span><span>region 4.5:1</span
+            ><span class="">land 6.5:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #bac8e3; color: #56502e">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #56502e">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#56502e</span
+            ><span>region 4.5:1 (worst water)</span
+            ><span class="">land 6.8:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #c4e3bf">
+        <h2 style="color: #33552e">green · light</h2>
+        <div class="row">
+          <div class="patch" style="background: #a2c79c; color: #33552e">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #33552e">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#33552e</span><span>region 4.5:1</span
+            ><span class="">land 6.1:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #51bb40; color: #284224">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #284224">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#284224</span><span>region 4.5:1</span
+            ><span class="">land 8.0:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #bac8e3; color: #35582f">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #35582f">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#35582f</span
+            ><span>region 4.5:1 (worst water)</span
+            ><span class="">land 5.8:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #c2d5eb">
+        <h2 style="color: #32465e">blue · light</h2>
+        <div class="row">
+          <div class="patch" style="background: #9db4d0; color: #32465e">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #32465e">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#32465e</span><span>region 4.5:1</span
+            ><span class="">land 6.4:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #347bcd; color: #090d11">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #090d11">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#090d11</span><span>region 4.5:1</span
+            ><span class="">land 13.0:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #bac8e3; color: #3a516c">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #3a516c">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#3a516c</span
+            ><span>region 4.6:1 (worst water)</span
+            ><span class="">land 5.4:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #c6c6e7">
+        <h2 style="color: #373766">indigo · light</h2>
+        <div class="row">
+          <div class="patch" style="background: #a2a2cb; color: #373766">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #373766">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#373766</span><span>region 4.5:1</span
+            ><span class="">land 6.6:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #4141c1; color: #ffffff">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #ffffff">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#ffffff</span><span>region 7.6:1</span
+            ><span class="low">land 1.7:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #bac8e3; color: #494988">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #494988">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#494988</span
+            ><span>region 4.5:1 (worst water)</span
+            ><span class="">land 4.9:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #e0c9e8">
+        <h2 style="color: #573563">violet · light</h2>
+        <div class="row">
+          <div class="patch" style="background: #c2a4cc; color: #573563">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #573563">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#573563</span><span>region 4.5:1</span
+            ><span class="">land 6.5:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #a043c1; color: #ffffff">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #ffffff">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#ffffff</span><span>region 5.2:1</span
+            ><span class="low">land 1.5:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #bac8e3; color: #694077">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #694077">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#694077</span
+            ><span>region 4.5:1 (worst water)</span
+            ><span class="">land 5.3:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #efeeeb">
+        <h2 style="color: #565656">white · light</h2>
+        <div class="row">
+          <div class="patch" style="background: #ceccc5; color: #565656">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #565656">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#565656</span><span>region 4.6:1</span
+            ><span class="">land 6.3:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #a69a76; color: #333333">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #333333">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#333333</span><span>region 4.5:1</span
+            ><span class="">land 10.9:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #bac8e3; color: #505050">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #505050">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#505050</span
+            ><span>region 4.5:1 (worst water)</span
+            ><span class="">land 6.9:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #999ca3">
+        <h2 style="color: #1e1e1e">black · light</h2>
+        <div class="row">
+          <div class="patch" style="background: #82858b; color: #1e1e1e">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #1e1e1e">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#1e1e1e</span><span>region 4.5:1</span
+            ><span class="">land 6.1:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #50596d; color: #ffffff">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #ffffff">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#ffffff</span><span>region 7.0:1</span
+            ><span class="low">land 2.7:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #bac8e3; color: #4e4e4e">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #4e4e4e">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#4e4e4e</span
+            ><span>region 4.6:1 (worst water)</span
+            ><span class="">land 3.0:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #a1453a">
+        <h2 style="color: #dcc2be">red · dark</h2>
+        <div class="row">
+          <div class="patch" style="background: #7c453e; color: #dcc2be">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #dcc2be">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#dcc2be</span><span>region 4.5:1</span
+            ><span class="">land 3.6:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #67241c; color: #d1aeaa">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #d1aeaa">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#d1aeaa</span><span>region 5.6:1</span
+            ><span class="">land 3.0:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #96abd4; color: #1d1110">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #1d1110">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#1d1110</span
+            ><span>region 7.2:1 (worst water)</span
+            ><span class="">land 3.0:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #a46135">
+        <h2 style="color: #e3d5cc">orange · dark</h2>
+        <div class="row">
+          <div class="patch" style="background: #7d553b; color: #e3d5cc">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #e3d5cc">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#e3d5cc</span><span>region 4.5:1</span
+            ><span class="">land 3.4:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #693919; color: #dbc9bd">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #dbc9bd">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#dbc9bd</span><span>region 6.0:1</span
+            ><span class="">land 3.0:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #96abd4; color: #35261d">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #35261d">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#35261d</span
+            ><span>region 5.7:1 (worst water)</span
+            ><span class="">land 3.0:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #aa9a31">
+        <h2 style="color: #070604">yellow · dark</h2>
+        <div class="row">
+          <div class="patch" style="background: #817839; color: #070604">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #070604">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#070604</span><span>region 4.5:1</span
+            ><span class="">land 7.1:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #6d6117; color: #ffffff">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #ffffff">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#ffffff</span><span>region 6.2:1</span
+            ><span class="low">land 2.8:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #96abd4; color: #3c3921">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #3c3921">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#3c3921</span
+            ><span>region 4.6:1 (worst water)</span
+            ><span class="">land 4.1:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #4e8c45">
+        <h2 style="color: #d5e7d2">green · dark</h2>
+        <div class="row">
+          <div class="patch" style="background: #496e44; color: #d5e7d2">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #d5e7d2">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#d5e7d2</span><span>region 4.5:1</span
+            ><span class="">land 3.1:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #2a5a23; color: #cfe3cc">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #cfe3cc">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#cfe3cc</span><span>region 6.0:1</span
+            ><span class="">land 3.0:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #96abd4; color: #233b20">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #233b20">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#233b20</span
+            ><span>region 4.8:1 (worst water)</span
+            ><span class="">land 3.0:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #3e6899">
+        <h2 style="color: #c1cede">blue · dark</h2>
+        <div class="row">
+          <div class="patch" style="background: #405976; color: #c1cede">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #c1cede">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#c1cede</span><span>region 4.5:1</span
+            ><span class="">land 3.6:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #1f3e62; color: #abbdd2">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #abbdd2">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#abbdd2</span><span>region 5.7:1</span
+            ><span class="">land 3.0:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #96abd4; color: #141b24">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #141b24">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#141b24</span
+            ><span>region 6.8:1 (worst water)</span
+            ><span class="">land 3.0:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #474790">
+        <h2 style="color: #b7b7d8">indigo · dark</h2>
+        <div class="row">
+          <div class="patch" style="background: #464671; color: #b7b7d8">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #b7b7d8">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#b7b7d8</span><span>region 4.5:1</span
+            ><span class="">land 4.2:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #24245d; color: #9999c8">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #9999c8">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#9999c8</span><span>region 5.2:1</span
+            ><span class="">land 3.0:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #96abd4; color: #000000">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #000000">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#000000</span
+            ><span>region 8.2:1 (worst water)</span
+            ><span class="low">land 2.6:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #7f4891">
+        <h2 style="color: #d5bfdd">violet · dark</h2>
+        <div class="row">
+          <div class="patch" style="background: #674772; color: #d5bfdd">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #d5bfdd">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#d5bfdd</span><span>region 4.5:1</span
+            ><span class="">land 3.8:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #4f255e; color: #c5a6cf">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #c5a6cf">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#c5a6cf</span><span>region 5.5:1</span
+            ><span class="">land 3.0:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #96abd4; color: #110a13">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #110a13">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#110a13</span
+            ><span>region 7.6:1 (worst water)</span
+            ><span class="">land 3.0:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #837b6a">
+        <h2 style="color: #e6e6e6">white · dark</h2>
+        <div class="row">
+          <div class="patch" style="background: #6c675d; color: #e6e6e6">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #e6e6e6">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#e6e6e6</span><span>region 4.5:1</span
+            ><span class="">land 3.4:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #564c38; color: #dadada">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #dadada">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#dadada</span><span>region 6.0:1</span
+            ><span class="">land 3.0:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #96abd4; color: #333333">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #333333">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#333333</span
+            ><span>region 4.9:1 (worst water)</span
+            ><span class="">land 3.0:1</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="background: #4c4e52">
+        <h2 style="color: #afafaf">black · dark</h2>
+        <div class="row">
+          <div class="patch" style="background: #414345; color: #afafaf">
+            Riverside Park
+          </div>
+          <div class="ground" style="color: #afafaf">Riverside Park</div>
+          <div class="nums">
+            <span>park</span><span>#afafaf</span><span>region 4.5:1</span
+            ><span class="">land 3.8:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #292d36; color: #9c9c9c">
+            Turkey Mountain
+          </div>
+          <div class="ground" style="color: #9c9c9c">Turkey Mountain</div>
+          <div class="nums">
+            <span>mountain</span><span>#9c9c9c</span><span>region 5.0:1</span
+            ><span class="">land 3.0:1</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="patch" style="background: #96abd4; color: #000000">
+            Lake Yahola
+          </div>
+          <div class="ground" style="color: #000000">Lake Yahola</div>
+          <div class="nums">
+            <span>water</span><span>#000000</span
+            ><span>region 8.2:1 (worst water)</span
+            ><span class="low">land 2.5:1</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

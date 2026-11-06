@@ -88,16 +88,35 @@ export function handleOf(
   return p && off ? { x: p.x + off.x, y: p.y + off.y } : null;
 }
 
+/**
+ * The bounding box of a list of points, found with a loop. Spreading a long list into Math.min or
+ * Math.max overflows the call stack once a shape has a few hundred thousand points.
+ */
+function boundsOf(pts: readonly Pt[]): {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+} {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const p of pts) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return { minX, maxX, minY, maxY };
+}
+
 /** The middle of an item's anchors' bounding box, or null when it is missing. */
 export function centreOf(map: SourceMap, target: Target): Pt | null {
   const item = findItem(map, target);
   if (!item || item.points.length === 0) return null;
-  const xs = item.points.map((p) => p.x);
-  const ys = item.points.map((p) => p.y);
-  return {
-    x: (Math.min(...xs) + Math.max(...xs)) / 2,
-    y: (Math.min(...ys) + Math.max(...ys)) / 2,
-  };
+  const b = boundsOf(item.points);
+  return { x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 };
 }
 
 const dist = (a: Pt, b: Pt): number => Math.hypot(a.x - b.x, a.y - b.y);
@@ -233,13 +252,9 @@ export function groupCentre(
   const pts: Pt[] = [];
   for (const t of targets) {
     const item = findItem(map, t);
-    if (item) pts.push(...item.points);
+    if (item) for (const p of item.points) pts.push(p);
   }
   if (pts.length === 0) return null;
-  const xs = pts.map((p) => p.x);
-  const ys = pts.map((p) => p.y);
-  return {
-    x: (Math.min(...xs) + Math.max(...xs)) / 2,
-    y: (Math.min(...ys) + Math.max(...ys)) / 2,
-  };
+  const b = boundsOf(pts);
+  return { x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 };
 }

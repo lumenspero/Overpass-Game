@@ -48,6 +48,8 @@ export interface MapPalette {
   readonly shadow: number;
   /** Faint motorway guide overlay. Not yet specified; reuses the accent greys. */
   readonly guide: number;
+  /** Label colour for each region kind, from LABEL_COLOURS for this family and mode. */
+  readonly labels: Readonly<Record<LabelKind, number>>;
 }
 
 /** A building colour: top face and shaded side. The shadow comes from the terrain. */
@@ -285,6 +287,57 @@ export function waterSetFor(waterId: string, mode: ThemeMode): WaterSet {
   };
 }
 
+/**
+ * Stored label colours, one per terrain family, mode and region kind (reviewed 2026-11-06). Each
+ * keeps a muted tint of the family's hue. It reaches 4.5:1 or more against its own region's fill,
+ * under every water choice for water labels, and among such colours has the best contrast with the
+ * land. Six fall below 3:1 against bare land (violet and indigo light mountains, black and indigo
+ * dark water, black light mountains, yellow dark mountains); a label rarely runs off its region.
+ */
+export const LABEL_COLOURS: Readonly<
+  Record<
+    BasePaletteId,
+    Readonly<Record<ThemeMode, Readonly<Record<LabelKind, number>>>>
+  >
+> = {
+  red: {
+    light: { park: 0x623935, mountain: 0x090505, water: 0x73433e },
+    dark: { park: 0xdcc2be, mountain: 0xd1aeaa, water: 0x1d1110 },
+  },
+  orange: {
+    light: { park: 0x5e4433, mountain: 0x31231a, water: 0x664937 },
+    dark: { park: 0xe3d5cc, mountain: 0xdbc9bd, water: 0x35261d },
+  },
+  yellow: {
+    light: { park: 0x605a34, mountain: 0x5a5330, water: 0x56502e },
+    dark: { park: 0x070604, mountain: 0xffffff, water: 0x3c3921 },
+  },
+  green: {
+    light: { park: 0x33552e, mountain: 0x284224, water: 0x35582f },
+    dark: { park: 0xd5e7d2, mountain: 0xcfe3cc, water: 0x233b20 },
+  },
+  blue: {
+    light: { park: 0x32465e, mountain: 0x090d11, water: 0x3a516c },
+    dark: { park: 0xc1cede, mountain: 0xabbdd2, water: 0x141b24 },
+  },
+  indigo: {
+    light: { park: 0x373766, mountain: 0xffffff, water: 0x494988 },
+    dark: { park: 0xb7b7d8, mountain: 0x9999c8, water: 0x000000 },
+  },
+  violet: {
+    light: { park: 0x573563, mountain: 0xffffff, water: 0x694077 },
+    dark: { park: 0xd5bfdd, mountain: 0xc5a6cf, water: 0x110a13 },
+  },
+  white: {
+    light: { park: 0x565656, mountain: 0x333333, water: 0x505050 },
+    dark: { park: 0xe6e6e6, mountain: 0xdadada, water: 0x333333 },
+  },
+  black: {
+    light: { park: 0x1e1e1e, mountain: 0xffffff, water: 0x4e4e4e },
+    dark: { park: 0xafafaf, mountain: 0x9c9c9c, water: 0x000000 },
+  },
+};
+
 /** Both modes of one terrain family, with region borders taken from the opposite mode. */
 function buildFamily(family: BasePaletteId): Record<ThemeMode, MapPalette> {
   const land = TERRAIN_LIGHT[family];
@@ -307,6 +360,7 @@ function buildFamily(family: BasePaletteId): Record<ThemeMode, MapPalette> {
       waterEdge: waterMainD,
       waterRamp: WATER_RAMP_LIGHT,
       ...ACCENTS.light,
+      labels: LABEL_COLOURS[family].light,
     },
     dark: {
       background: BACKGROUND.dark,
@@ -320,6 +374,7 @@ function buildFamily(family: BasePaletteId): Record<ThemeMode, MapPalette> {
       waterEdge: waterMainL,
       waterRamp: WATER_RAMP_DARK,
       ...ACCENTS.dark,
+      labels: LABEL_COLOURS[family].dark,
     },
   };
 }
@@ -390,17 +445,6 @@ export const DEBUG_PALETTE = {
   node: 0xffb454,
 } as const;
 
-/** Linear mix of two 24-bit colours, channel by channel. */
-function mixChannels(from: number, to: number, t: number): number {
-  let out = 0;
-  for (const shift of [16, 8, 0]) {
-    const a = (from >> shift) & 0xff;
-    const b = (to >> shift) & 0xff;
-    out = (out << 8) | Math.round(a + (b - a) * t);
-  }
-  return out;
-}
-
 /** Linear-light value of one 0 to 1 sRGB channel. */
 function linearChannel(v: number): number {
   return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
@@ -425,52 +469,9 @@ export function contrastRatio(a: number, b: number): number {
 /** Kinds of region that carry a text label. */
 export type LabelKind = 'park' | 'mountain' | 'water';
 
-/** How far a label's starting hue is pulled toward its ground, so the label stays quiet. approximated. */
-export const LABEL_GROUND_BLEND = 0.3;
-
-/** Contrast a region label reaches against the land it sits on. Visible, but kept quiet. approximated: tune at Checkpoint D. */
-export const LABEL_CONTRAST = 3;
-
-/**
- * Moves a colour toward white or black until its relative luminance reaches `target`.
- * Mixing, not scaling, keeps the result from turning neon on dark ground.
- */
-function colourAtLuminance(c: number, target: number): number {
-  const pole = relativeLuminance(c) < target ? 0xffffff : 0x000000;
-  let lo = 0;
-  let hi = 1;
-  for (let i = 0; i < 40; i++) {
-    const mid = (lo + hi) / 2;
-    const lum = relativeLuminance(mixChannels(c, pole, mid));
-    const reached = pole === 0xffffff ? lum >= target : lum <= target;
-    if (reached) hi = mid;
-    else lo = mid;
-  }
-  return mixChannels(c, pole, hi);
-}
-
-/**
- * Label colour for a region kind in one palette. It keeps the mid-tone hue of the region's
- * main and outline colours, and its lightness is set so the label reaches LABEL_CONTRAST
- * against the land: darker on light ground, lighter on dark ground.
- */
+/** Label colour for a region kind in one palette: the stored LABEL_COLOURS value. */
 export function labelColour(palette: MapPalette, kind: LabelKind): number {
-  const mid =
-    kind === 'park'
-      ? mixChannels(palette.park, palette.parkEdge, 0.5)
-      : kind === 'mountain'
-        ? mixChannels(palette.mountain, palette.mountainEdge, 0.5)
-        : mixChannels(palette.water, palette.waterEdge, 0.5);
-  const ground = relativeLuminance(palette.land);
-  const target =
-    ground > 0.18
-      ? (ground + 0.05) / LABEL_CONTRAST - 0.05
-      : LABEL_CONTRAST * (ground + 0.05) - 0.05;
-  // Pull the hue part of the way toward the ground first, so the label stays quiet.
-  return colourAtLuminance(
-    mixChannels(mid, palette.land, LABEL_GROUND_BLEND),
-    target,
-  );
+  return palette.labels[kind];
 }
 
 /** Motorway guide overlay: a faint line along real motorways. Visual only, not a gameplay number. */

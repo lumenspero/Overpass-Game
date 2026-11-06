@@ -115,6 +115,18 @@ button[aria-pressed='true'] {
   color: #b8bfc8;
 }
 
+/* The status line stays pinned at the bottom of the sidebar, so the result of an export, a play or
+   a search is always in view, however far the sidebar is scrolled. */
+.sidebar > .message {
+  position: sticky;
+  bottom: -16px;
+  margin-top: auto;
+  padding: 10px 0 16px;
+  background: #181b1f;
+  border-top: 1px solid #2a2f36;
+  color: #e6e9ed;
+}
+
 .map-panel {
   position: relative;
   min-width: 0;

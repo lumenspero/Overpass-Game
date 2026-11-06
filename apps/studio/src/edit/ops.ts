@@ -436,6 +436,8 @@ export interface LabelPatch {
   readonly text?: string;
   readonly kind?: MapLabel['kind'];
   readonly size?: number;
+  /** A stored label colour to draw in, or null to go back to the label's own kind. */
+  readonly colour?: MapLabel['kind'] | null;
 }
 
 /** Limits from the map schema, so an edit can never write a label the compiler would reject. */
@@ -444,7 +446,7 @@ export const LABEL_SIZE_MIN = 1;
 export const LABEL_SIZE_MAX = 20;
 
 /**
- * Changes a label's text, kind or size. Text is trimmed and cut to the schema's length; blank
+ * Changes a label's text, kind, size or colour. Text is trimmed and cut to the schema's length; blank
  * text and a non-finite size are refused, leaving the label as it was.
  */
 export function setLabel(
@@ -466,8 +468,20 @@ export function setLabel(
           : NaN;
     if (Number.isNaN(size)) return l;
     const kind = patch.kind ?? l.kind;
-    if (text === l.text && size === l.size && kind === l.kind) return l;
-    return { ...l, text, size, kind };
+    const colour =
+      patch.colour === undefined ? l.colour : (patch.colour ?? undefined);
+    if (
+      text === l.text &&
+      size === l.size &&
+      kind === l.kind &&
+      colour === l.colour
+    ) {
+      return l;
+    }
+    // No override is stored as no field, so a label without one matches the schema's default.
+    const next: MapLabel = { ...l, text, size, kind, colour };
+    if (colour === undefined) delete next.colour;
+    return next;
   });
 }
 

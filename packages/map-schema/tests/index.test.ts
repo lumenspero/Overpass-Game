@@ -143,3 +143,27 @@ describe('map labels', () => {
     ).toThrow();
   });
 });
+
+describe('label colour override', () => {
+  const base = {
+    id: 'l1',
+    kind: 'park',
+    text: 'LaFramboise Island',
+    x: 4,
+    y: 5,
+    size: 1,
+  };
+
+  it('accepts no override, or any stored label colour by name', () => {
+    expect(MapLabelSchema.parse(base).colour).toBeUndefined();
+    for (const colour of ['park', 'mountain', 'water'] as const) {
+      expect(MapLabelSchema.parse({ ...base, colour }).colour).toBe(colour);
+    }
+  });
+
+  it('rejects a colour that is not a stored label colour', () => {
+    expect(() =>
+      MapLabelSchema.parse({ ...base, colour: '#ff0000' }),
+    ).toThrow();
+  });
+});

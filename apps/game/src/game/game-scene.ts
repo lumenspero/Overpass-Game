@@ -896,7 +896,8 @@ export class GameScene extends Phaser.Scene {
 
   /**
    * The map's park, mountain and water names. Each sits over the ground and under the roads, in
-   * the label colour for its kind in the current mode. Redrawn on a theme change, for the colour.
+   * the label colour for its kind in the current mode, or the colour the author chose for it.
+   * Redrawn on a theme change, for the colour.
    */
   private drawLabels(): void {
     for (const text of this.labelTexts) text.destroy();
@@ -906,7 +907,7 @@ export class GameScene extends Phaser.Scene {
         .text(label.x * TILE_SIZE, label.y * TILE_SIZE, label.text, {
           fontFamily: 'system-ui, sans-serif',
           fontSize: `${label.size * TILE_SIZE}px`,
-          color: hexString(labelColour(this.pal, label.kind)),
+          color: hexString(labelColour(this.pal, label.colour ?? label.kind)),
         })
         .setOrigin(0.5)
         .setResolution(2);

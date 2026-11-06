@@ -24,6 +24,7 @@ import {
   type Tool,
 } from './paint.ts';
 import * as ops from './ops.ts';
+import { smoothSource } from '../import/smooth.ts';
 import { insideRect, lengthOf, type Rect } from './select.ts';
 import type { EditableLayer } from './ops.ts';
 import {
@@ -459,6 +460,13 @@ export class Editor {
     this.apply((m) => ops.setLabel(m, id, { kind }));
   }
 
+  /** Draws the selected label in one of the stored label colours, or null for its kind's own. */
+  setLabelColour(colour: MapLabel['kind'] | null): void {
+    const id = this.labelSel;
+    if (!id) return;
+    this.apply((m) => ops.setLabel(m, id, { colour }));
+  }
+
   /** Removes the selected label. */
   deleteSelectedLabel(): void {
     const id = this.labelSel;
@@ -477,6 +485,21 @@ export class Editor {
   }
 
   /** Sets which offers the map allows. Undoable like any other edit. */
+  /**
+   * Smooths every unlocked water, mountain and park shape to the import detail. One undoable edit.
+   * Returns the points before and after, for the status line.
+   */
+  smoothShapes(): { before: number; after: number } {
+    const count = (m: SourceMap) =>
+      [...m.layers.water, ...m.layers.mountains, ...m.layers.parks].reduce(
+        (n, s) => n + s.points.length,
+        0,
+      );
+    const before = count(this.map);
+    this.apply((m) => smoothSource(m));
+    return { before, after: count(this.map) };
+  }
+
   setAllowedOffers(options: readonly RestrictableOffer[]): void {
     this.apply((m) => ops.setAllowedOffers(m, options));
   }

@@ -33,6 +33,14 @@ export const NOMINATIM_MIN_INTERVAL_MS = 1100;
 export const IMPORT = {
   /** Douglas-Peucker tolerance: shapes keep points that deviate more than this. */
   simplifyTolerance: 0.2,
+  /**
+   * Share of each shape's points kept by outline smoothing (0 to 1). Below 1, outlines are smoothed
+   * first, so stair-stepped mountains and ragged banks become clean curves. 0.6 was picked on the
+   * Pierre, Los Angeles and Tulsa mock-ups.
+   */
+  shapeDetail: 0.6,
+  /** How far, in tiles, smoothing reaches at the lowest detail. It scales down as detail rises. */
+  smoothReachMax: 3,
   /** Closed shapes smaller than this area are dropped as noise. */
   minClosedArea: 16,
   /** Strokes shorter than this length are dropped as noise. */

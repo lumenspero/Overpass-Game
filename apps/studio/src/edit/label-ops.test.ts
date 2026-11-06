@@ -100,3 +100,27 @@ describe('label picking', () => {
     expect(pickLabel(m, { x: 0, y: 0 }, 0.1)).toBeNull();
   });
 });
+
+describe('label colour override', () => {
+  const label: MapLabel = {
+    id: 'l1',
+    kind: 'park',
+    text: 'LaFramboise Island',
+    x: 4,
+    y: 5,
+    size: 1,
+  };
+
+  it('draws a label in another stored colour, and returns it to its own', () => {
+    const set = setLabel(makeMap([label]), 'l1', { colour: 'water' });
+    expect(set.layers.labels[0]?.colour).toBe('water');
+    expect(set.layers.labels[0]?.kind).toBe('park');
+    const cleared = setLabel(set, 'l1', { colour: null });
+    expect(cleared.layers.labels[0]).not.toHaveProperty('colour');
+  });
+
+  it('leaves the map alone when the colour does not change', () => {
+    const map = makeMap([label]);
+    expect(setLabel(map, 'l1', { colour: null })).toBe(map);
+  });
+});

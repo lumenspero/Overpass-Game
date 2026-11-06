@@ -101,6 +101,11 @@ const TerrainCode = z.int().min(0).max(Terrain.OutOfBounds);
 export const MapLabelSchema = z.object({
   id: z.string().min(1),
   kind: z.enum(['park', 'mountain', 'water']),
+  /**
+   * The stored label colour to draw in, by kind name, when the author overrides the default. Absent
+   * means the label's own kind. Named, not a hex value, so it follows the palette and the mode.
+   */
+  colour: z.enum(['park', 'mountain', 'water']).optional(),
   text: z.string().trim().min(1).max(40),
   x: z.number().finite(),
   y: z.number().finite(),

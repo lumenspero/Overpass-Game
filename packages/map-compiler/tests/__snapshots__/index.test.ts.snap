@@ -73,12 +73,12 @@ pp.~......~~..
   "waterPaths": [
     {
       "closed": true,
-      "points": 80,
+      "points": 74,
       "width": undefined,
     },
     {
       "closed": false,
-      "points": 49,
+      "points": 44,
       "width": 1.2,
     },
   ],

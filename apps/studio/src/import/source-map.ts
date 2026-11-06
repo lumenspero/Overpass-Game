@@ -4,6 +4,8 @@ import {
   type Shape,
   type SourceMap,
 } from '@overpass-game/map-schema';
+import { trimSource } from '@overpass-game/map-compiler';
+import { smoothSource } from './smooth.ts';
 import { frameBBox, type Frame } from '../geo/frame.ts';
 import type { ImportedLayers } from './convert.ts';
 
@@ -48,31 +50,40 @@ export function centredFence(
   };
 }
 
-/** Assembles a source map from imported layers. The result is validated against the schema. */
+/**
+ * Assembles a source map from imported layers. The result is validated against the schema, and its
+ * shapes are trimmed to the frame and smoothed.
+ */
 export function buildSourceMap(input: BuildInput): SourceMap {
   const { frame, layers } = input;
-  return parseSourceMap({
-    schemaVersion: MAP_SCHEMA_VERSION,
-    id: slugify(input.name),
-    name: input.name,
-    region: { bbox: frameBBox(frame), rotationDeg: frame.rotationDeg },
-    grid: {
-      cols: frame.cols,
-      rows: frame.rows,
-      fence: centredFence(frame.cols, frame.rows),
-    },
-    layers: {
-      water: layers.water,
-      mountains: input.mountains ?? [],
-      parks: layers.parks,
-      motorwayGuide: layers.motorwayGuide,
-      starterRoads: [],
-      labels: layers.labels,
-    },
-    rules: [],
-    palette: 'default',
-    waterPalette: 'shared',
-    attribution: '© OpenStreetMap contributors (ODbL)',
-    osmImport: { fetchedAt: input.fetchedAt, queryHash: input.queryHash },
-  });
+  // Imported shapes often run far past the frame; only what the map can show is kept, and what
+  // is kept is smoothed to the import detail.
+  return smoothSource(
+    trimSource(
+      parseSourceMap({
+        schemaVersion: MAP_SCHEMA_VERSION,
+        id: slugify(input.name),
+        name: input.name,
+        region: { bbox: frameBBox(frame), rotationDeg: frame.rotationDeg },
+        grid: {
+          cols: frame.cols,
+          rows: frame.rows,
+          fence: centredFence(frame.cols, frame.rows),
+        },
+        layers: {
+          water: layers.water,
+          mountains: input.mountains ?? [],
+          parks: layers.parks,
+          motorwayGuide: layers.motorwayGuide,
+          starterRoads: [],
+          labels: layers.labels,
+        },
+        rules: [],
+        palette: 'default',
+        waterPalette: 'shared',
+        attribution: '© OpenStreetMap contributors (ODbL)',
+        osmImport: { fetchedAt: input.fetchedAt, queryHash: input.queryHash },
+      }),
+    ),
+  );
 }

@@ -13,4 +13,8 @@ export const CAMPAIGN_MAPS: readonly CampaignMap[] = [
     id: 'los-angeles-los-angeles-county-california-united-states',
     name: 'Los Angeles',
   },
+  {
+    id: 'pierre-buckeye-township-hughes-county-south-dakota-57501-united-states',
+    name: 'Pierre',
+  },
 ];

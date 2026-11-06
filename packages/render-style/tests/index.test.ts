@@ -9,10 +9,11 @@ import {
   ROAD_WIDTH_TILES,
   STANDARD_BUILDING_PALETTE,
   TILE_SIZE,
-  LABEL_CONTRAST,
+  LABEL_COLOURS,
   contrastRatio,
   labelColour,
   resolvePalette,
+  WATER_PALETTE_IDS,
   type MapPalette,
   type ThemeMode,
 } from '../src/index.ts';
@@ -26,10 +27,13 @@ function allBasePalettes(): MapPalette[] {
 }
 
 /** Every colour in a palette, with tint arrays flattened. */
+/** Every colour a palette sets: single colours, ramps and tints, and the label colour of each kind. */
 function coloursOf(palette: MapPalette): number[] {
-  return Object.values(palette).flatMap((v) =>
-    typeof v === 'number' ? [v] : [...v],
-  );
+  return Object.values(palette).flatMap((v: unknown): number[] => {
+    if (typeof v === 'number') return [v];
+    if (Array.isArray(v)) return v as number[];
+    return Object.values(v as Record<string, number>);
+  });
 }
 
 describe('@overpass-game/render-style', () => {
@@ -240,16 +244,52 @@ describe('approved terrain colours', () => {
 });
 
 describe('label colours', () => {
-  it('reaches the target contrast against the ground', () => {
+  const KINDS = ['mountain', 'park', 'water'] as const;
+
+  it('reads each label colour from the stored table for its family and mode', () => {
     for (const id of BASE_PALETTE_IDS) {
       for (const mode of MODES) {
         const p = BASE_PALETTES[id][mode];
-        for (const kind of ['mountain', 'park', 'water'] as const) {
+        for (const kind of KINDS) {
+          expect(labelColour(p, kind)).toBe(LABEL_COLOURS[id][mode][kind]);
+        }
+      }
+    }
+  });
+
+  it('reaches 4.5:1 on its own region, under every water choice', () => {
+    for (const id of BASE_PALETTE_IDS) {
+      for (const mode of MODES) {
+        for (const water of WATER_PALETTE_IDS) {
+          const p = resolvePalette(id, mode, water);
+          const fill = { mountain: p.mountain, park: p.park, water: p.water };
+          for (const kind of KINDS) {
+            expect(
+              contrastRatio(labelColour(p, kind), fill[kind]),
+            ).toBeGreaterThanOrEqual(4.5);
+          }
+        }
+      }
+    }
+  });
+
+  it('reaches 3:1 on bare land except the six reviewed cases', () => {
+    const exceptions = new Set([
+      'violet light mountain',
+      'indigo light mountain',
+      'black light mountain',
+      'black dark water',
+      'indigo dark water',
+      'yellow dark mountain',
+    ]);
+    for (const id of BASE_PALETTE_IDS) {
+      for (const mode of MODES) {
+        const p = BASE_PALETTES[id][mode];
+        for (const kind of KINDS) {
+          if (exceptions.has(`${id} ${mode} ${kind}`)) continue;
           expect(
-            Math.abs(
-              contrastRatio(labelColour(p, kind), p.land) - LABEL_CONTRAST,
-            ),
-          ).toBeLessThan(0.05);
+            contrastRatio(labelColour(p, kind), p.land),
+          ).toBeGreaterThanOrEqual(3);
         }
       }
     }
@@ -259,7 +299,7 @@ describe('label colours', () => {
     for (const id of BASE_PALETTE_IDS) {
       for (const mode of MODES) {
         const p = BASE_PALETTES[id][mode];
-        for (const kind of ['mountain', 'park', 'water'] as const) {
+        for (const kind of KINDS) {
           const c = labelColour(p, kind);
           expect(Number.isInteger(c) && c >= 0 && c <= 0xffffff).toBe(true);
         }
