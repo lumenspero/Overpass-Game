@@ -47,8 +47,15 @@ function levelsOf(settings: GameSettings): AudioLevels {
  * Removes the overlays a run leaves on the page. The scene tears them down on shutdown, but
  * destroying the game does not promise that, so the app clears them itself.
  */
+/** Removes every overlay a run adds to the page, so none stays on screen after the run ends. */
 function clearRunOverlays(): void {
-  for (const id of ['top-bar', 'run-end']) {
+  for (const id of [
+    'top-bar',
+    'run-end',
+    'offer-panel',
+    'inventory-dock',
+    'tutorial',
+  ]) {
     document.getElementById(id)?.remove();
   }
 }

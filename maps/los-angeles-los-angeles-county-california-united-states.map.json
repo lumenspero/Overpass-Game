@@ -25315,10 +25315,10 @@
     1
   ],
   "fence": {
-    "col": 0,
-    "row": 0,
-    "cols": 171,
-    "rows": 148
+    "col": 73,
+    "row": 67,
+    "cols": 24,
+    "rows": 14
   },
   "outlines": {
     "water": [
@@ -95819,5 +95819,5 @@
   "palette": "indigo",
   "waterPalette": "blue",
   "attribution": "© OpenStreetMap contributors (ODbL)",
-  "contentHash": "95b54435"
+  "contentHash": "4be1e49b"
 }

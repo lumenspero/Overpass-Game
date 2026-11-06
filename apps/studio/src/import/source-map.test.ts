@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseSourceMap } from '@overpass-game/map-schema';
 import { frameAt, frameBBox } from '../geo/frame.ts';
-import { buildSourceMap, slugify } from './source-map.ts';
+import { buildSourceMap, centredFence, slugify } from './source-map.ts';
 
 const frame = frameAt([-95.99, 36.15], 40, 30, 15);
 
@@ -68,5 +68,34 @@ describe('buildSourceMap', () => {
       queryHash: 'abcd1234',
     });
     expect(map.attribution).toContain('OpenStreetMap');
+  });
+});
+
+describe('standard starting fence', () => {
+  it('centres a 24 by 14 fence on a frame that is big enough', () => {
+    expect(centredFence(96, 96)).toEqual({
+      col: 36,
+      row: 41,
+      cols: 24,
+      rows: 14,
+    });
+  });
+
+  it('centres on an odd-sized frame, rounding the margin down on the left and top', () => {
+    expect(centredFence(51, 31)).toEqual({
+      col: 13,
+      row: 8,
+      cols: 24,
+      rows: 14,
+    });
+  });
+
+  it('shrinks to the frame on a frame smaller than the standard size', () => {
+    expect(centredFence(16, 12)).toEqual({
+      col: 0,
+      row: 0,
+      cols: 16,
+      rows: 12,
+    });
   });
 });

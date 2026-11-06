@@ -39,7 +39,31 @@ function el(tag: string, css: string, text?: string): HTMLElement {
   return node;
 }
 
+const BLOCK_STYLE_ID = 'offer-block-style';
+
+/**
+ * While a choice is pending, the controls on the play screen (top bar and dock) ignore the pointer,
+ * so the back button and the others can't be used behind the popup. The rule is set by a flag on
+ * the page, and lifts when the choice is made.
+ */
+function ensureBlockStyle(): void {
+  if (document.getElementById(BLOCK_STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = BLOCK_STYLE_ID;
+  style.textContent =
+    'html[data-offer-pending] #top-bar, html[data-offer-pending] #top-bar *,' +
+    'html[data-offer-pending] #inventory-dock, html[data-offer-pending] #inventory-dock *' +
+    '{pointer-events:none !important;}';
+  document.head.append(style);
+}
+
+function setBlocked(on: boolean): void {
+  if (on) document.documentElement.setAttribute('data-offer-pending', '');
+  else document.documentElement.removeAttribute('data-offer-pending');
+}
+
 export function createOfferPanel(getSim: () => SimState): OfferPanel {
+  ensureBlockStyle();
   const root = el(
     'div',
     'position:fixed;inset:0;z-index:30;display:none;pointer-events:none;' +
@@ -198,6 +222,7 @@ export function createOfferPanel(getSim: () => SimState): OfferPanel {
   function sync(): void {
     const sim = getSim();
     const view = offerView(sim);
+    setBlocked(view !== null);
     const key = view
       ? `${view.pending}:${hidden}:${view.choices.map((c) => c.id).join(',')}:${weekNumber(sim.tick, tuning.WEEK_TICKS)}`
       : '';
@@ -211,5 +236,11 @@ export function createOfferPanel(getSim: () => SimState): OfferPanel {
     build(view, weekNumber(sim.tick, tuning.WEEK_TICKS));
   }
 
-  return { sync, destroy: () => root.remove() };
+  return {
+    sync,
+    destroy: () => {
+      setBlocked(false);
+      root.remove();
+    },
+  };
 }

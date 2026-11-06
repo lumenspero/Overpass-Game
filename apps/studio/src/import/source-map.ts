@@ -27,6 +27,27 @@ export interface BuildInput {
   readonly fetchedAt: string;
 }
 
+/** The starting fence every imported map gets, in tiles. */
+export const STARTING_FENCE_TILES = { cols: 24, rows: 14 } as const;
+
+/**
+ * The standard starting fence, centred in the frame. A frame smaller than the standard size gets
+ * a fence the size of the frame.
+ */
+export function centredFence(
+  cols: number,
+  rows: number,
+): { col: number; row: number; cols: number; rows: number } {
+  const w = Math.min(STARTING_FENCE_TILES.cols, cols);
+  const h = Math.min(STARTING_FENCE_TILES.rows, rows);
+  return {
+    col: Math.floor((cols - w) / 2),
+    row: Math.floor((rows - h) / 2),
+    cols: w,
+    rows: h,
+  };
+}
+
 /** Assembles a source map from imported layers. The result is validated against the schema. */
 export function buildSourceMap(input: BuildInput): SourceMap {
   const { frame, layers } = input;
@@ -38,7 +59,7 @@ export function buildSourceMap(input: BuildInput): SourceMap {
     grid: {
       cols: frame.cols,
       rows: frame.rows,
-      fence: { col: 0, row: 0, cols: frame.cols, rows: frame.rows },
+      fence: centredFence(frame.cols, frame.rows),
     },
     layers: {
       water: layers.water,

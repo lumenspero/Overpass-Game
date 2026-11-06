@@ -105,7 +105,7 @@ Elevated links for faster travel between two points on the ground network. `appr
 
 ### Expansion
 
-- **Fence:** each map has a starting fence: a rectangle of grid nodes (tiles) set per map in the Studio. Only tiles inside the fence take roads, buildings and spawns. Land outside it stays visible, dimmed and locked. Replaces the district schedule. `planned`
+- **Fence:** each map has a starting fence: a rectangle of tiles. Every imported map starts with a 24 by 14 fence centred in its frame; a frame smaller than that gets a fence the size of the frame. Setting it per map in the Studio is not built yet. Only tiles inside the fence take roads, buildings and spawns. Land outside it stays visible, dimmed and locked. Replaces the district schedule. `planned`
 - **Weekly growth:** each week the fence grows by `FENCE_GROWTH_PER_WEEK` (2) nodes on each side (north, south, east and west), stopping at the map edge. `approximated`
 - **Visible growth:** each step's new edge slides across its strip over `FENCE_REVEAL_TICKS` (1.5 seconds at 1x). In draw mode the edge is drawn as a boundary that is not locked to the grid: the grid shows only inside it, and land outside is dimmed. Tiles open once the edge has passed over them. `approximated`
 - **Frame shape:** 16:9 is the target shape of the window that frames the fence. It is not the node count: the fence's starting width and height are set per map.
