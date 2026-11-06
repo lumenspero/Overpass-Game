@@ -160,6 +160,8 @@ function lanePoint(
 const TURN_RADIUS = 0.25;
 /** How far a lot's node is drawn for a car leaving it, from the centre to the exit edge, in tiles. */
 const NODE_DRAWN = 0.5;
+/** The furthest into its node a car leaving a lot joins the road, as a share of the half-node drawn past the centre. */
+const MAX_JOIN_AT = 0.9;
 /** How far inside the lot's edge a leaving car waits for its gap in traffic, in tiles. */
 const HOLD_BACK = 0.3;
 
@@ -422,8 +424,8 @@ export function exitRoute(state: SimState, car: Car): Car | null {
 
 /**
  * Plans a leaving car's drive from its space to the road, for its route home `home`. The car leaves by the
- * inlet's centre, waits just inside the lot's edge for a gap, then turns into its lane past the node's
- * centre, facing the way it will drive. Cars driving in cross the edge either side of the centre, ahead of
+ * inlet's centre, waits just inside the lot's edge for a gap, then turns into its lane along the road's
+ * rounded corner, joining the road just inside the node's far edge, facing the way it will drive. Cars driving in cross the edge either side of the centre, ahead of
  * where they stop, so they pass a car waiting to leave. Planned again if its route home changes direction
  * while it waits, from where it has got to.
  */
@@ -445,22 +447,32 @@ function planExit(state: SimState, car: Car, home: Car | null): void {
       const body = roundedPath(lane.slice(0, -1));
       const edge = body[body.length - 1];
       const { d, n } = axes(dir);
-      // The turn never starts behind the node, so a car leaving the lot's edge meets its lane at the node.
-      const t = Math.max(0, dot(minus(edge, end), d));
-      const corner = { x: end.x + d.x * t, y: end.y + d.y * t };
-      // On a road running past the lot the car turns into its lane a turn's radius past the node's centre,
-      // and joins the road there. On a road running away from the lot it drives straight on to the centre.
-      const finish =
-        t > -0.05
-          ? { x: corner.x + d.x * TURN_RADIUS, y: corner.y + d.y * TURN_RADIUS }
-          : end;
+      const ahead = dot(minus(edge, end), d);
+      const side = dot(minus(edge, end), n);
+      let corner = end;
+      let radius = TURN_RADIUS;
+      if (Math.abs(side) > 1e-6) {
+        // The road runs past the lot, so the node is a bend. The car turns from the lot's edge on a circle
+        // tangent to the inlet's lane and its own: the road's rounded corner, in its lane. The circle is cut
+        // a little short so the turn ends just inside the node's far edge, where the car joins the road.
+        corner = { x: end.x + d.x * ahead, y: end.y + d.y * ahead };
+        radius = Math.max(
+          0.05,
+          Math.min(Math.abs(side), MAX_JOIN_AT * NODE_DRAWN - ahead),
+        );
+      }
+      // On a road running straight on from the inlet the car drives into its lane, past the node's centre.
+      const finish = {
+        x: corner.x + d.x * radius,
+        y: corner.y + d.y * radius,
+      };
       joinAt = Math.min(
-        0.9,
+        MAX_JOIN_AT,
         Math.max(0, dot(minus(finish, end), d) / NODE_DRAWN),
       );
       path = dedupe([
         ...body,
-        ...turnRound(edge, corner, finish, TURN_RADIUS),
+        ...turnRound(edge, corner, finish, radius),
         finish,
       ]);
       hold = Math.max(0, polylineLength(body) - HOLD_BACK);

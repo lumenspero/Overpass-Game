@@ -106,3 +106,52 @@ describe('the approach into a lot', () => {
     });
   }
 });
+
+describe('the turn out of a lot', () => {
+  // The lot at (3,3) faces north, so its access node (3,2) is a bend between the inlet and the road.
+  // A car parks, then drives north out of the inlet for its house: east (a right turn, round the corner
+  // at (4,3)) or west (a left turn across the road, round the corner at (3,3)).
+  for (const [name, houseCol, entrance, roadCols, corner] of [
+    ['east, a right turn', 7, 'w', [6, 5, 4, 3], { x: 4, y: 3 }],
+    ['west, a left turn', 0, 'e', [1, 2, 3], { x: 3, y: 3 }],
+  ] as const) {
+    it(`follows the road's rounded corner in its lane, heading ${name}`, () => {
+      const sim = createSim({ seed: 1, grid: makeGrid(8, 8), roadBudget: 100 });
+      placeBuilding(sim, {
+        kind: 'house',
+        color: 0,
+        tile: at(sim.grid, houseCol, 2),
+        entrance,
+      });
+      placeBuilding(sim, {
+        kind: 'destination',
+        color: 0,
+        tile: at(sim.grid, 3, 3),
+        entrance: 'n',
+      });
+      const road = roadCols.map((c) => at(sim.grid, c, 2));
+      placeRoads(sim, road);
+      for (let i = 1; i < road.length; i++)
+        linkTiles(sim, road[i - 1] ?? 0, road[i] ?? 0);
+      sim.demand[1].pins = 1;
+      let path: readonly LotPoint[] | null = null;
+      for (let i = 0; i < 6000 && path === null; i++) {
+        step(sim);
+        const lot = sim.cars[0]?.lot;
+        if (lot && lot.phase === 'out' && lot.cleared === true) path = lot.path;
+      }
+      if (path === null) throw new Error('no car left the lot');
+      expect(sharpestTurn(path)).toBeLessThan(30);
+      const onNode = path.filter(
+        (p) => p.x >= 3 && p.x <= 4 && p.y >= 2 && p.y <= 3,
+      );
+      expect(onNode.length).toBeGreaterThan(2);
+      // A car is about 0.1 tiles wide either side of its lane, so it keeps 0.1 inside each edge.
+      for (const p of onNode) {
+        const r = Math.hypot(p.x - corner.x, p.y - corner.y);
+        expect(r).toBeGreaterThanOrEqual(0.35 - 1e-9);
+        expect(r).toBeLessThanOrEqual(0.65 + 1e-9);
+      }
+    });
+  }
+});
