@@ -119,7 +119,9 @@ describe('@overpass-game/map-compiler', () => {
     expect(sim.grid.rows).toBe(10);
     expect(sim.grid.terrain).toEqual(map.terrain);
     expect(sim.startFence).toEqual(map.fence);
-    expect(sim.rules).toEqual([{ kind: 'unlockColour', colour: 2, week: 4 }]);
+    expect(sim.rules).toEqual([
+      { kind: 'allowedOffers', options: ['bridge', 'tunnel'] },
+    ]);
   });
 
   it('walks a stroke-free guide into one run of adjacent tiles', () => {

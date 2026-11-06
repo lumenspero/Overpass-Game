@@ -1,6 +1,6 @@
 import { tuning } from './config.ts';
 import { nextFloat } from './rng.ts';
-import { colourUnlocked, spawnsOff } from './rules.ts';
+import { spawnsOff } from './rules.ts';
 import type { DestinationShape } from './buildings.ts';
 import type { SimState } from './sim.ts';
 import { placeInFence } from './start.ts';
@@ -11,7 +11,7 @@ import { weekOf } from './score.ts';
 /**
  * Business arrival and house supply (spec: Business arrival and house supply). From
  * BUSINESS_ARRIVAL_START_WEEK, new businesses arrive inside the fence at the start of each week, after
- * its reward, each in a random colour the map allows: one a week, and one more every
+ * its reward, each in a random building colour: one a week, and one more every
  * BUSINESS_BONUS_EVERY_WEEKS. They are square until SHAPE_SWITCH_WEEK; from then an arrival may be round,
  * or level up a square business to round instead. Houses come at one or two moments each week, when a
  * colour whose houses are below SUPPLY_RATIO_MIN per business is topped up to SUPPLY_RATIO_MAX.
@@ -74,13 +74,9 @@ function houseSites(state: SimState): number[] {
   return sites;
 }
 
-/** The colours a new business may take at this tick. */
-function unlockedColours(state: SimState): number[] {
-  const out: number[] = [];
-  for (let c = 0; c < tuning.BUILDING_COLOR_COUNT; c++) {
-    if (colourUnlocked(state, c)) out.push(c);
-  }
-  return out;
+/** The colours a new business may take: every building colour. */
+function allColours(): number[] {
+  return Array.from({ length: tuning.BUILDING_COLOR_COUNT }, (_, c) => c);
 }
 
 /** How many businesses arrive in a week: one, and more every BUSINESS_BONUS_EVERY_WEEKS. */
@@ -130,7 +126,7 @@ export function arriveBusinesses(state: SimState): number {
         shape = 'round';
       }
     }
-    const colours = unlockedColours(state);
+    const colours = allColours();
     if (colours.length === 0) break;
     const colour = colours[Math.floor(nextFloat(state.rng) * colours.length)];
     if (colour === undefined) break;

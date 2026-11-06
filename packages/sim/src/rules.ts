@@ -1,12 +1,11 @@
-import { weekOf } from './score.ts';
 import type { SimState } from './sim.ts';
 import { OFFER_IDS, type OfferId } from './upgrades.ts';
 
 /**
  * Per-map rules (spec: Destination growth and rule hooks). A map passes its rules to
- * the sim as data, so it can change without code changes. The first kind unlocks a building
- * colour from a week on: until then, no house or destination may use that colour. The second
- * leaves out offer options the map does not want.
+ * the sim as data, so it can change without code changes. `allowedOffers` leaves out offer options
+ * the map does not want. Colours are not a map rule: they arrive with businesses (spec: Business
+ * arrival and house supply).
  */
 
 /** The offer options a map can leave out. Road tiles are always on offer, so they are not listed. */
@@ -21,7 +20,6 @@ export const RESTRICTABLE_OFFERS = [
 export type RestrictableOffer = (typeof RESTRICTABLE_OFFERS)[number];
 
 export type MapRule =
-  | { kind: 'unlockColour'; colour: number; week: number }
   | { kind: 'allowedOffers'; options: RestrictableOffer[] }
   // Sim only, not in the map format: no businesses arrive and no houses are topped up. For scripted
   // demos, which bring their own buildings.
@@ -30,14 +28,6 @@ export type MapRule =
 /** Whether the run's rules turn off business arrivals and house top-ups. */
 export function spawnsOff(state: SimState): boolean {
   return state.rules.some((r) => r.kind === 'noSpawns');
-}
-
-/** Whether a building colour may be used at the state's current tick. */
-export function colourUnlocked(state: SimState, colour: number): boolean {
-  const week = weekOf(state.tick);
-  return state.rules.every(
-    (r) => r.kind !== 'unlockColour' || r.colour !== colour || week >= r.week,
-  );
 }
 
 /**

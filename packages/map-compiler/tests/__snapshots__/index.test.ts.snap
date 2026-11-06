@@ -45,9 +45,11 @@ exports[`@overpass-game/map-compiler > matches the snapshot for the coast fixtur
   ],
   "rules": [
     {
-      "colour": 2,
-      "kind": "unlockColour",
-      "week": 4,
+      "kind": "allowedOffers",
+      "options": [
+        "bridge",
+        "tunnel",
+      ],
     },
   ],
   "starterRoads": [

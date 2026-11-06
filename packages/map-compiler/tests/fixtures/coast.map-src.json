@@ -177,9 +177,8 @@
   },
   "rules": [
     {
-      "kind": "unlockColour",
-      "colour": 2,
-      "week": 4
+      "kind": "allowedOffers",
+      "options": ["bridge", "tunnel"]
     }
   ],
   "palette": "coast",

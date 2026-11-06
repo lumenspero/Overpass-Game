@@ -8,7 +8,6 @@ import {
   tuning,
   WEEK_TICKS,
   type SimState,
-  colourUnlocked,
 } from '../src/index.ts';
 import { at, makeGrid } from './helpers.ts';
 
@@ -62,33 +61,5 @@ describe('destination growth', () => {
       tuning.DEMAND_INTERVAL_TICKS / (1 + tuning.DEMAND_GROWTH_STEP),
     );
     expect(pinOnNextTick(sim, destId)).toBe(expected);
-  });
-});
-
-describe('per-map colour rules', () => {
-  it('keep a colour unused until its week', () => {
-    const rules = [{ kind: 'unlockColour' as const, colour: 2, week: 3 }];
-    const { sim } = town(rules);
-    expect(colourUnlocked(sim, 2)).toBe(false);
-    expect(colourUnlocked(sim, 0)).toBe(true);
-    sim.tick = 2 * WEEK_TICKS;
-    expect(colourUnlocked(sim, 2)).toBe(true);
-  });
-
-  it('refuse a building in a colour that is still locked', () => {
-    const grid = makeGrid(9, 9);
-    const sim = createSim({
-      seed: 1,
-      grid,
-      roadBudget: 80,
-      rules: [{ kind: 'unlockColour', colour: 2, week: 3 }],
-    });
-    const result = placeBuilding(sim, {
-      kind: 'house',
-      color: 2,
-      tile: at(grid, 1, 1),
-      entrance: 'e',
-    });
-    expect(result).toEqual({ ok: false, reason: 'bad-color' });
   });
 });

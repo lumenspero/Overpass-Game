@@ -196,7 +196,7 @@ Elevated links for faster travel between two points on the ground network. `appr
 ### Destination growth and rule hooks
 
 - **Growth:** every week, every destination gains `DEMAND_GROWTH_STEP` (default 0.25) demand, so demand rises as the game goes on. It is automatic: the player has no choice in it, and destinations are not upgraded by hand. `approximated`
-- **Rule hooks:** a map's rules are a list passed to the sim when it starts, each with a week it applies from. The first rule kind, `unlockColour` (a colour is unused until its week), is a temporary stopgap. Business arrival below replaces it at M14, and then it is removed. The sim reads the list at each week boundary, so a map changes by data, not code. `approximated`
+- **Rule hooks:** a map's rules are a list passed to the sim when it starts, so a map changes by data, not code. The one map rule kind is `allowedOffers`, which leaves out upgrade offers the map does not want. Colours are not a map rule: they arrive with businesses (see Business arrival and house supply). `approximated`
 
 ### Campaign unlocks
 
@@ -235,11 +235,10 @@ _Built in M14 (part 2). Painted spawn zones are not used: new buildings are plac
 - **Colours:** a colour appears when a business of that colour arrives. There is no guarantee of a new colour at each arrival. `approximated`
 - **House moments:** houses spawn at `HOUSE_MOMENTS_MIN` to `HOUSE_MOMENTS_MAX` moments each week, not with the business. At each moment, every colour below the supply band is topped up. The first moment falls in the week's first quarter, so a business that arrived at the week's start soon has houses, ahead of its demand overflowing; any others fall later in the week. The moments are fixed by the run's seed and the week. They run from week 1.
 - **Supply ratio:** for each colour, the sim keeps houses per destination inside a band, `SUPPLY_RATIO_MIN` to `SUPPLY_RATIO_MAX` (global tuning, `approximated`). Houses are added when the ratio falls below the minimum. None are added above the maximum. This stops a colour being oversupplied with houses where it has no demand, while still allowing new houses in the middle of the week.
-- **Colour choice:** a new business takes a colour picked at random from the colours the map allows that week. Nothing guarantees a new colour. `approximated`
+- **Colour choice:** a new business takes a colour picked at random from all the building colours. Nothing guarantees a new colour. `approximated`
 - **Values (approximated):** arrivals start in week 2, one business a week, and two in weeks 10, 20 and so on. Rounds and level-ups start in week 10, each at 25%. Houses come at 1 or 2 moments a week. A colour is topped up to 3 houses per business when it falls below 2. Houses spawn only within 5 tiles of an existing road or 10 tiles of a building (a business counts from every tile of its lot), and inside the fence. They need not be connected. Distances are Chebyshev, in tiles. All in `config.ts`.
 - **No spawn zones:** the map format has no spawn zones or spawn weights, and the Studio does not paint them. Every spawn, the starting pair included, is placed by the fence and the reach rules above. Asked by the author.
 - **Demos:** scripted demos bring their own buildings, so they pass a sim-only `noSpawns` rule that turns arrivals and house moments off. Maps cannot set it.
-- **Stopgap:** the `unlockColour` map rule still applies to placement until it is removed.
 
 ### Parking lots and building kinds
 

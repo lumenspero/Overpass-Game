@@ -1,9 +1,5 @@
 import { z } from 'zod';
-import {
-  DEFAULT_TUNING,
-  RESTRICTABLE_OFFERS,
-  Terrain,
-} from '@overpass-game/sim';
+import { RESTRICTABLE_OFFERS, Terrain } from '@overpass-game/sim';
 import { parseWith } from './errors.ts';
 
 export {
@@ -78,14 +74,6 @@ export const PolylineSchema = z.object({
 });
 
 export const MapRuleSchema = z.discriminatedUnion('kind', [
-  z.object({
-    kind: z.literal('unlockColour'),
-    colour: z
-      .int()
-      .min(0)
-      .max(DEFAULT_TUNING.BUILDING_COLOR_COUNT - 1),
-    week: z.int().min(1),
-  }),
   z.object({
     kind: z.literal('allowedOffers'),
     options: z.array(z.enum(RESTRICTABLE_OFFERS)).min(1),

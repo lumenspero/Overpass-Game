@@ -1,5 +1,4 @@
 import { tuning, demandIntervalFor } from './config.ts';
-import { colourUnlocked } from './rules.ts';
 import { type Grid, isAdjacent, isBuildable, isInBounds } from './grid.ts';
 import { isOpenTile } from './expansion.ts';
 import { updateRoadGraph } from './graph.ts';
@@ -250,8 +249,7 @@ export function placeBuilding(
   if (
     !Number.isInteger(opts.color) ||
     opts.color < 0 ||
-    opts.color >= tuning.BUILDING_COLOR_COUNT ||
-    !colourUnlocked(state, opts.color)
+    opts.color >= tuning.BUILDING_COLOR_COUNT
   ) {
     return { ok: false, reason: 'bad-color' };
   }
