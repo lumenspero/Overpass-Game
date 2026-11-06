@@ -109,7 +109,15 @@ function segmentLength(state: SimState, car: Car): number {
     const leavesByMotorway = motorwayBetween(state.motorways, a, b) !== null;
     // The curve already reaches this tile's exit edge, so the tile is passed at once.
     if (arrivedByMotorway && !leavesByMotorway) return 0;
-    return stepLength(state, a, b);
+    if (leavesByMotorway) return stepLength(state, a, b);
+    // A roundabout's ring reaches this tile's centre, so the tile is drawn only on its other half: each side
+    // the ring covers costs half a step less, which keeps the car's drawn speed even on and off the ring.
+    let ringed = 0;
+    if (progress > 0 && state.controls[route[progress - 1]] === 'roundabout') {
+      ringed += 0.5;
+    }
+    if (state.controls[b] === 'roundabout') ringed += 0.5;
+    return Math.max(0.05, stepLength(state, a, b) - ringed);
   }
   if (progress > 0) {
     const a = route[progress - 1];

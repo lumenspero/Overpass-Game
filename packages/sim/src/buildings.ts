@@ -12,6 +12,7 @@ import {
   type LotReason,
   lotBlocker,
   lotRoads,
+  lotAccessTiles,
   reservedLotTiles,
 } from './lots.ts';
 import { nextFloat } from './rng.ts';
@@ -61,8 +62,12 @@ export interface Demand {
   pins: number;
   /** Ticks until the next pin appears. */
   cooldown: number;
-  /** Ticks left before this destination ends the game. 0 when it is not overflowing. */
-  overflow: number;
+  /**
+   * How full this destination's overflow pin is, from 0 to 1. It starts filling when a request arrives
+   * while OVERFLOW_PIN_LIMIT pins already wait, and the game ends when it is full. Absent in runs saved
+   * before it existed, which read it as 0.
+   */
+  overflowFill?: number;
   /** Expansions this destination has grown through. */
   growth: number;
 }
@@ -140,8 +145,9 @@ export function isHouseStub(state: SimState, tile: number): boolean {
 
 /**
  * Why a house on `houseTile` cannot keep its stub on `tile`, or null if it can. The tile must touch
- * the house by an edge or a corner, and be land, park or an existing road, with no building, lot
- * or other stub on it. `ignoreLock` lets a house placed on land not yet open take its stub there.
+ * the house by an edge or a corner, and be land, park or an existing road, with no building or lot
+ * on it. Another house's stub may share it, so neighbouring houses can join the road at one node.
+ * `ignoreLock` lets a house placed on land not yet open take its stub there.
  */
 export function stubBlocker(
   state: SimState,
@@ -151,9 +157,7 @@ export function stubBlocker(
 ): StubReason | null {
   if (!isInBounds(state.grid, tile)) return 'out-of-bounds';
   if (!isAdjacent(state.grid, houseTile, tile)) return 'not-adjacent';
-  if (state.buildingAt[tile] !== -1 || isHouseStub(state, tile)) {
-    return 'occupied';
-  }
+  if (state.buildingAt[tile] !== -1) return 'occupied';
   if (reservedLotTiles(state).has(tile)) return 'occupied';
   if (state.roads[tile] !== 1 && !isBuildable(state.grid, tile)) {
     return 'unbuildable';
@@ -262,11 +266,12 @@ export function placeBuilding(
       return { ok: false, reason: 'unbuildable' };
     }
     // A lot's open strip has no building on it, but its tiles are reserved for the lot (spec: Spawning
-    // reserves the lot), so a house cannot stand there either.
+    // reserves the lot), so a house cannot stand there either, nor on the access road outside its inlet.
     if (
       state.roads[opts.tile] === 1 ||
       state.buildingAt[opts.tile] !== -1 ||
-      reservedLotTiles(state).has(opts.tile)
+      reservedLotTiles(state).has(opts.tile) ||
+      lotAccessTiles(state).has(opts.tile)
     ) {
       return { ok: false, reason: 'occupied' };
     }
@@ -315,7 +320,7 @@ export function placeBuilding(
     state.demand[id] = {
       pins: 0,
       cooldown: demandIntervalFor(shape),
-      overflow: 0,
+      overflowFill: 0,
       growth: 0,
     };
   }
@@ -374,7 +379,7 @@ export function addSecondBuildings(state: SimState): void {
     state.demand[id] = {
       pins: 0,
       cooldown: demandIntervalFor(near.shape),
-      overflow: 0,
+      overflowFill: 0,
       growth: state.demand[near.id]?.growth ?? 0,
     };
     emitEvent({ kind: 'building-spawned', building: id });

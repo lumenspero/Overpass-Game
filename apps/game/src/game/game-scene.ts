@@ -101,6 +101,15 @@ import { createOfferPanel, type OfferPanel } from '../ui/offer-panel.ts';
 import { createDock, type Dock } from '../ui/dock.ts';
 import type { DockId } from '../ui/dock-model.ts';
 
+/** A demand pin's shadow strength: slight, as the mockup. */
+const PIN_SHADOW_ALPHA = 0.28;
+/** A small pin's white rim, as a scale of its head. */
+const PIN_RIM = 1.2;
+/** A small pin's white dot, as a share of its head radius. */
+const PIN_DOT = 0.36;
+/** The large pin's pale face and dark outline; its fill is the overflow red. */
+const BIG_PIN_FACE = 0xf4f1ea;
+const BIG_PIN_INK = 0x2c2c2a;
 /** Pointer id for a drag from the dock. Real pointers are never negative. */
 const DOCK_POINTER_ID = -7;
 import { createTopBar, type TopBar } from '../ui/top-bar.ts';
@@ -152,7 +161,15 @@ import {
   crossingMessage,
   motorwayMessage,
 } from '../view/crossing-message.ts';
-import { overflowRings } from '../view/overflow.ts';
+import {
+  BIG_PIN_HEAD,
+  demandPins,
+  PIN_SHADOW,
+  pinFillPolygon,
+  pinOutline,
+  SMALL_PIN_HEAD,
+  type Point,
+} from '../view/demand-pins.ts';
 import { audio } from '../audio/shared.ts';
 import { soundForSimEvent } from '../audio/sim-sounds.ts';
 import { weekEndSound, hourOfWeek } from '../audio/week-tick.ts';
@@ -324,6 +341,8 @@ export class GameScene extends Phaser.Scene {
   };
   private ended = false;
   private roadsDirty = true;
+  /** When each demand pin first showed, by business and slot, in scene time, so a new one pops in. */
+  private pinBornAt = new Map<string, number>();
   /** When each building first showed, by id and shape, in scene time, so a new or levelled-up one pops in. */
   private bornAt = new Map<string, number>();
   /** False while the board's opening buildings are drawn, so they appear in place without popping. */
@@ -479,8 +498,10 @@ export class GameScene extends Phaser.Scene {
     if (!demo && !resumed && !isTestMap()) placeStartingPair(this.sim);
     // Buildings already on the board when it opens are drawn in place; only later arrivals pop in.
     this.bornAt.clear();
+    this.pinBornAt.clear();
     this.popReady = false;
     this.drawBuildings();
+    this.drawDemandPins();
     this.popReady = true;
 
     // Screen-space text, not in the scaled layer, so it stays readable at any zoom.
@@ -579,7 +600,7 @@ export class GameScene extends Phaser.Scene {
       stemLevels({
         cars: this.sim.cars.length,
         pins: demands.reduce((sum, d) => sum + d.pins, 0),
-        overflowing: demands.some((d) => d.overflow > 0),
+        overflowing: demands.some((d) => (d.overflowFill ?? 0) > 0),
         weekHour: hourOfWeek(this.sim.tick, tuning.WEEK_TICKS),
       }),
     );
@@ -615,7 +636,7 @@ export class GameScene extends Phaser.Scene {
     this.drawCrossingPreview();
     this.drawMotorways();
     this.drawControls();
-    this.drawRings();
+    this.drawDemandPins();
     this.topBar.sync({
       paused: this.clock.paused || this.sim.offers.length > 0,
       speed: this.clock.speed,
@@ -1576,7 +1597,6 @@ export class GameScene extends Phaser.Scene {
     return headingBetween(pointAtDistance(path, lo), pointAtDistance(path, hi));
   }
 
-  /** Draws each overflowing destination's countdown ring. Redrawn every frame, as the countdown moves. */
   /** Roundabouts as rings, and lights as a red or green dot on each axis, the green one on the axis that has it. */
   private drawControls(): void {
     const gfx = this.controlGfx;
@@ -1620,28 +1640,73 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private drawRings(): void {
+  /**
+   * Draws each business's demand pins (see demand-pins.ts): small pins in its colour for waiting requests, or
+   * one large red and white pin while it overflows. Each pin has a slight shadow, and pops in when it first
+   * shows. Redrawn every frame, as pins come and go and the large pin fills.
+   */
+  private drawDemandPins(): void {
     const gfx = this.ringGfx;
     gfx.clear();
-    gfx.lineStyle(3, OVERFLOW_RING_COLOR, 1);
-    const rings = overflowRings(
-      this.sim.buildings,
+    const visible = this.sim.buildings.filter((b) =>
+      isOpenTile(this.sim, b.tile),
+    );
+    const { small, big } = demandPins(
+      visible,
       this.sim.demand,
       this.sim.grid,
+      BUILDING_COLORS,
     );
-    for (const ring of rings) {
-      // Starts at the top and runs clockwise; the arc shrinks as the countdown runs out.
-      const start = -Math.PI / 2;
-      gfx.beginPath();
-      gfx.arc(
-        ring.x,
-        ring.y,
-        ring.r,
-        start,
-        start + 2 * Math.PI * ring.fraction,
-        false,
+    const now = this.time.now;
+    const seen = new Set<string>();
+    const vec = (points: Point[]) =>
+      points.map((p) => new Phaser.Math.Vector2(p.x, p.y));
+    /** The pin's pop scale, from when it first showed. Pins on the board when it opens show in place. */
+    const scaleOf = (key: string) => {
+      seen.add(key);
+      let born = this.pinBornAt.get(key);
+      if (born === undefined) {
+        born = this.popReady ? now : -Infinity;
+        this.pinBornAt.set(key, born);
+      }
+      return popScale(now - born);
+    };
+    const shadow = (x: number, y: number, head: number) => {
+      gfx.fillStyle(0x000000, PIN_SHADOW_ALPHA);
+      gfx.fillPoints(
+        vec(pinOutline(x + PIN_SHADOW.x * head, y + PIN_SHADOW.y * head, head)),
+        true,
       );
-      gfx.strokePath();
+    };
+    const fill = (points: Point[], color: number) => {
+      gfx.fillStyle(color, 1);
+      gfx.fillPoints(vec(points), true);
+    };
+    for (const pin of small) {
+      const head = SMALL_PIN_HEAD * scaleOf(`${pin.destination}:${pin.index}`);
+      if (head <= 0) continue;
+      shadow(pin.x, pin.y, head);
+      // A white rim: the pin drawn a little larger in white, then in its colour.
+      fill(pinOutline(pin.x, pin.y, head * PIN_RIM), 0xffffff);
+      fill(pinOutline(pin.x, pin.y, head), pin.color);
+      gfx.fillStyle(0xffffff, 1);
+      gfx.fillCircle(pin.x, pin.y, head * PIN_DOT);
+    }
+    for (const pin of big) {
+      const head = BIG_PIN_HEAD * scaleOf(`${pin.destination}:big`);
+      if (head <= 0) continue;
+      shadow(pin.x, pin.y, head);
+      fill(pinOutline(pin.x, pin.y, head), BIG_PIN_FACE);
+      const red = pinFillPolygon(pin.x, pin.y, head, pin.fill);
+      if (red.length > 2) fill(red, OVERFLOW_RING_COLOR);
+      gfx.lineStyle(Math.max(1, head * 0.07), BIG_PIN_INK, 1);
+      gfx.strokePoints(vec(pinOutline(pin.x, pin.y, head)), true, true);
+      gfx.fillStyle(BIG_PIN_INK, 1);
+      gfx.fillCircle(pin.x, pin.y, head * 0.32);
+    }
+    // A pin that has gone pops in again when it comes back.
+    for (const key of [...this.pinBornAt.keys()]) {
+      if (!seen.has(key)) this.pinBornAt.delete(key);
     }
   }
 

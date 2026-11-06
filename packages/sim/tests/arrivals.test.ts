@@ -128,7 +128,7 @@ describe('business arrival and house supply', () => {
       roadBudget: 0,
       startFence: { col: 3, row: 3, cols: 24, rows: 24 },
     });
-    tuning.OVERFLOW_TICKS = 1e9;
+    tuning.OVERFLOW_FILL_PINS = 1e9;
     expect(placeStartingPair(sim)).toBe(true);
     const start = sim.buildings.find((b) => b.kind === 'destination');
     expect(start?.shape).toBe('square');
@@ -228,7 +228,7 @@ describe('business arrival and house supply', () => {
       tile: at(sim.grid, 8, 8),
       entrance: 's',
     });
-    tuning.OVERFLOW_TICKS = 1e9;
+    tuning.OVERFLOW_FILL_PINS = 1e9;
     for (let i = 0; i < tuning.WEEK_TICKS * 3; i++) {
       const [first] = sim.offers;
       if (first) chooseOffer(sim, first[0]);
@@ -277,6 +277,88 @@ describe('business arrival and house supply', () => {
         expect(tiles).not.toContain(h.tile);
       }
     }
+  });
+
+  it("never places a house on a lot's access road, outside its inlet", () => {
+    const sim = createSim({ seed: 2, grid: makeGrid(16, 16), roadBudget: 0 });
+    placeBuilding(sim, {
+      kind: 'destination',
+      color: 0,
+      tile: at(sim.grid, 8, 8),
+      entrance: 's',
+    });
+    const business = sim.buildings[0];
+    const lot = business ? destinationLot(sim.grid, business) : null;
+    if (!lot) throw new Error('no lot');
+    expect(
+      placeBuilding(sim, {
+        kind: 'house',
+        color: 0,
+        tile: lot.road,
+        entrance: 'n',
+      }),
+    ).toEqual({ ok: false, reason: 'occupied' });
+    // Nor does supply put one there, whatever the seed.
+    for (let seed = 1; seed <= 30; seed++) {
+      const run = createSim({ seed, grid: makeGrid(16, 16), roadBudget: 0 });
+      placeBuilding(run, {
+        kind: 'destination',
+        color: 0,
+        tile: at(run.grid, 8, 8),
+        entrance: 's',
+      });
+      topUpSupply(run, 0);
+      const first = run.buildings[0];
+      const road = first ? destinationLot(run.grid, first)?.road : undefined;
+      for (const h of run.buildings.filter((b) => b.kind === 'house')) {
+        expect(h.tile).not.toBe(road);
+      }
+    }
+  });
+
+  it("never places a business whose lot covers another lot's access road, or whose own access road has a house", () => {
+    const sim = createSim({ seed: 2, grid: makeGrid(20, 20), roadBudget: 0 });
+    placeBuilding(sim, {
+      kind: 'destination',
+      color: 0,
+      tile: at(sim.grid, 8, 8),
+      entrance: 's',
+    });
+    const first = sim.buildings[0];
+    const lot = first ? destinationLot(sim.grid, first) : null;
+    if (!lot) throw new Error('no lot');
+    // Try every placement; none that is accepted may cover the first lot's access road.
+    for (let t = 0; t < 400; t++) {
+      for (const side of ['n', 'e', 's', 'w'] as const) {
+        const trial = structuredClone(sim);
+        const r = placeBuilding(trial, {
+          kind: 'destination',
+          color: 0,
+          tile: t,
+          entrance: side,
+        });
+        if (!r.ok) continue;
+        const placed = trial.buildings[1];
+        const other = placed ? destinationLot(trial.grid, placed) : null;
+        expect(other?.tiles ?? []).not.toContain(lot.road);
+      }
+    }
+    // A house first, then a business whose access road would be the house's tile, is refused.
+    const fresh = createSim({ seed: 2, grid: makeGrid(20, 20), roadBudget: 0 });
+    placeBuilding(fresh, {
+      kind: 'house',
+      color: 0,
+      tile: lot.road,
+      entrance: 'w',
+    });
+    expect(
+      placeBuilding(fresh, {
+        kind: 'destination',
+        color: 0,
+        tile: at(fresh.grid, 8, 8),
+        entrance: 's',
+      }).ok,
+    ).toBe(false);
   });
 
   it('runs the same way for the same seed', () => {

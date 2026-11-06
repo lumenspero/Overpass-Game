@@ -286,16 +286,28 @@ describe('cars at a house whose road bends into it', () => {
 });
 
 describe('popping buildings in', () => {
-  it('grows from nothing, overshoots, and settles at full size', () => {
+  it('springs from nothing past full size, dips back under it, and settles', () => {
     expect(popScale(0)).toBe(0);
     expect(popScale(POP_MS)).toBe(1);
     expect(popScale(POP_MS * 10)).toBe(1);
     let peak = 0;
-    for (let ms = 0; ms <= POP_MS; ms += POP_MS / 50) {
-      peak = Math.max(peak, popScale(ms));
+    let dip = Infinity;
+    let peaked = false;
+    for (let ms = 0; ms <= POP_MS; ms += POP_MS / 200) {
+      const k = popScale(ms);
+      if (k > peak) peak = k;
+      if (k < 1 && peak > 1) {
+        peaked = true;
+        dip = Math.min(dip, k);
+      }
     }
-    expect(peak).toBeGreaterThan(1.05);
-    expect(peak).toBeLessThan(1.25);
+    // A clear overshoot, then a small dip back: the spring the buildings and pins pop in with.
+    expect(peak).toBeGreaterThan(1.15);
+    expect(peak).toBeLessThan(1.35);
+    expect(peaked).toBe(true);
+    expect(dip).toBeGreaterThan(0.9);
+    // It ends close to full size, so the last frame's snap to 1 is not seen.
+    expect(Math.abs(popScale(POP_MS - 1) - 1)).toBeLessThan(0.02);
   });
 
   it('scales a building about its own centre', () => {

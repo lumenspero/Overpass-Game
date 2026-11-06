@@ -11,6 +11,7 @@ import {
   Terrain,
   type TerrainKind,
   APPROACH_HANDOFF,
+  RING_APPROACH_HANDOFF,
   lotApproach,
 } from '@overpass-game/sim';
 import {
@@ -523,6 +524,11 @@ export function carShapes(
         const radius = (1 - along) * r0 + along * r1;
         x = o.x + (vx / vl) * radius;
         y = o.y + (vy / vl) * radius;
+      } else if (!perpendicular && (inHalf !== half || outHalf !== half)) {
+        // A straight run onto or off a roundabout's ring stops at this tile's centre on that side, so the car
+        // moves evenly along its lane; a curve through the centre would stall it at the ring's edge.
+        x = ax + (bx - ax) * along;
+        y = ay + (by - ay) * along;
       } else {
         const k = perpendicular ? 1 : 0.5;
         const cx = c.x + k * (nIn.x + nOut.x);
@@ -633,8 +639,12 @@ export function carShapes(
     ) {
       // Drive in from the entry edge to the anchor, so the car never backs up on its last tile.
       const nIn = inRaw ? rightOfTravel(inRaw) : { x: 0, y: 0 };
+      // Off a roundabout the ring leaves the car at this tile's centre, so it enters from there.
       const edgeIn = inRaw
-        ? { x: c.x - inRaw.dx * half + nIn.x, y: c.y - inRaw.dy * half + nIn.y }
+        ? {
+            x: c.x - inRaw.dx * inHalf + nIn.x,
+            y: c.y - inRaw.dy * inHalf + nIn.y,
+          }
         : c;
       if (arrival.kind === 'house') {
         // The car keeps its lane on the road, then takes the lane of its own travel into the doorway. Where the
@@ -676,12 +686,18 @@ export function carShapes(
         // This tile is the approach's second half-tile; the sim takes over at its end, so the car never jumps.
         const lot = destinationLot(grid, arrival);
         const inlet = lot !== null && lot.farRoad === tile ? 'far' : 'near';
+        // Off a roundabout the ring covers this tile's first half, so the approach starts at its centre.
+        const fromRing = prev !== null && controls[prev] === 'roundabout';
         const approach =
-          prev !== null ? lotApproach(grid, arrival, inlet, prev, tile) : null;
+          prev !== null
+            ? lotApproach(grid, arrival, inlet, prev, tile, fromRing)
+            : null;
         if (approach) {
           const spot = pointAtDistance(
             approach,
-            APPROACH_HANDOFF - 0.5 + 0.5 * along,
+            fromRing
+              ? RING_APPROACH_HANDOFF * along
+              : APPROACH_HANDOFF - 0.5 + 0.5 * along,
           );
           x = spot.x * TILE_SIZE;
           y = spot.y * TILE_SIZE;
@@ -702,8 +718,12 @@ export function carShapes(
       // Drive out from the anchor to the exit edge, so the car never backs up when it leaves.
       const outD = outRaw ?? inRaw;
       const nOut = outD ? rightOfTravel(outD) : { x: 0, y: 0 };
+      // Onto a roundabout the ring starts at this tile's centre, so the car leaves from there.
       const edgeOut = outD
-        ? { x: c.x + outD.dx * half + nOut.x, y: c.y + outD.dy * half + nOut.y }
+        ? {
+            x: c.x + outD.dx * outHalf + nOut.x,
+            y: c.y + outD.dy * outHalf + nOut.y,
+          }
         : c;
       const facing = houseFacing(grid, departure);
       if (
@@ -766,20 +786,22 @@ export function carShapes(
   return out;
 }
 
-/** How long a new building takes to pop into place, in milliseconds. */
-export const POP_MS = 380;
-/** How far a popping building overshoots its size before settling: the ease's back amount. */
-const POP_OVERSHOOT = 1.7;
+/** How long a new building or pin takes to pop into place, in milliseconds. */
+export const POP_MS = 650;
+/** Half-swings of the spring over the pop: overshoot, dip back, settle. */
+const POP_SWINGS = 3;
+/** How quickly the spring's swing dies away over the pop. */
+const POP_DAMPING = 4.6;
 
 /**
- * A new building's scale `ms` after it appears: from nothing, a little past full size, then settling at
- * full size by POP_MS (an ease-out-back curve). 1 for a building that has finished popping.
+ * A new building's or pin's scale `ms` after it appears: from nothing it springs past full size, dips back a
+ * little under it, then settles at full size by POP_MS (a damped spring). 1 once the pop is over.
  */
 export function popScale(ms: number): number {
   if (ms >= POP_MS) return 1;
   if (ms <= 0) return 0;
-  const u = ms / POP_MS - 1;
-  return 1 + (POP_OVERSHOOT + 1) * u * u * u + POP_OVERSHOOT * u * u;
+  const u = ms / POP_MS;
+  return 1 - Math.cos(POP_SWINGS * Math.PI * u) * Math.exp(-POP_DAMPING * u);
 }
 
 /** One building's shapes scaled by `k` about the centre of its body (its first square or disc). */

@@ -32,8 +32,8 @@ const STEPS: readonly { title: string; body: string }[] = [
   {
     title: 'Weeks and overflow',
     body:
-      'Each week you get road tiles and choose an upgrade. Too many waiting destinations start a countdown. ' +
-      'Serve them to reset it. If it runs out, the game ends.',
+      'Each week you get road tiles and choose an upgrade. Each pin on a business is a trip it wants. ' +
+      'Past nine, a large red pin fills up; each trip you serve empties a ninth. If it fills, the game ends.',
   },
 ];
 

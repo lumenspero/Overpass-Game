@@ -1,4 +1,5 @@
 import {
+  chooseOffer,
   createSim,
   placeBuilding,
   step,
@@ -31,7 +32,12 @@ describe('a full game with every upgrade', () => {
       if (!r.ok) throw new Error(`test building refused: ${r.reason}`);
     }
     for (const kind of UPGRADE_KINDS) sim.stock[kind] = 3;
-    for (let t = 0; t < 8 * WEEK_TICKS && !sim.over; t++) step(sim);
+    // The clock waits while an offer is open, so the run takes the first option each week.
+    for (let t = 0; t < 8 * WEEK_TICKS && !sim.over; t++) {
+      const [first] = sim.offers;
+      if (first) chooseOffer(sim, first[0]);
+      step(sim);
+    }
     expect(sim.tick === 8 * WEEK_TICKS || sim.over !== null).toBe(true);
     expect(sim.budget).toBeGreaterThanOrEqual(0);
     expect(sim.tripsCompleted).toBeGreaterThanOrEqual(0);

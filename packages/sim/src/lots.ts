@@ -152,6 +152,20 @@ export function lotRoads(lot: Lot): number[] {
   return lot.farRoad === undefined ? [lot.road] : [lot.road, lot.farRoad];
 }
 
+/**
+ * The access road tiles of every lot already placed: the tile outside each inlet that its road runs through.
+ * Kept clear of buildings and other lots, so a lot can always be reached.
+ */
+export function lotAccessTiles(sim: SimState): Set<number> {
+  const out = new Set<number>();
+  for (const b of sim.buildings) {
+    if (b.kind !== 'destination') continue;
+    const lot = destinationLot(sim.grid, b);
+    if (lot) for (const t of lotRoads(lot)) out.add(t);
+  }
+  return out;
+}
+
 /** Every tile reserved by the lots of destinations already placed. */
 export function reservedLotTiles(sim: SimState): Set<number> {
   const out = new Set<number>();
@@ -179,11 +193,16 @@ export function lotBlocker(
   const lot = lotAt(sim.grid, origin, side, kind, 'near');
   if (!lot) return 'no-lot';
   const reserved = reservedLotTiles(sim);
+  const access = lotAccessTiles(sim);
   for (const t of lot.tiles) {
     if (!isBuildable(sim.grid, t)) return 'unbuildable';
     if (sim.roads[t] === 1) return 'road';
     if (sim.buildingAt[t] !== -1) return 'occupied';
-    if (reserved.has(t)) return 'reserved';
+    if (reserved.has(t) || access.has(t)) return 'reserved';
+  }
+  // The lot's own access road must be free of buildings, or nothing could reach it.
+  for (const t of lotRoads(lot)) {
+    if (sim.buildingAt[t] !== -1) return 'occupied';
   }
   return null;
 }

@@ -11,11 +11,16 @@ import type { SimState } from './sim.ts';
  * and used up when the car arrives. A car that never arrives (lost, or sent home) leaves
  * its pin for the next car.
  *
- * A destination holding more than OVERFLOW_PIN_LIMIT pins starts a countdown. Serving a
- * pin resets it. Dropping back to the limit clears it. When a countdown runs out, the game ends.
+ * A destination holds at most OVERFLOW_PIN_LIMIT pins. A request that arrives while that many wait starts
+ * its overflow pin, which fills steadily, in the time OVERFLOW_FILL_PINS more requests would take. Each car
+ * that arrives drains one OVERFLOW_FILL_PINS-th of the fill before it uses up a pin. When the fill empties
+ * the overflow ends; when it is full, the game ends.
  */
 
-/** Adds one pin to each destination whose cooldown has run down. */
+/**
+ * Adds one pin to each destination whose cooldown has run down. A destination already holding
+ * OVERFLOW_PIN_LIMIT pins gets no more: the request starts its overflow pin instead.
+ */
 export function generateDemand(state: SimState): void {
   for (const b of state.buildings) {
     if (b.kind !== 'destination' || !isOpenTile(state, b.tile)) continue;
@@ -23,10 +28,35 @@ export function generateDemand(state: SimState): void {
     if (!demand) continue;
     demand.cooldown = Math.max(0, demand.cooldown - 1);
     if (demand.cooldown > 0) continue;
-    demand.pins += 1;
-    emitEvent({ kind: 'pin-appeared', destination: b.id });
     demand.cooldown = cooldownFor(demand, b.shape);
+    if (demand.pins < tuning.OVERFLOW_PIN_LIMIT) {
+      demand.pins += 1;
+      emitEvent({ kind: 'pin-appeared', destination: b.id });
+    } else {
+      startOverflow(demand, b.id, b.shape);
+    }
   }
+}
+
+/** How much a destination's overflow pin fills each tick: full in OVERFLOW_FILL_PINS request intervals. */
+function fillPerTick(
+  demand: Demand,
+  shape: 'square' | 'round' | undefined,
+): number {
+  return (
+    1 / (Math.max(1, tuning.OVERFLOW_FILL_PINS) * cooldownFor(demand, shape))
+  );
+}
+
+/** Starts a destination's overflow pin filling, unless it already is. */
+function startOverflow(
+  demand: Demand,
+  destination: number,
+  shape: 'square' | 'round' | undefined,
+): void {
+  if ((demand.overflowFill ?? 0) > 0) return;
+  demand.overflowFill = fillPerTick(demand, shape);
+  emitEvent({ kind: 'overflow-started', destination });
 }
 
 /** Pins at a destination that no car is on its way to yet. */
@@ -41,12 +71,21 @@ export function unclaimedPins(state: SimState, destination: number): number {
   return demand.pins - driving;
 }
 
-/** Uses up one pin at a destination, as a car arrives there. Resets its overflow countdown. */
+/**
+ * Serves one request at a destination, as a car arrives there. While its overflow pin is filling, the car
+ * drains one OVERFLOW_FILL_PINS-th of the fill and the pins stay; otherwise it uses up one pin.
+ */
 export function servePin(state: SimState, destination: number): void {
   const demand = state.demand[destination];
-  if (!demand || demand.pins === 0) return;
+  if (!demand) return;
+  const fill = demand.overflowFill ?? 0;
+  if (fill > 0) {
+    const left = fill - 1 / Math.max(1, tuning.OVERFLOW_FILL_PINS);
+    demand.overflowFill = left > 1e-9 ? left : 0;
+    return;
+  }
+  if (demand.pins === 0) return;
   demand.pins -= 1;
-  if (demand.overflow > 0) demand.overflow = tuning.OVERFLOW_TICKS;
 }
 
 /**
@@ -56,35 +95,31 @@ export function servePin(state: SimState, destination: number): void {
 export function addDemandPin(state: SimState, destination: number): boolean {
   const demand = state.demand[destination];
   if (!demand) return false;
-  demand.pins += 1;
+  if (demand.pins < tuning.OVERFLOW_PIN_LIMIT) demand.pins += 1;
+  else startOverflow(demand, destination, state.buildings[destination]?.shape);
   return true;
 }
 
-/** Starts, runs, or clears each destination's overflow countdown. Ends the game when one runs out. */
+/** Fills each overflowing destination's pin, one tick's worth. Ends the game when one is full. */
 export function updateOverflow(state: SimState): void {
   for (const b of state.buildings) {
     if (b.kind !== 'destination' || !isOpenTile(state, b.tile)) continue;
     const demand = state.demand[b.id];
     if (!demand) continue;
-    if (demand.pins <= tuning.OVERFLOW_PIN_LIMIT) {
-      demand.overflow = 0;
-      continue;
-    }
-    if (demand.overflow === 0) {
-      demand.overflow = tuning.OVERFLOW_TICKS;
-      emitEvent({ kind: 'overflow-started', destination: b.id });
-      continue;
-    }
-    demand.overflow -= 1;
-    // Once a second while the countdown runs, so the sound can tick without a call every tick.
-    if (demand.overflow % tuning.TICKS_PER_SECOND === 0) {
+    const fill = demand.overflowFill ?? 0;
+    if (fill <= 0) continue;
+    const rate = fillPerTick(demand, b.shape);
+    const now = Math.min(1, fill + rate);
+    demand.overflowFill = now >= 1 - 1e-9 ? 1 : now;
+    // Once a second while the pin fills, so the sound can tick without a call every tick.
+    if (state.tick % tuning.TICKS_PER_SECOND === 0) {
       emitEvent({
         kind: 'overflow-countdown',
         destination: b.id,
-        ticksLeft: demand.overflow,
+        ticksLeft: Math.ceil((1 - demand.overflowFill) / rate),
       });
     }
-    if (demand.overflow === 0 && state.over === null) {
+    if (demand.overflowFill >= 1 && state.over === null) {
       state.over = { tick: state.tick, destination: b.id };
       emitEvent({ kind: 'game-over', destination: b.id });
     }

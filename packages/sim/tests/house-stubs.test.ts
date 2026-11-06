@@ -122,6 +122,51 @@ describe('house stubs', () => {
     });
   });
 
+  it('lets a neighbouring house share a stub, so both join the road at one node', () => {
+    const { sim, house } = withHouse();
+    const shared = at(sim.grid, 2, 3);
+    // A second house at (3,3), facing east onto its own stub at (4,3), then dragged onto the first house's stub.
+    const r = placeBuilding(sim, {
+      kind: 'house',
+      color: 0,
+      tile: at(sim.grid, 3, 3),
+      entrance: 'e',
+    });
+    if (!r.ok) throw new Error('setup failed');
+    const own = at(sim.grid, 4, 3);
+    expect(moveHouseStub(sim, r.id, shared)).toEqual({ ok: true, moved: true });
+    expect(sim.buildings[house]?.stub).toBe(shared);
+    expect(sim.buildings[r.id]?.stub).toBe(shared);
+    expect(sim.roads[own]).toBe(0);
+    expect(sim.budget).toBe(10);
+  });
+
+  it('keeps a shared stub for the house still on it, and stays free whichever house moves first', () => {
+    for (const first of ['original', 'sharer'] as const) {
+      const { sim, house } = withHouse();
+      const shared = at(sim.grid, 2, 3);
+      const r = placeBuilding(sim, {
+        kind: 'house',
+        color: 0,
+        tile: at(sim.grid, 3, 3),
+        entrance: 'e',
+      });
+      if (!r.ok) throw new Error('setup failed');
+      moveHouseStub(sim, r.id, shared);
+      const [a, b] = first === 'original' ? [house, r.id] : [r.id, house];
+      // The first house moves away: the road stays, for the house still on it.
+      const awayA = a === house ? at(sim.grid, 1, 3) : at(sim.grid, 4, 3);
+      expect(moveHouseStub(sim, a, awayA).ok).toBe(true);
+      expect(sim.roads[shared]).toBe(1);
+      expect(sim.buildings[b]?.stub).toBe(shared);
+      // Then the other moves away too: the free road goes, and the budget never changed.
+      const awayB = b === house ? at(sim.grid, 1, 3) : at(sim.grid, 4, 3);
+      expect(moveHouseStub(sim, b, awayB).ok).toBe(true);
+      expect(sim.roads[shared]).toBe(0);
+      expect(sim.budget).toBe(10);
+    }
+  });
+
   it('gives a stub to a house saved before houses had one', () => {
     const { sim, house } = withHouse();
     const b = sim.buildings[house];

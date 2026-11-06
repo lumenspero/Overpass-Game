@@ -35,10 +35,10 @@ export const DEFAULT_TUNING = {
   DEMAND_INTERVAL_SQUARE_TICKS: 200, // approximated
   /** Businesses arrive square before this week. From it on, an arrival may be round, or level up a square one. */
   SHAPE_SWITCH_WEEK: 10, // approximated
-  /** Waiting pins a destination can hold. Above this it overflows and its countdown runs. */
-  OVERFLOW_PIN_LIMIT: 4, // approximated
-  /** Ticks an overflowing destination has before the game ends. Serving a pin resets it. */
-  OVERFLOW_TICKS: 900, // approximated
+  /** Waiting pins a destination holds at most. A request arriving while this many wait starts its overflow pin. */
+  OVERFLOW_PIN_LIMIT: 9, // approximated
+  /** The overflow pin fills in the time this many more requests would take to arrive; a trip drains one of them. */
+  OVERFLOW_FILL_PINS: 9, // approximated
   /** Ticks in one week. The clock counts weeks; the first week is week 1. */
   WEEK_TICKS: 2700, // approximated: 90 seconds at 1x (30 ticks a second)
   /** Nodes the fence grows on each side every week (spec: Expansion). Growth lands one node a side at a time, spread across the week. */
@@ -132,7 +132,7 @@ export const SPAWN_INTERVAL_TICKS = DEFAULT_TUNING.SPAWN_INTERVAL_TICKS;
 export const PARK_TICKS = DEFAULT_TUNING.PARK_TICKS;
 export const DEMAND_INTERVAL_TICKS = DEFAULT_TUNING.DEMAND_INTERVAL_TICKS;
 export const OVERFLOW_PIN_LIMIT = DEFAULT_TUNING.OVERFLOW_PIN_LIMIT;
-export const OVERFLOW_TICKS = DEFAULT_TUNING.OVERFLOW_TICKS;
+export const OVERFLOW_FILL_PINS = DEFAULT_TUNING.OVERFLOW_FILL_PINS;
 export const WEEK_TICKS = DEFAULT_TUNING.WEEK_TICKS;
 export const FENCE_GROWTH_PER_WEEK = DEFAULT_TUNING.FENCE_GROWTH_PER_WEEK;
 export const FENCE_REVEAL_TICKS = DEFAULT_TUNING.FENCE_REVEAL_TICKS;

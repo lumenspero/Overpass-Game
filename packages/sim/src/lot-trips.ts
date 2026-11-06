@@ -311,6 +311,29 @@ export function lotGateOpen(state: SimState, car: Car): boolean {
 
 /** How far along a lot approach a car is when the sim takes over from the road: one tile. */
 export const APPROACH_HANDOFF = 1;
+/**
+ * From a roundabout, how far along the approach the sim takes over, in tiles. The ring covers the node's
+ * first half and leaves the car at its centre, so the view draws the second half, from the start of the
+ * approach, and the sim takes over half a tile along it.
+ */
+export const RING_APPROACH_HANDOFF = 0.5;
+/** How far along its lane a car runs, at least, as it turns between a roundabout's edge and a lot, in tiles. */
+const RING_TURN_LEAD = 0.15;
+
+/** A quadratic curve from `a` to `b` with control point `c`, as points, ends included. */
+function bezier(a: LotPoint, c: LotPoint, b: LotPoint): LotPoint[] {
+  const out: LotPoint[] = [];
+  const SAMPLES = 8;
+  for (let i = 0; i <= SAMPLES; i++) {
+    const t = i / SAMPLES;
+    const v = 1 - t;
+    out.push({
+      x: v * v * a.x + 2 * v * t * c.x + t * t * b.x,
+      y: v * v * a.y + 2 * v * t * c.y + t * t * b.y,
+    });
+  }
+  return out;
+}
 
 /**
  * The path a car drives from the centre of the tile before a lot's access node to the lot's edge, in tile
@@ -325,6 +348,7 @@ export function lotApproach(
   inlet: Inlet,
   prev: number,
   node: number,
+  fromRing = false,
 ): LotPoint[] | null {
   const lane = lotPath(grid, building, 0, 'in', inlet);
   const tab = lane?.[1];
@@ -334,6 +358,13 @@ export function lotApproach(
   const before = lanePoint(grid, prev, dir);
   const { d } = axes(dir);
   const t = dot(minus(tab, nodeLane), d);
+  if (fromRing) {
+    // Off a roundabout the car starts at the node's centre, where the ring leaves it, and runs on in its lane
+    // into the inlet: straight on, or curving into its lane from there.
+    const lead = Math.max(RING_TURN_LEAD, t);
+    const control = { x: nodeLane.x + d.x * lead, y: nodeLane.y + d.y * lead };
+    return dedupe(bezier(nodeLane, control, tab));
+  }
   const corner = { x: nodeLane.x + d.x * t, y: nodeLane.y + d.y * t };
   // The car turns on a circle tangent to its lane and the inlet's lane, starting at the tile's entry edge.
   // That circle is the road's own rounded corner, in the car's lane: half a tile less the lane for a lot on
@@ -371,12 +402,21 @@ export function startLotTrip(state: SimState, car: Car): LotStart {
     if (lane === null) return 'none';
     path = roundedPath(lane);
   } else {
-    const approach = lotApproach(state.grid, building, inlet, prev, node);
+    const fromRing = state.controls[prev] === 'roundabout';
+    const approach = lotApproach(
+      state.grid,
+      building,
+      inlet,
+      prev,
+      node,
+      fromRing,
+    );
     const lane = lotPath(state.grid, building, space, 'in', inlet);
     if (approach === null || lane === null) return 'none';
     path = dedupe([...approach, ...roundedPath(lane.slice(1))]);
-    // The car is where the view drew it at the end of its last road tile: one tile along the approach.
-    s = APPROACH_HANDOFF;
+    // The car is where the view drew it at the end of its last road tile: one tile along the approach, or
+    // half a tile off a roundabout, whose ring covers the node's first half.
+    s = fromRing ? RING_APPROACH_HANDOFF : APPROACH_HANDOFF;
   }
   car.lot = {
     destination: owner,
@@ -449,6 +489,29 @@ function planExit(state: SimState, car: Car, home: Car | null): void {
       const { d, n } = axes(dir);
       const ahead = dot(minus(edge, end), d);
       const side = dot(minus(edge, end), n);
+      if (state.controls[to] === 'roundabout') {
+        // A roundabout's ring starts at this node's centre, so the car drives from the lot's edge into its lane
+        // there, and joins the road at the ring's edge, ready to go round.
+        const lead = Math.max(RING_TURN_LEAD, -ahead);
+        const control = { x: end.x - d.x * lead, y: end.y - d.y * lead };
+        path = dedupe([
+          ...body,
+          ...(Math.abs(side) > 1e-6 ? bezier(edge, control, end) : []),
+          end,
+        ]);
+        joinAt = 1;
+        hold = Math.max(0, polylineLength(body) - HOLD_BACK);
+        const centre = centreOf(state.grid, from);
+        crosses = dot(minus(edge, centre), n) < 0;
+        lot.path = path;
+        lot.length = polylineLength(path);
+        lot.hold = hold;
+        lot.crosses = crosses;
+        lot.joinAt = joinAt;
+        lot.toward = to;
+        lot.s = Math.min(lot.s, hold);
+        return;
+      }
       let corner = end;
       let radius = TURN_RADIUS;
       if (Math.abs(side) > 1e-6) {

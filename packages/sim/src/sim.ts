@@ -239,7 +239,17 @@ export function moveHouseStub(
   const old = house.stub;
   const oldWasRoad = house.stubAdopted === true;
   attachStub(state, house, tile);
-  if (old !== undefined && !oldWasRoad) {
+  // Another house may share the old tile as its own stub: then the road stays for it. Where it was this
+  // house's free stub, the other house now holds it free, so moving that one later refunds nothing.
+  const sharer =
+    old === undefined
+      ? undefined
+      : state.buildings.find(
+          (b) => b.kind === 'house' && b.id !== house.id && b.stub === old,
+        );
+  if (sharer) {
+    if (!oldWasRoad) sharer.stubAdopted = false;
+  } else if (old !== undefined && !oldWasRoad) {
     // removeRoads refunds the tile; take that refund back, since the stub was free.
     const removed = removeRoads(state, [old]);
     state.budget -= removed;

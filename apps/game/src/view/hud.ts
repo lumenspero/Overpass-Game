@@ -5,7 +5,7 @@ import type { GameSummary } from '@overpass-game/sim';
  * the sim. The top bar's day, clock and trips are in view/calendar.ts and ui/top-bar.ts.
  */
 
-/** Colour of an overflow countdown ring. */
+/** Red of the overflow pin's fill. */
 export const OVERFLOW_RING_COLOR = 0xe5484d;
 
 /** The lines of the end screen, or none while the game is still on. */
