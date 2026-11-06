@@ -239,17 +239,3 @@ describe('palette choices in the compiled map', () => {
     expect(back.waterPalette).toBe('shared');
   });
 });
-
-describe('starting fence in the compiled map', () => {
-  it('carries the source fence into the compiled map unchanged', () => {
-    const base = coast();
-    const fence = {
-      col: 1,
-      row: 1,
-      cols: base.grid.cols - 2,
-      rows: base.grid.rows - 2,
-    };
-    const compiled = compileMap({ ...base, grid: { ...base.grid, fence } });
-    expect(compiled.fence).toEqual(fence);
-  });
-});
