@@ -4,10 +4,13 @@
  */
 export interface RngState {
   state: number;
+  /** The seed the generator started from. It never changes, so per-week rolls can be made from it without
+   * drawing from the sequence. Absent in runs saved before it was kept, which read it as 0. */
+  seed?: number;
 }
 
 export function createRng(seed: number): RngState {
-  return { state: seed >>> 0 };
+  return { state: seed >>> 0, seed: seed >>> 0 };
 }
 
 /** Returns a float in [0, 1) and advances the generator. */

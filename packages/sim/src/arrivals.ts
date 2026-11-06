@@ -1,6 +1,7 @@
 import { tuning } from './config.ts';
 import { nextFloat } from './rng.ts';
-import { colourUnlocked } from './rules.ts';
+import { colourUnlocked, spawnsOff } from './rules.ts';
+import type { DestinationShape } from './buildings.ts';
 import type { SimState } from './sim.ts';
 import { placeInFence } from './start.ts';
 import { currentFence, isOpenTile } from './expansion.ts';
@@ -9,14 +10,18 @@ import { weekOf } from './score.ts';
 
 /**
  * Business arrival and house supply (spec: Business arrival and house supply). From
- * BUSINESS_ARRIVAL_START_WEEK, new businesses arrive inside the fence each week, each in a
- * random colour the map allows, and a colour's houses are topped up with them. Between
- * arrivals, a colour whose houses fall below SUPPLY_RATIO_MIN per business gets houses up to
- * SUPPLY_RATIO_MAX. Nothing happens before the start week, so the opening game is unchanged.
+ * BUSINESS_ARRIVAL_START_WEEK, new businesses arrive inside the fence at the start of each week, after
+ * its reward, each in a random colour the map allows: one a week, and one more every
+ * BUSINESS_BONUS_EVERY_WEEKS. They are square until SHAPE_SWITCH_WEEK; from then an arrival may be round,
+ * or level up a square business to round instead. Houses come at one or two moments each week, when a
+ * colour whose houses are below SUPPLY_RATIO_MIN per business is topped up to SUPPLY_RATIO_MAX.
  */
 
 function arrivalsOn(state: SimState): boolean {
-  return weekOf(state.tick) >= tuning.BUSINESS_ARRIVAL_START_WEEK;
+  return (
+    !spawnsOff(state) &&
+    weekOf(state.tick) >= tuning.BUSINESS_ARRIVAL_START_WEEK
+  );
 }
 
 /**
@@ -78,23 +83,105 @@ function unlockedColours(state: SimState): number[] {
   return out;
 }
 
+/** How many businesses arrive in a week: one, and more every BUSINESS_BONUS_EVERY_WEEKS. */
+export function arrivalsInWeek(week: number): number {
+  const every = tuning.BUSINESS_BONUS_EVERY_WEEKS;
+  const bonus =
+    every > 0 && week % every === 0 ? tuning.BUSINESS_BONUS_ARRIVALS : 0;
+  return tuning.BUSINESS_ARRIVALS_PER_WEEK + bonus;
+}
+
+/** Turns one square business, picked at random, round. Returns false when there is none. */
+function levelUp(state: SimState): boolean {
+  const squares = state.buildings.filter(
+    (b) => b.kind === 'destination' && b.shape === 'square',
+  );
+  if (squares.length === 0) return false;
+  const pick = squares[Math.floor(nextFloat(state.rng) * squares.length)];
+  if (!pick) return false;
+  pick.shape = 'round';
+  return true;
+}
+
 /**
- * Brings this week's businesses. Each takes a random unlocked colour, and houses of that colour
- * are placed with it at once. Returns how many arrived.
+ * Brings this week's businesses. Each takes a random unlocked colour. Before SHAPE_SWITCH_WEEK each is
+ * square; from then each is a new round business, a level-up of a square one, or a new square one, by
+ * ARRIVAL_ROUND_CHANCE and ARRIVAL_LEVEL_UP_CHANCE. Houses for them come at the week's house moments.
+ * Returns how many arrived, level-ups included.
  */
 export function arriveBusinesses(state: SimState): number {
   if (!arrivalsOn(state)) return 0;
+  const week = weekOf(state.tick);
   let arrived = 0;
-  for (let i = 0; i < tuning.BUSINESS_ARRIVALS_PER_WEEK; i++) {
+  for (let i = 0; i < arrivalsInWeek(week); i++) {
+    let shape: DestinationShape = 'square';
+    if (week >= tuning.SHAPE_SWITCH_WEEK) {
+      const roll = nextFloat(state.rng);
+      if (roll < tuning.ARRIVAL_LEVEL_UP_CHANCE) {
+        if (levelUp(state)) {
+          arrived += 1;
+          continue;
+        }
+        shape = 'round';
+      } else if (
+        roll <
+        tuning.ARRIVAL_LEVEL_UP_CHANCE + tuning.ARRIVAL_ROUND_CHANCE
+      ) {
+        shape = 'round';
+      }
+    }
     const colours = unlockedColours(state);
     if (colours.length === 0) break;
     const colour = colours[Math.floor(nextFloat(state.rng) * colours.length)];
     if (colour === undefined) break;
-    if (placeInFence(state, 'destination', colour) === null) break;
+    if (placeInFence(state, 'destination', colour, undefined, shape) === null)
+      break;
     arrived += 1;
-    topUpSupply(state, colour);
   }
   return arrived;
+}
+
+/** A number in [0, 1) fixed by the run's seed, the week and `i`, so house moments need no saved state. */
+function weekRandom(seed: number, week: number, i: number): number {
+  let h =
+    (Math.imul(seed | 0, 0x9e3779b1) ^
+      Math.imul(week, 0x85ebca6b) ^
+      Math.imul(i + 1, 0xc2b2ae35)) >>>
+    0;
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) >>> 0;
+  h = (h ^ (h >>> 16)) >>> 0;
+  return h / 4294967296;
+}
+
+/**
+ * The ticks into a week, from 1, when houses are topped up: HOUSE_MOMENTS_MIN to HOUSE_MOMENTS_MAX of them.
+ * The first falls in the week's first quarter, so a business arriving at the week's start soon has houses;
+ * any others fall in the rest of the week, in even slices.
+ */
+export function houseMoments(seed: number, week: number): number[] {
+  const min = Math.max(1, tuning.HOUSE_MOMENTS_MIN);
+  const max = Math.max(min, tuning.HOUSE_MOMENTS_MAX);
+  const count = min + Math.floor(weekRandom(seed, week, 0) * (max - min + 1));
+  const span = tuning.WEEK_TICKS - 1;
+  const first = Math.floor(span / 4);
+  const out = [1 + Math.floor(weekRandom(seed, week, 1) * first)];
+  const rest = span - first;
+  for (let i = 1; i < count; i++) {
+    const slice = rest / (count - 1);
+    out.push(
+      1 + first + Math.floor((i - 1 + weekRandom(seed, week, i + 1)) * slice),
+    );
+  }
+  return out;
+}
+
+/** Whether this tick is one of its week's house moments. */
+export function houseMomentNow(state: SimState): boolean {
+  if (spawnsOff(state)) return false;
+  const week = weekOf(state.tick);
+  const into = state.tick - (week - 1) * tuning.WEEK_TICKS;
+  return houseMoments(state.rng.seed ?? 0, week).includes(into);
 }
 
 /**
@@ -103,7 +190,6 @@ export function arriveBusinesses(state: SimState): number {
  * houses. Returns how many houses were added.
  */
 export function topUpSupply(state: SimState, only?: number): number {
-  if (!arrivalsOn(state)) return 0;
   const colours =
     only !== undefined
       ? [only]

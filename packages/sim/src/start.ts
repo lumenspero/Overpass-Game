@@ -1,5 +1,9 @@
 import { tuning } from './config.ts';
-import { placeBuilding, type Side } from './buildings.ts';
+import {
+  placeBuilding,
+  type DestinationShape,
+  type Side,
+} from './buildings.ts';
 import { lotAt } from './lots.ts';
 import { currentFence, isOpenTile } from './expansion.ts';
 import { nextFloat, type RngState } from './rng.ts';
@@ -35,7 +39,8 @@ function placePair(state: SimState, colour: number): boolean {
     return d >= tuning.START_PAIR_MIN_TILES && d <= tuning.START_PAIR_MAX_TILES;
   });
   if (near.length === 0) return false;
-  return placeOn(state, near, 'destination', colour) !== null;
+  // The starting business is square, the slower kind (spec: Business arrival and house supply).
+  return placeOn(state, near, 'destination', colour, 'square') !== null;
 }
 
 /**
@@ -47,8 +52,9 @@ export function placeInFence(
   kind: 'house' | 'destination',
   colour: number,
   tiles: number[] = tilesInFence(state),
+  shape?: DestinationShape,
 ): number | null {
-  return placeOn(state, tiles, kind, colour);
+  return placeOn(state, tiles, kind, colour, shape);
 }
 
 /** Every tile inside the fence now, row by row. */
@@ -77,6 +83,7 @@ function placeOn(
   candidates: number[],
   kind: 'house' | 'destination',
   colour: number,
+  shape?: DestinationShape,
 ): number | null {
   if (candidates.length === 0) return null;
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
@@ -89,6 +96,7 @@ function placeOn(
         color: colour,
         tile,
         entrance: side,
+        ...(kind === 'destination' && shape ? { shape } : {}),
       });
       if (result.ok) return tile;
     }

@@ -261,7 +261,13 @@ export function placeBuilding(
     if (!isBuildable(state.grid, opts.tile)) {
       return { ok: false, reason: 'unbuildable' };
     }
-    if (state.roads[opts.tile] === 1 || state.buildingAt[opts.tile] !== -1) {
+    // A lot's open strip has no building on it, but its tiles are reserved for the lot (spec: Spawning
+    // reserves the lot), so a house cannot stand there either.
+    if (
+      state.roads[opts.tile] === 1 ||
+      state.buildingAt[opts.tile] !== -1 ||
+      reservedLotTiles(state).has(opts.tile)
+    ) {
       return { ok: false, reason: 'occupied' };
     }
   }

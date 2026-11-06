@@ -12,11 +12,13 @@ import {
   buildingShapes,
   carShapes,
   DESTINATION_RADIUS,
-  entranceStubShapes,
   LANE_OFFSET,
   LOT_GAP,
   lotShapes,
   linksWithTabs,
+  POP_MS,
+  popScale,
+  popShapes,
   roadShapes,
   terrainTiles,
 } from './geometry.ts';
@@ -131,35 +133,194 @@ describe('roadShapes', () => {
   });
 });
 
-describe('entranceStubShapes', () => {
+describe('house driveways', () => {
   const house = (tile: number, entrance: 'e' | 'w' | 'n' | 's') =>
-    ({ kind: 'house', color: 0, tile, entrance }) as unknown as Building;
+    ({ id: 9, kind: 'house', color: 0, tile, entrance }) as unknown as Building;
 
-  it('joins the entrance tile centre to the building centre when the entrance is a road', () => {
-    const grid = createGrid(3, 1);
-    // House on tile 0 faces east onto road tile 1.
-    const shapes = entranceStubShapes(
-      [house(0, 'e')],
-      grid,
-      roadsFrom(3, 1, [1]),
-    );
-    expect(shapes).toEqual([
-      {
-        kind: 'line',
-        x1: centre(1, 0).x,
-        y1: centre(1, 0).y,
-        x2: centre(0, 0).x,
-        y2: centre(0, 0).y,
-        w: ROAD_WIDTH_TILES * TILE_SIZE,
-      },
+  it('joins a road that bends at a house stub to the house without a gap', () => {
+    // As in play: a road comes down to (1,1) and turns east, and a house below at (1,2) faces up onto it.
+    const grid = createGrid(4, 4);
+    const north = 0 * 4 + 1;
+    const stub = 1 * 4 + 1;
+    const east = 1 * 4 + 2;
+    const home = 2 * 4 + 1;
+    const roads = roadsFrom(4, 4, [north, stub, east]);
+    const links = linked([
+      [north, stub],
+      [stub, east],
     ]);
+    const shapes = roadShapes(
+      grid,
+      roads,
+      linksWithTabs([house(home, 'n')], grid, roads, links),
+    );
+    // With the driveway counted, the stub is a junction: full arms and a disc at its centre, not a bend.
+    expect(shapes).toContainEqual({ kind: 'circle', ...centre(1, 1), r: R });
+    expect(shapes).toContainEqual({
+      kind: 'line',
+      x1: centre(1, 1).x,
+      y1: centre(1, 1).y,
+      x2: centre(1, 2).x,
+      y2: centre(1, 2).y,
+      w: 2 * R,
+    });
   });
 
-  it('draws nothing when the entrance tile is not a road', () => {
+  it('rounds a road that turns into a house, like any other bend', () => {
+    // A road from the west ends at (1,1), and the house above at (1,0) faces down onto it.
+    const grid = createGrid(3, 3);
+    const west = 1 * 3 + 0;
+    const stub = 1 * 3 + 1;
+    const home = 0 * 3 + 1;
+    const roads = roadsFrom(3, 3, [west, stub]);
+    const shapes = roadShapes(
+      grid,
+      roads,
+      linksWithTabs([house(home, 's')], grid, roads, linked([[west, stub]])),
+    );
+    expect(shapes).not.toContainEqual({
+      kind: 'circle',
+      ...centre(1, 1),
+      r: R,
+    });
+    const corner = { x: 1 * TILE_SIZE, y: 1 * TILE_SIZE };
+    const arc = shapes.filter(
+      (s) =>
+        s.kind === 'circle' &&
+        Math.abs(Math.hypot(s.x - corner.x, s.y - corner.y) - 2 * R) < 1e-6,
+    );
+    expect(arc.length).toBeGreaterThan(0);
+  });
+
+  it('adds no driveway while the stub tile has no road', () => {
     const grid = createGrid(3, 1);
-    expect(
-      entranceStubShapes([house(0, 'e')], grid, roadsFrom(3, 1, [])),
-    ).toEqual([]);
+    const out = linksWithTabs([house(0, 'e')], grid, roadsFrom(3, 1, []), {});
+    expect(out[0]).toBeUndefined();
+    expect(out[1]).toBeUndefined();
+  });
+
+  it('does not treat a house stub on a diagonal as a bend', () => {
+    // A stub moved to a corner gives a diagonal driveway; with a straight road it is not a quarter circle.
+    const grid = createGrid(3, 3);
+    const stub = 1 * 3 + 1;
+    const east = 1 * 3 + 2;
+    const home = 0 * 3 + 0;
+    const b = { ...house(home, 'e'), stub } as Building;
+    const roads = roadsFrom(3, 3, [stub, east]);
+    const shapes = roadShapes(
+      grid,
+      roads,
+      linksWithTabs([b], grid, roads, linked([[stub, east]])),
+    );
+    expect(shapes).toContainEqual({ kind: 'circle', ...centre(1, 1), r: R });
+  });
+});
+
+describe('cars at a house whose road bends into it', () => {
+  // The house at (1,0) faces down onto its stub (1,1); the road reaches the stub from the west, (0,1).
+  // Drawn with the driveway, the stub is a bend round the tile corner (1,1), a band 0.25 to 0.75 tiles out.
+  const grid = createGrid(3, 3);
+  const colors = [0xff0000];
+  const home: Building = {
+    id: 0,
+    kind: 'house',
+    color: 0,
+    tile: 1,
+    entrance: 's',
+  };
+  const west = 3;
+  const stub = 4;
+  const links = linked([[west, stub]]);
+  const corner = { x: TILE_SIZE, y: TILE_SIZE };
+  const trip =
+    (state: 'driving' | 'returning', route: number[], progress: number) =>
+    (along: number): Car => ({
+      id: 0,
+      house: 0,
+      destination: 1,
+      state,
+      route,
+      progress,
+      along,
+      timer: 0,
+    });
+
+  for (const [name, make] of [
+    ['entering the house', trip('returning', [west, stub], 1)],
+    ['leaving the house', trip('driving', [stub, west], 0)],
+  ] as const) {
+    it(`follows the bend's curve in its lane, ${name}`, () => {
+      let onStub = 0;
+      let lo = Infinity;
+      let hi = 0;
+      for (let i = 0; i <= 40; i++) {
+        const [dot] = carShapes(
+          [make(i / 40)],
+          [home],
+          grid,
+          colors,
+          [],
+          {},
+          links,
+        );
+        if (!dot) throw new Error('no car drawn');
+        const inside =
+          dot.x >= TILE_SIZE &&
+          dot.x <= 2 * TILE_SIZE &&
+          dot.y >= TILE_SIZE &&
+          dot.y <= 2 * TILE_SIZE;
+        if (!inside) continue;
+        onStub += 1;
+        // A car is about 0.1 tiles wide either side of its lane, so it keeps 0.1 inside each curb.
+        const r = Math.hypot(dot.x - corner.x, dot.y - corner.y) / TILE_SIZE;
+        expect(r).toBeGreaterThanOrEqual(0.35);
+        expect(r).toBeLessThanOrEqual(0.65);
+        lo = Math.min(lo, r);
+        hi = Math.max(hi, r);
+      }
+      expect(onStub).toBeGreaterThan(5);
+      // It keeps its lane's distance from the corner, so it runs parallel to the curb rather than cutting across.
+      expect(hi - lo).toBeLessThan(0.02);
+    });
+  }
+});
+
+describe('popping buildings in', () => {
+  it('grows from nothing, overshoots, and settles at full size', () => {
+    expect(popScale(0)).toBe(0);
+    expect(popScale(POP_MS)).toBe(1);
+    expect(popScale(POP_MS * 10)).toBe(1);
+    let peak = 0;
+    for (let ms = 0; ms <= POP_MS; ms += POP_MS / 50) {
+      peak = Math.max(peak, popScale(ms));
+    }
+    expect(peak).toBeGreaterThan(1.05);
+    expect(peak).toBeLessThan(1.25);
+  });
+
+  it('scales a building about its own centre', () => {
+    const shapes = popShapes(
+      [
+        { kind: 'square', x: 10, y: 20, size: 40, color: 1, large: false },
+        { kind: 'entrance', x1: 50, y1: 40, x2: 60, y2: 40 },
+      ],
+      0.5,
+    );
+    expect(shapes[0]).toEqual({
+      kind: 'square',
+      x: 20,
+      y: 30,
+      size: 20,
+      color: 1,
+      large: false,
+    });
+    expect(shapes[1]).toEqual({
+      kind: 'entrance',
+      x1: 40,
+      y1: 40,
+      x2: 45,
+      y2: 40,
+    });
   });
 });
 

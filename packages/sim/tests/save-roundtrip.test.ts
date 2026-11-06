@@ -61,7 +61,8 @@ describe('save round trip', () => {
   it('the saved state includes the cars and demand that a run builds up', () => {
     const sim = town(11);
     play(sim, 0, 2400);
-    expect(sim.buildings).toHaveLength(2);
+    // The two placed buildings, and any houses a house moment added during the week.
+    expect(sim.buildings.length).toBeGreaterThanOrEqual(2);
     expect(sim.tripsCompleted + sim.cars.length).toBeGreaterThan(0);
   });
 });

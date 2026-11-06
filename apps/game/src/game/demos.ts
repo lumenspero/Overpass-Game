@@ -12,11 +12,15 @@ import {
   roadLinks,
   type Grid,
   type LotKind,
+  type MapRule,
   type Side,
   type SimState,
   Terrain,
   type TerrainKind,
 } from '@overpass-game/sim';
+
+/** Demos bring their own buildings, so nothing arrives or tops up while they run. */
+const NO_SPAWNS: MapRule[] = [{ kind: 'noSpawns' }];
 
 /**
  * Scripted demos (spec: Upgrades, Demos; a playtesting aid). Each is a small map where one
@@ -170,7 +174,12 @@ const CAR_DEMO_STREETS = [3, 9, 15, 21, 27];
  */
 function buildCarDemo(): SimState {
   const grid = createGrid(CAR_DEMO_COLS, CAR_DEMO_ROWS, Terrain.Land);
-  const sim = createSim({ seed: 7, grid, roadBudget: 100000 });
+  const sim = createSim({
+    seed: 7,
+    grid,
+    roadBudget: 100000,
+    rules: NO_SPAWNS,
+  });
   const tile = (x: number, y: number): number => y * CAR_DEMO_COLS + x;
   const place = (
     kind: 'house' | 'destination',
@@ -302,7 +311,7 @@ function addDemoCar(
 export function buildDemo(id: DemoId): SimState {
   if (id === 'cars') return buildCarDemo();
   const grid = createGrid(COLS, ROWS, Terrain.Land);
-  const sim = createSim({ seed: 1, grid });
+  const sim = createSim({ seed: 1, grid, rules: NO_SPAWNS });
   // A destination is 3×3 with a 5×3 lot. The coordinates given are the lot's origin (its top-left
   // tile), and the lot's inlet joins the road on the side the destination faces.
   if (id === 'bridge') {

@@ -33,8 +33,8 @@ export const DEFAULT_TUNING = {
   DEMAND_INTERVAL_TICKS: 150, // approximated
   /** Ticks between pins at a square destination, which is slower than a round one. */
   DEMAND_INTERVAL_SQUARE_TICKS: 200, // approximated
-  /** The week a square destination stops being the shape for new spawns, and round ones take over. */
-  SHAPE_SWITCH_WEEK: 8, // approximated
+  /** Businesses arrive square before this week. From it on, an arrival may be round, or level up a square one. */
+  SHAPE_SWITCH_WEEK: 10, // approximated
   /** Waiting pins a destination can hold. Above this it overflows and its countdown runs. */
   OVERFLOW_PIN_LIMIT: 4, // approximated
   /** Ticks an overflowing destination has before the game ends. Serving a pin resets it. */
@@ -80,10 +80,22 @@ export const DEFAULT_TUNING = {
   DOUBLE_LOT_WEEK: 4, // approximated
   /** Weeks after a double lot spawns before its second building is filled in, if its far half is clear. */
   SECOND_BUILDING_DELAY_WEEKS: 6, // approximated
-  /** From this week, businesses arrive in the fence and houses are topped up to supply them. */
-  BUSINESS_ARRIVAL_START_WEEK: 4, // approximated
+  /** From this week, businesses arrive in the fence, once the week's reward is chosen. */
+  BUSINESS_ARRIVAL_START_WEEK: 2, // approximated
   /** New businesses arriving each week. */
   BUSINESS_ARRIVALS_PER_WEEK: 1, // approximated
+  /** Every this many weeks, extra businesses arrive (weeks 10, 20, ...). */
+  BUSINESS_BONUS_EVERY_WEEKS: 10, // approximated
+  /** Extra businesses arriving in a bonus week. */
+  BUSINESS_BONUS_ARRIVALS: 1, // approximated
+  /** From SHAPE_SWITCH_WEEK, the chance an arrival is a new round business. */
+  ARRIVAL_ROUND_CHANCE: 0.25, // approximated
+  /** From SHAPE_SWITCH_WEEK, the chance an arrival levels up a square business to round instead of adding one. */
+  ARRIVAL_LEVEL_UP_CHANCE: 0.25, // approximated
+  /** Fewest moments in a week when houses are topped up. */
+  HOUSE_MOMENTS_MIN: 1, // approximated
+  /** Most moments in a week when houses are topped up. */
+  HOUSE_MOMENTS_MAX: 2, // approximated
   /** Houses per business below which a colour gets more houses (never fewer than this). */
   SUPPLY_RATIO_MIN: 2, // approximated
   /** Houses per business a colour is topped up to. Houses are never added above this. */
@@ -92,8 +104,6 @@ export const DEFAULT_TUNING = {
   HOUSE_ROAD_REACH: 5, // approximated
   /** Or within this many tiles of a building. */
   HOUSE_BUILDING_REACH: 10, // approximated
-  /** Ticks between supply checks. */
-  SUPPLY_CHECK_TICKS: 150, // approximated
   /** Trips a campaign run must reach to unlock the next map (spec: Campaign unlocks). */
   CAMPAIGN_UNLOCK_TRIPS: 20, // approximated
 };

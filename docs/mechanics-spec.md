@@ -29,7 +29,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Adjacency:** two road tiles are linked only when a drag stepped between them, across an edge or a corner. Each step of a drag links its two tiles. Placing a road never links it to a neighbour, so two roads side by side do not join unless a drag joins them, and a branch dragged off a straight road joins only the tile it starts from. A corner link is a diagonal road. Roads have no separate connection points. `approximated`
 - **Graph nodes:** dead ends, junctions, isolated road tiles, and one representative tile for any closed loop with no node.
 - **Graph edges:** chains of pass-through road tiles between nodes. Each edge stores its interior tiles and its length in steps (interior tiles + 1).
-- **Bends:** a road tile linked to two neighbours at right angles is a bend. It is drawn as a quarter circle of radius half a tile, centred on the tile corner the two arms turn round, so its inside edge is rounded rather than sharp. Car lanes through a bend follow the same curve (see On screen). Drawing only; routing is unchanged. Where a road turns into a lot's inlet, the inlet tab counts as a link for drawing, so the access node is drawn as a bend too. `approximated`
+- **Bends:** a road tile linked to two straight (not diagonal) neighbours at right angles is a bend. It is drawn as a quarter circle of radius half a tile, centred on the tile corner the two arms turn round, so its inside edge is rounded rather than sharp. Car lanes through a bend follow the same curve (see On screen). Drawing only; routing is unchanged. Where a road turns into a lot's inlet or a house, the inlet tab or the driveway counts as a link for drawing, so the access node is drawn as a bend too. `approximated`
 - **Updates:** after a change, only the connected road components next to the changed tiles are rebuilt. The result always matches a full rebuild. Tested with 500 random edits per seed.
 
 ### Road budget
@@ -75,7 +75,9 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Roads:** a road cannot be placed on a building tile.
 - **Removal:** buildings are never removed in M3.
 
-- **Driveway:** a house's road extension is drawn at road width, from the house to the road tile in front of its entrance, so the road tile's own disc rounds its end the way a lot's inlet tab is rounded. It is drawn only while that road exists. It is view only: the sim is unchanged. `approximated`
+- **Driveway:** a house's road extension is drawn at road width, from the house to its stub road tile, as a road link for drawing. So a road that passes the stub is a junction joined to the house without a gap, and a road that ends at the stub bends into the house. It is drawn only while that road exists. It is view only: the sim is unchanged. `approximated`
+- **Cars at a bent driveway:** where a house's stub is drawn as a bend into the house, a car entering follows the bend's curve in its lane and then drives straight in, and a car leaving drives straight out in its lane and then follows the curve into its lane on the road. Where the stub is a junction, cars turn at the lanes' corner as before. View only. `approximated`
+- **Popping in:** a building that appears, or a business that levels up to round, pops in: it grows from nothing to a little past full size, then settles, over `POP_MS` (0.38 seconds). Buildings already on the board when a game starts or resumes appear in place. View only. `approximated`
 - **Hidden stubs:** a house outside the fence keeps its stub there, hidden with it, and roads can't join it until the fence grows over it. A run saved before stubs gives each house one on load.
 
 ### Score and clock
@@ -228,14 +230,15 @@ These are rules for saving, not gameplay numbers, so they carry no tag.
 
 _Built in M14 (part 2). Painted spawn zones are not used: new buildings are placed by the fence and reach rules below._
 
-- **Arrival:** from `BUSINESS_ARRIVAL_START_WEEK` on, new destinations (businesses) arrive in each week, up to a count set by global tuning. Arrivals are not tied to a map's rules. `approximated`
+- **Arrival:** from `BUSINESS_ARRIVAL_START_WEEK` on, new destinations (businesses) arrive at the start of each week, once its reward is chosen: `BUSINESS_ARRIVALS_PER_WEEK`, and `BUSINESS_BONUS_ARRIVALS` more every `BUSINESS_BONUS_EVERY_WEEKS` weeks. Arrivals are not tied to a map's rules. `approximated`
+- **Shape:** the starting business and every arrival are square, the slower kind, until `SHAPE_SWITCH_WEEK`. From then each arrival is a new round business (`ARRIVAL_ROUND_CHANCE`), a level-up that turns an existing square business round, keeping its lot and colour (`ARRIVAL_LEVEL_UP_CHANCE`), or otherwise a new square one. A level-up with no square business left brings a new round one. `approximated`
 - **Colours:** a colour appears when a business of that colour arrives. There is no guarantee of a new colour at each arrival. `approximated`
-- **Supply at arrival:** a new business has its demand met by houses spawned at the same moment as the business.
-- **Supply through the week:** houses also spawn during the week, so a business can gain supply after it opens.
+- **House moments:** houses spawn at `HOUSE_MOMENTS_MIN` to `HOUSE_MOMENTS_MAX` moments each week, not with the business. At each moment, every colour below the supply band is topped up. The first moment falls in the week's first quarter, so a business that arrived at the week's start soon has houses, ahead of its demand overflowing; any others fall later in the week. The moments are fixed by the run's seed and the week. They run from week 1.
 - **Supply ratio:** for each colour, the sim keeps houses per destination inside a band, `SUPPLY_RATIO_MIN` to `SUPPLY_RATIO_MAX` (global tuning, `approximated`). Houses are added when the ratio falls below the minimum. None are added above the maximum. This stops a colour being oversupplied with houses where it has no demand, while still allowing new houses in the middle of the week.
 - **Colour choice:** a new business takes a colour picked at random from the colours the map allows that week. Nothing guarantees a new colour. `approximated`
-- **Values (approximated):** arrivals start in week 4, one business a week. A colour is topped up to 3 houses per business when it falls below 2. Supply is checked every 150 ticks (5 seconds). Houses spawn only within 5 tiles of an existing road or 10 tiles of a building (a business counts from every tile of its lot), and inside the fence. They need not be connected. Distances are Chebyshev, in tiles. All in `config.ts`.
+- **Values (approximated):** arrivals start in week 2, one business a week, and two in weeks 10, 20 and so on. Rounds and level-ups start in week 10, each at 25%. Houses come at 1 or 2 moments a week. A colour is topped up to 3 houses per business when it falls below 2. Houses spawn only within 5 tiles of an existing road or 10 tiles of a building (a business counts from every tile of its lot), and inside the fence. They need not be connected. Distances are Chebyshev, in tiles. All in `config.ts`.
 - **No spawn zones:** the map format has no spawn zones or spawn weights, and the Studio does not paint them. Every spawn, the starting pair included, is placed by the fence and the reach rules above. Asked by the author.
+- **Demos:** scripted demos bring their own buildings, so they pass a sim-only `noSpawns` rule that turns arrivals and house moments off. Maps cannot set it.
 - **Stopgap:** the `unlockColour` map rule still applies to placement until it is removed.
 
 ### Parking lots and building kinds

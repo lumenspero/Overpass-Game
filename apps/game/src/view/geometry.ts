@@ -60,12 +60,15 @@ export function roadShapes(
     x: Math.sign((b % grid.cols) - (a % grid.cols)),
     y: Math.sign(Math.floor(b / grid.cols) - Math.floor(a / grid.cols)),
   });
-  /** A tile linked to exactly two neighbours at right angles is a bend. */
+  /** A tile linked to exactly two neighbours at right angles, both straight (not diagonal), is a bend. */
   const bendOf = (i: number): [number, number] | null => {
     const ns = links[i] ?? [];
     if (ns.length !== 2) return null;
     const d1 = unit(i, ns[0]);
     const d2 = unit(i, ns[1]);
+    const straight = (d: { x: number; y: number }) =>
+      Math.abs(d.x) + Math.abs(d.y) === 1;
+    if (!straight(d1) || !straight(d2)) return null;
     return d1.x * d2.x + d1.y * d2.y === 0 ? [ns[0], ns[1]] : null;
   };
   /** Where a link leaves a tile: its centre, or a bend's edge midpoint toward the link. */
@@ -129,42 +132,6 @@ export function roadShapes(
 }
 
 /**
- * A road-width bar from each house's entrance tile to the house's own centre, when the
- * entrance tile is a road. The road itself only reaches its tile's centre, so without this
- * bar the entrance tick floats in a gap; the house covers the bar's far end. Destinations
- * need no stub: their lot's inlet road reaches the footprint on its own.
- */
-export function entranceStubShapes(
-  buildings: readonly Building[],
-  grid: Grid,
-  roads: readonly number[],
-): RoadShape[] {
-  const out: RoadShape[] = [];
-  for (const b of buildings) {
-    if (b.kind !== 'house') continue;
-    const { dx, dy } = houseFacing(grid, b);
-    const entrance = b.stub ?? b.tile + dy * grid.cols + dx;
-    if (roads[entrance] !== 1) continue;
-    const c = buildingCentre(grid, b);
-    const bx = c.x * TILE_SIZE;
-    const by = c.y * TILE_SIZE;
-    const ex = ((entrance % grid.cols) + 0.5) * TILE_SIZE;
-    const ey = (Math.floor(entrance / grid.cols) + 0.5) * TILE_SIZE;
-    // Road width, like a lot's inlet tab, so the entrance tile's own disc rounds the end cleanly.
-    // A wider bar ends flat at the tile centre and leaves the narrower road cap showing as a pinch.
-    out.push({
-      kind: 'line',
-      x1: ex,
-      y1: ey,
-      x2: bx,
-      y2: by,
-      w: ROAD_WIDTH_TILES * TILE_SIZE,
-    });
-  }
-  return out;
-}
-
-/**
  * The step from a house to its stub, or to the tile its entrance faces when it has none: -1, 0 or
  * 1 on each axis, so a stub moved to a corner gives a diagonal.
  */
@@ -220,9 +187,11 @@ export const LOT_CORNER = 0.2 * TILE_SIZE;
 export const LOT_GAP = ((1 - ROAD_WIDTH_TILES) / 2) * TILE_SIZE;
 
 /**
- * The road links, plus a link from each lot's placed access road to its inlet. Drawn with these, a road
- * that turns into a lot is a bend like any other, so its corner is rounded, and the tab is a road bar.
- * For drawing only: the sim's links are not changed.
+ * The road links, plus a link from each lot's placed access road to its inlet, and from each house's stub
+ * road to the house. Drawn with these, a road that turns into a lot or a house is a bend like any other, so
+ * its corner is rounded, and a road that passes a house's stub is a junction, joined to the house without a
+ * gap. The tab or driveway is a road bar that the building covers at its far end. For drawing only: the
+ * sim's links are not changed.
  */
 export function linksWithTabs(
   buildings: readonly Building[],
@@ -245,6 +214,14 @@ export function linksWithTabs(
       (out[road] ??= []).push(inlet);
       (out[inlet] ??= []).push(road);
     }
+  }
+  for (const b of buildings) {
+    if (b.kind !== 'house') continue;
+    const { dx, dy } = houseFacing(grid, b);
+    const stub = b.stub ?? b.tile + dy * grid.cols + dx;
+    if (roads[stub] !== 1 || (out[stub] ?? []).includes(b.tile)) continue;
+    (out[stub] ??= []).push(b.tile);
+    (out[b.tile] ??= []).push(stub);
   }
   return out;
 }
@@ -383,9 +360,49 @@ export function carShapes(
   colors: readonly number[],
   motorways: readonly Motorway[] = [],
   controls: Readonly<Record<number, ControlKind>> = {},
+  links?: Links,
 ): CarShape[] {
   const out: CarShape[] = [];
   const half = TILE_SIZE / 2;
+  /**
+   * Points along a lane through a bend, from `a` on one edge to `b` on the other, round the tile corner
+   * `o`: the direction and the distance from `o` both blend from one end to the other, as for a car on
+   * any other bend, so the lane keeps its offset from the road's rounded curb.
+   */
+  const laneArc = (
+    a: { x: number; y: number },
+    b: { x: number; y: number },
+    o: { x: number; y: number },
+  ) => {
+    const l0 = { x: a.x - o.x, y: a.y - o.y };
+    const l1 = { x: b.x - o.x, y: b.y - o.y };
+    const r0 = Math.hypot(l0.x, l0.y);
+    const r1 = Math.hypot(l1.x, l1.y);
+    const pts: { x: number; y: number }[] = [];
+    const SAMPLES = 16;
+    for (let i = 0; i <= SAMPLES; i++) {
+      const t = i / SAMPLES;
+      const vx = (1 - t) * (l0.x / r0) + t * (l1.x / r1);
+      const vy = (1 - t) * (l0.y / r0) + t * (l1.y / r1);
+      const vl = Math.hypot(vx, vy);
+      const r = (1 - t) * r0 + t * r1;
+      pts.push({ x: o.x + (vx / vl) * r, y: o.y + (vy / vl) * r });
+    }
+    return pts;
+  };
+  /**
+   * Whether a house's stub tile is drawn as a bend into the house: its only road link meets the house's
+   * straight driveway at a right angle (see linksWithTabs). Only known when the road links are given.
+   */
+  const bendsIntoHouse = (
+    tile: number,
+    facing: { dx: number; dy: number },
+    road: { dx: number; dy: number },
+  ) =>
+    links !== undefined &&
+    (links[tile] ?? []).length === 1 &&
+    Math.abs(facing.dx) + Math.abs(facing.dy) === 1 &&
+    facing.dx * road.dx + facing.dy * road.dy === 0;
   const centre = (tile: number) => ({
     x: ((tile % grid.cols) + 0.5) * TILE_SIZE,
     y: (Math.floor(tile / grid.cols) + 0.5) * TILE_SIZE,
@@ -631,10 +648,26 @@ export function carShapes(
         const corner = turns
           ? { x: c.x + nIn.x + nInto.x, y: c.y + nIn.y + nInto.y }
           : { x: c.x + nInto.x, y: c.y + nInto.y };
-        const path = roundedPath(
-          [edgeIn, corner, { x: door.x + nInto.x, y: door.y + nInto.y }],
-          0.3 * TILE_SIZE,
-        );
+        const inside = { x: door.x + nInto.x, y: door.y + nInto.y };
+        // Where the stub is drawn as a bend into the house, the car follows the bend's curve in its lane,
+        // then drives straight in; otherwise it turns at the lanes' corner on the open tile.
+        const path =
+          inRaw !== null && bendsIntoHouse(tile, facing, inRaw)
+            ? [
+                ...laneArc(
+                  edgeIn,
+                  {
+                    x: c.x + into.dx * half + nInto.x,
+                    y: c.y + into.dy * half + nInto.y,
+                  },
+                  {
+                    x: c.x + (into.dx - inRaw.dx) * half,
+                    y: c.y + (into.dy - inRaw.dy) * half,
+                  },
+                ),
+                inside,
+              ]
+            : roundedPath([edgeIn, corner, inside], 0.3 * TILE_SIZE);
         const spot = pointAtDistance(path, along * polylineLength(path));
         x = spot.x;
         y = spot.y;
@@ -672,7 +705,34 @@ export function carShapes(
       const edgeOut = outD
         ? { x: c.x + outD.dx * half + nOut.x, y: c.y + outD.dy * half + nOut.y }
         : c;
-      if (departure.kind === 'house') {
+      const facing = houseFacing(grid, departure);
+      if (
+        departure.kind === 'house' &&
+        outD &&
+        bendsIntoHouse(tile, facing, outD)
+      ) {
+        // The stub is drawn as a bend out of the house: the car drives out in its own lane, then follows the
+        // bend's curve into its lane on the road.
+        const nH = rightOfTravel(facing);
+        const door = anchorOf(departure, c);
+        const path = [
+          { x: door.x + nH.x, y: door.y + nH.y },
+          ...laneArc(
+            {
+              x: c.x - facing.dx * half + nH.x,
+              y: c.y - facing.dy * half + nH.y,
+            },
+            edgeOut,
+            {
+              x: c.x + (outD.dx - facing.dx) * half,
+              y: c.y + (outD.dy - facing.dy) * half,
+            },
+          ),
+        ];
+        const spot = pointAtDistance(path, along * polylineLength(path));
+        x = spot.x;
+        y = spot.y;
+      } else if (departure.kind === 'house') {
         // A house is driven out of straight across to the car's own lane, and the car turns into it at the
         // access tile's centre, so it never cuts across the other lane on a slant.
         const path = roundedPath(
@@ -704,6 +764,51 @@ export function carShapes(
     });
   }
   return out;
+}
+
+/** How long a new building takes to pop into place, in milliseconds. */
+export const POP_MS = 380;
+/** How far a popping building overshoots its size before settling: the ease's back amount. */
+const POP_OVERSHOOT = 1.7;
+
+/**
+ * A new building's scale `ms` after it appears: from nothing, a little past full size, then settling at
+ * full size by POP_MS (an ease-out-back curve). 1 for a building that has finished popping.
+ */
+export function popScale(ms: number): number {
+  if (ms >= POP_MS) return 1;
+  if (ms <= 0) return 0;
+  const u = ms / POP_MS - 1;
+  return 1 + (POP_OVERSHOOT + 1) * u * u * u + POP_OVERSHOOT * u * u;
+}
+
+/** One building's shapes scaled by `k` about the centre of its body (its first square or disc). */
+export function popShapes(
+  shapes: readonly BuildingShape[],
+  k: number,
+): BuildingShape[] {
+  if (k === 1) return [...shapes];
+  const body = shapes.find((s) => s.kind === 'square' || s.kind === 'circle');
+  if (!body) return [...shapes];
+  const cx = body.kind === 'square' ? body.x + body.size / 2 : body.x;
+  const cy = body.kind === 'square' ? body.y + body.size / 2 : body.y;
+  const at = (x: number, y: number) => ({
+    x: cx + (x - cx) * k,
+    y: cy + (y - cy) * k,
+  });
+  return shapes.map((s) => {
+    if (s.kind === 'square') {
+      const p = at(s.x, s.y);
+      return { ...s, x: p.x, y: p.y, size: s.size * k };
+    }
+    if (s.kind === 'circle') {
+      const p = at(s.x, s.y);
+      return { ...s, x: p.x, y: p.y, r: s.r * k };
+    }
+    const a = at(s.x1, s.y1);
+    const b = at(s.x2, s.y2);
+    return { ...s, x1: a.x, y1: a.y, x2: b.x, y2: b.y };
+  });
 }
 
 /**

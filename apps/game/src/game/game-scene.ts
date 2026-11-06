@@ -85,8 +85,9 @@ import {
   buildingShapes,
   lotShapes,
   carShapes,
-  entranceStubShapes,
   linksWithTabs,
+  popScale,
+  popShapes,
   roadShapes,
   terrainTiles,
   ENTRANCE_WIDTH,
@@ -323,8 +324,14 @@ export class GameScene extends Phaser.Scene {
   };
   private ended = false;
   private roadsDirty = true;
-  /** The building count the scene last drew, so new arrivals appear without a redraw trigger. */
-  private shownBuildings = -1;
+  /** When each building first showed, by id and shape, in scene time, so a new or levelled-up one pops in. */
+  private bornAt = new Map<string, number>();
+  /** False while the board's opening buildings are drawn, so they appear in place without popping. */
+  private popReady = false;
+  /** True while any building is still popping, so the building layer redraws each frame. */
+  private popping = false;
+  /** The buildings the scene last drew (count and round businesses), so arrivals and level-ups appear. */
+  private shownBuildings = '';
   private overlayGfx!: Phaser.GameObjects.Graphics;
   /** Tile grid for building. Shown while a tool is picked, so placement lines up with tiles. */
   private gridGfx!: Phaser.GameObjects.Graphics;
@@ -466,11 +473,15 @@ export class GameScene extends Phaser.Scene {
     this.drawLabels();
     this.drawGuide(this.guideLines);
     this.guideGfx.setVisible(this.settings.motorwayGuide);
-    // Demo maps bring their own buildings. Only the test map places the hand-listed ones;
+    // Demo maps bring their own buildings. Only the test map places the hand-listed ones.
     if (!demo && isTestMap()) this.placeTestBuildings();
     // A played map starts with one house and one destination (spec: Starting pair). A resumed run already has its buildings.
     if (!demo && !resumed && !isTestMap()) placeStartingPair(this.sim);
+    // Buildings already on the board when it opens are drawn in place; only later arrivals pop in.
+    this.bornAt.clear();
+    this.popReady = false;
     this.drawBuildings();
+    this.popReady = true;
 
     // Screen-space text, not in the scaled layer, so it stays readable at any zoom.
     this.debugText = this.add
@@ -582,15 +593,22 @@ export class GameScene extends Phaser.Scene {
     this.gridGfx.setVisible(!this.debugOn && this.mapper.tool !== 'select');
     this.boundaryGfx.setVisible(!this.debugOn && this.mapper.tool !== 'select');
 
-    // Businesses and houses arrive during play, so the building layer redraws when their count changes.
-    if (this.sim.buildings.length !== this.shownBuildings) {
-      this.shownBuildings = this.sim.buildings.length;
+    // Businesses and houses arrive during play, and square businesses level up to round, so the building
+    // layer redraws when the count or the number of round businesses changes.
+    const rounds = this.sim.buildings.filter(
+      (b) => b.kind === 'destination' && b.shape !== 'square',
+    ).length;
+    const shown = `${this.sim.buildings.length}:${rounds}`;
+    if (shown !== this.shownBuildings) {
+      this.shownBuildings = shown;
       this.roadsDirty = true;
     }
     if (this.roadsDirty) {
       // A house's stub and doorframe tick sit in the building layer, so it redraws with the roads.
       this.drawBuildings();
       this.roadsDirty = false;
+    } else if (this.popping) {
+      this.paintBuildings();
     }
     this.syncFence();
     this.drawCars(); // cars move every tick, so they are redrawn every frame
@@ -1140,14 +1158,35 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawBuildings(): void {
+    this.drawRoads();
+    this.paintBuildings();
+  }
+
+  /**
+   * Paints the building layer. A building that has just appeared, or just levelled up, pops in: it grows
+   * from nothing, a little past full size, then settles (see popScale).
+   */
+  private paintBuildings(): void {
     const gfx = this.buildingGfx;
     gfx.clear();
-    // Buildings outside the fence are hidden until it grows over them.
+    // Buildings outside the fence are hidden until it grows over them, and pop in when it does.
     const visible = this.sim.buildings.filter((b) =>
       isOpenTile(this.sim, b.tile),
     );
-    const shapes = buildingShapes(visible, this.sim.grid, BUILDING_COLORS);
-    this.drawRoads();
+    const now = this.time.now;
+    let popping = false;
+    const shapes = visible.flatMap((b) => {
+      const key = `${b.id}:${b.kind === 'house' ? 'house' : (b.shape ?? 'round')}`;
+      let born = this.bornAt.get(key);
+      if (born === undefined) {
+        born = this.popReady ? now : -Infinity;
+        this.bornAt.set(key, born);
+      }
+      const k = popScale(now - born);
+      if (k < 1) popping = true;
+      return popShapes(buildingShapes([b], this.sim.grid, BUILDING_COLORS), k);
+    });
+    this.popping = popping;
     // Shadows first, so every building's shadow falls under its neighbours.
     gfx.fillStyle(this.pal.shadow, SHADOW_ALPHA);
     for (const s of shapes) {
@@ -1233,7 +1272,6 @@ export class GameScene extends Phaser.Scene {
         roads,
         linksWithTabs(visible, this.sim.grid, roads, this.sim.links),
       ),
-      ...entranceStubShapes(visible, this.sim.grid, roads),
       ...lotShapes(visible, this.sim.grid, roads),
     ];
     // Kerb first, a little wider, then the pavement on top, so each road has a thin outline.
@@ -1455,6 +1493,7 @@ export class GameScene extends Phaser.Scene {
       BUILDING_COLORS,
       this.sim.motorways,
       this.sim.controls,
+      this.sim.links,
     );
     const roadHeadings = this.roadHeadings(cars);
     const headings = new Map<number, number>();
@@ -1509,6 +1548,7 @@ export class GameScene extends Phaser.Scene {
         BUILDING_COLORS,
         this.sim.motorways,
         this.sim.controls,
+        this.sim.links,
       );
     const from = shapesOf(before);
     const to = shapesOf(after);

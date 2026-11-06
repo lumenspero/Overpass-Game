@@ -6,7 +6,7 @@ import type { Motorway } from './motorways.ts';
 import type { Building, Demand, Home } from './buildings.ts';
 import { type Car, onRoadsChanged } from './cars.ts';
 import { tuning } from './config.ts';
-import { arriveBusinesses, topUpSupply } from './arrivals.ts';
+import { arriveBusinesses, houseMomentNow, topUpSupply } from './arrivals.ts';
 import { generateDemand, growDestinations, updateOverflow } from './demand.ts';
 import { type MapRule, offerCandidates } from './rules.ts';
 import { type Fence, isOpenTile } from './expansion.ts';
@@ -288,9 +288,10 @@ export function step(state: SimState): SimEvent[] {
     grantWeeklyReward(state, offerCandidates(state));
     growDestinations(state);
     addSecondBuildings(state);
-    arriveBusinesses(state);
   }
-  if (state.tick % tuning.SUPPLY_CHECK_TICKS === 0) topUpSupply(state);
+  // The clock waits while the week's offer is open, so the first tick of a week comes after the reward.
+  if (state.tick % tuning.WEEK_TICKS === 1) arriveBusinesses(state);
+  if (houseMomentNow(state)) topUpSupply(state);
   generateDemand(state);
   updateOverflow(state);
   if (state.over) return takeEvents();

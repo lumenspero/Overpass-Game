@@ -22,7 +22,15 @@ export type RestrictableOffer = (typeof RESTRICTABLE_OFFERS)[number];
 
 export type MapRule =
   | { kind: 'unlockColour'; colour: number; week: number }
-  | { kind: 'allowedOffers'; options: RestrictableOffer[] };
+  | { kind: 'allowedOffers'; options: RestrictableOffer[] }
+  // Sim only, not in the map format: no businesses arrive and no houses are topped up. For scripted
+  // demos, which bring their own buildings.
+  | { kind: 'noSpawns' };
+
+/** Whether the run's rules turn off business arrivals and house top-ups. */
+export function spawnsOff(state: SimState): boolean {
+  return state.rules.some((r) => r.kind === 'noSpawns');
+}
 
 /** Whether a building colour may be used at the state's current tick. */
 export function colourUnlocked(state: SimState, colour: number): boolean {
