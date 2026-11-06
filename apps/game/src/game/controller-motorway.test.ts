@@ -6,7 +6,12 @@ import {
   type SimState,
 } from '@overpass-game/sim';
 import { describe, expect, it } from 'vitest';
-import { applyIntent, createController } from './controller.ts';
+import {
+  applyIntent,
+  cancelMotorway,
+  createController,
+  startMotorway,
+} from './controller.ts';
 
 const COLS = 8;
 const idx = (x: number, y: number) => y * COLS + x;
@@ -129,9 +134,9 @@ describe('motorway strokes', () => {
     expect(sim.stock.motorway).toBe(0);
   });
 
-  it('a select stroke on empty ground lays no road', () => {
+  it('a select drag on empty ground draws road, and a select press on a motorway lays none', () => {
     const sim = town();
-    const ctl = createController(sim);
+    const ctl = layMotorway(sim);
     const before = sim.roads.reduce((n, r) => n + r, 0);
     applyIntent(
       ctl,
@@ -140,6 +145,63 @@ describe('motorway strokes', () => {
     );
     applyIntent(ctl, { type: 'stroke-move', at: { x: 2.5, y: 0.5 } }, identity);
     applyIntent(ctl, { type: 'stroke-end', at: { x: 2.5, y: 0.5 } }, identity);
-    expect(sim.roads.reduce((n, r) => n + r, 0)).toBe(before);
+    expect(sim.roads.reduce((n, r) => n + r, 0)).toBe(before + 3);
+    const m = sim.motorways[0];
+    const curve = motorwayCurve(sim.grid, m);
+    const mid = curve[Math.floor(curve.length / 2)];
+    applyIntent(
+      ctl,
+      { type: 'stroke-begin', mode: 'select', at: mid },
+      identity,
+    );
+    applyIntent(ctl, { type: 'stroke-end', at: mid }, identity);
+    expect(ctl.selected).toBe(m.id);
+    expect(sim.roads.reduce((n, r) => n + r, 0)).toBe(before + 3);
+  });
+});
+
+describe('motorway dropped from the dock', () => {
+  it('a drop on the start ramp waits for a second click and lays nothing yet', () => {
+    const sim = town();
+    const ctl = createController(sim);
+    startMotorway(ctl, { x: 1.5, y: 4.5 });
+    expect(ctl.motorwayStart).toEqual({ x: 1.5, y: 4.5 });
+    expect(sim.motorways).toHaveLength(0);
+  });
+
+  it('the next click on the far ramp places the motorway from the start', () => {
+    const sim = town();
+    const ctl = createController(sim);
+    startMotorway(ctl, { x: 1.5, y: 4.5 });
+    applyIntent(
+      ctl,
+      { type: 'stroke-begin', mode: 'motorway', at: { x: 6.5, y: 4.5 } },
+      identity,
+    );
+    expect(sim.motorways).toHaveLength(1);
+    expect(ctl.motorwayStart).toBeNull();
+  });
+
+  it('a refused second click keeps the start, so the player can try another end', () => {
+    const sim = town();
+    const ctl = createController(sim);
+    startMotorway(ctl, { x: 1.5, y: 4.5 });
+    applyIntent(
+      ctl,
+      { type: 'stroke-begin', mode: 'motorway', at: { x: 3.5, y: 4.5 } },
+      identity,
+    );
+    expect(sim.motorways).toHaveLength(0);
+    expect(ctl.crossing?.result.ok).toBe(false);
+    expect(ctl.motorwayStart).toEqual({ x: 1.5, y: 4.5 });
+  });
+
+  it('cancelling clears the start', () => {
+    const sim = town();
+    const ctl = createController(sim);
+    startMotorway(ctl, { x: 1.5, y: 4.5 });
+    cancelMotorway(ctl);
+    expect(ctl.motorwayStart).toBeNull();
+    expect(ctl.motorwayCursor).toBeNull();
   });
 });

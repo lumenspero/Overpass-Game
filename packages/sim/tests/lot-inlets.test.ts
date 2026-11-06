@@ -3,6 +3,7 @@ import {
   createSim,
   destinationLot,
   placeBuilding,
+  placeMotorway,
   placeRoads,
   type Building,
   type SimState,
@@ -113,5 +114,40 @@ describe('lot crossing on the right lane', () => {
         );
       }
     }
+  });
+});
+
+describe('motorway ends at a lot inlet', () => {
+  /** A destination with one motorway in stock and a road tile well to its south. */
+  function setUp() {
+    const { sim, destination } = withDestination();
+    sim.stock.motorway = 1;
+    const far = 16 * 20 + 10;
+    expect(placeRoads(sim, [far]).ok).toBe(true);
+    const lot = destinationLot(sim.grid, destination);
+    if (!lot) throw new Error('no lot');
+    return { sim, far, inlet: lot.road };
+  }
+  const centre = (i: number) => ({
+    x: (i % 20) + 0.5,
+    y: Math.floor(i / 20) + 0.5,
+  });
+
+  it('ends on an unbuilt inlet, laying that tile as road and charging it', () => {
+    const { sim, far, inlet } = setUp();
+    expect(sim.roads[inlet]).toBe(0);
+    const before = sim.budget;
+    const result = placeMotorway(sim, far, inlet, [centre(far), centre(inlet)]);
+    expect(result.ok).toBe(true);
+    expect(sim.roads[inlet]).toBe(1);
+    if (result.ok) expect(sim.budget).toBe(before - result.cost - 1);
+  });
+
+  it('still refuses an end on plain unbuilt ground', () => {
+    const { sim, far } = setUp();
+    const plain = 16 * 20 + 3;
+    const result = placeMotorway(sim, far, plain, [centre(far), centre(plain)]);
+    expect(result).toEqual({ ok: false, reason: 'bad-endpoint' });
+    expect(sim.roads[plain]).toBe(0);
   });
 });

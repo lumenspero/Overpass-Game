@@ -32,7 +32,7 @@ export const DEFAULT_TUNING = {
   /** Ticks between one demand pin appearing at a destination and the next. */
   DEMAND_INTERVAL_TICKS: 150, // approximated
   /** Ticks between pins at a square destination, which is slower than a round one. */
-  DEMAND_INTERVAL_SQUARE_TICKS: 200, // approximated
+  DEMAND_INTERVAL_SQUARE_TICKS: 300, // approximated
   /** Businesses arrive square before this week. From it on, an arrival may be round, or level up a square one. */
   SHAPE_SWITCH_WEEK: 10, // approximated
   /** Waiting pins a destination holds at most. A request arriving while this many wait starts its overflow pin. */
@@ -71,7 +71,7 @@ export const DEFAULT_TUNING = {
   /** Extra route cost, in tile steps, for each car waiting to enter a tile (spec: Congestion-aware routing). */
   CONGESTION_COST_PER_CAR: 1.5, // approximated
   /** Demand each destination gains every week, so demand rises as the game goes on. */
-  DEMAND_GROWTH_STEP: 0.25, // approximated
+  DEMAND_GROWTH_STEP: 0.1, // approximated
   /** Chance a destination placed with a roll gets a double lot, before the inflection week (spec: Parking lots). */
   DOUBLE_LOT_CHANCE_EARLY: 0.1, // approximated
   /** Chance a destination placed with a roll gets a double lot, from the inflection week on. */

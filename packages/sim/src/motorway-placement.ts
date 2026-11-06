@@ -1,7 +1,9 @@
 import { onRoadsChanged } from './cars.ts';
 import { tuning } from './config.ts';
 import { isOpenTile } from './expansion.ts';
-import { type Grid, isInBounds, roadLinks } from './grid.ts';
+import { type Grid, isBuildable, isInBounds, roadLinks } from './grid.ts';
+import { updateRoadGraph } from './graph.ts';
+import { lotAccessTiles } from './lots.ts';
 import {
   type CurvePoint,
   curvePoints,
@@ -131,7 +133,15 @@ export function placeMotorway(
     return fail('out-of-bounds');
   }
   if (adjacent(grid, a, b)) return fail('bad-endpoint');
-  if (state.roads[a] !== 1 || state.roads[b] !== 1) {
+  // A lot's inlet counts as road: an end on its unbuilt access tile lays that tile with the motorway.
+  const inlets = lotAccessTiles(state);
+  const lay = [...new Set([a, b])].filter(
+    (t) => state.roads[t] !== 1 && inlets.has(t),
+  );
+  for (const t of [a, b]) {
+    if (state.roads[t] !== 1 && !lay.includes(t)) return fail('bad-endpoint');
+  }
+  if (lay.some((t) => !isBuildable(grid, t) || state.buildingAt[t] !== -1)) {
     return fail('bad-endpoint');
   }
   if (!isOpenTile(state, a) || !isOpenTile(state, b)) return fail('locked');
@@ -149,7 +159,13 @@ export function placeMotorway(
   const shape = shapeOf(grid, a, b, handles, aDir, bDir);
   if (!shape.ok) return fail(shape.reason);
   const cost = motorwayCost(shape.length);
-  if (cost > state.budget) return fail('no-budget');
+  if (cost + lay.length > state.budget) return fail('no-budget');
+
+  if (lay.length > 0) {
+    for (const t of lay) state.roads[t] = 1;
+    state.budget -= lay.length;
+    updateRoadGraph(state.graph, grid, state.roads, state.links, lay);
+  }
 
   const id = state.nextMotorwayId;
   state.nextMotorwayId += 1;

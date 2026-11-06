@@ -92,22 +92,23 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 Elevated links for faster travel between two points on the ground network. `approximated`
 
-- **Placement:** the player presses on a start road tile and releases on an end road tile. Only the two ends align to the grid. The curve between them is free: it does not follow tiles. The drag shapes it: the points the drag passes become candidate control points, reduced to at most `MOTORWAY_MAX_NODES` handles so the curve stays readable. Both ends must be road tiles on the ground network, or they are refused (`bad-endpoint`).
+- **Placement:** the player presses on a start road tile and releases on an end road tile. Only the two ends align to the grid. The curve between them is free: it does not follow tiles. The drag shapes it: the points the drag passes become candidate control points, reduced to at most `MOTORWAY_MAX_NODES` handles so the curve stays readable. Both ends must be road tiles on the ground network, or they are refused (`bad-endpoint`). A business's inlet counts as road: an end on a lot's unbuilt access tile lays that tile as road with the motorway, for one tile of budget.
 - **Elevated:** the motorway passes over roads, water, mountains and buildings freely. It does not join ground roads except at its two ramp ends. It is drawn above roads and buildings with a soft shadow, so the ground stays visible beneath it.
 - **Length:** the curve may be at most `MOTORWAY_MAX_LENGTH` tiles long. Longer is refused (`too-long`).
 - **Cost:** one motorway from stock, and its curve length in tiles from budget (`MOTORWAY_COST_PER_TILE` each).
 - **Travel:** cars may use a motorway between its ramps. Travel along it is `MOTORWAY_SPEED` times faster than ground roads. A car joins or leaves only at a ramp.
+- **Dock placement:** dragging the motorway piece from the dock onto the map sets its first end at the drop point, if the drop is on the map. A ring marks the first end. The motorway then follows the cursor as a straight line, and the next click sets the second end. A refused end keeps the first, so another end can be tried. Escape cancels. The drag shapes a motorway only when it is drawn on the map. `approximated`
 - **Nudging:** click a motorway to select it. Its handles appear, and dragging a handle moves that control point while the curve updates live. A nudge that breaks a rule (length, a ramp off the ground network) is refused and the handle snaps back. Clicking empty ground or pressing Escape deselects.
 - **Erase:** erasing either ramp tile removes the whole motorway and returns its stock and the budget it cost. Undoing the erase restores it.
 - **Cost on nudge:** a nudge that lengthens or shortens the curve changes its cost by the difference. A nudge the budget cannot cover is refused.
 - **Preview:** while the player drags, a translucent curve follows the cursor, as bridges do.
-- **Tools:** roads are laid only with the road tool (F). The default select tool only picks and nudges motorways, so a click on empty ground lays nothing. Erase is E, bridge B, tunnel T, motorway M. Each tool is a toggle, to be tidied into UI later.
+- **Tools:** with the default select tool, a press on a motorway picks it or nudges its handle, and a press and drag anywhere else draws road until the button is released. A click that never moves lays nothing. The road tool (F) also draws. Erase is E, bridge B, tunnel T, motorway M. Each tool is a toggle, to be tidied into UI later.
 
 ### Expansion
 
 - **Fence:** each map has a starting fence: a rectangle of tiles. Every imported map starts with a 24 by 14 fence centred in its frame; a frame smaller than that gets a fence the size of the frame. Setting it per map in the Studio is not built yet. Only tiles inside the fence take roads, buildings and spawns. Land outside it stays visible, dimmed and locked. Replaces the district schedule. `planned`
 - **Weekly growth:** each week the fence grows by `FENCE_GROWTH_PER_WEEK` (2) nodes on each side (north, south, east and west), stopping at the map edge. `approximated`
-- **Visible growth:** each step's new edge slides across its strip over `FENCE_REVEAL_TICKS` (1.5 seconds at 1x). In draw mode the edge is drawn as a boundary that is not locked to the grid: the grid shows only inside it, and land outside is dimmed. Tiles open once the edge has passed over them. `approximated`
+- **Visible growth:** each step's new edge slides across its strip over `FENCE_REVEAL_TICKS` (1.5 seconds at 1x). In draw mode the edge is drawn as a boundary that is not locked to the grid: the grid shows only inside it, and land outside is dimmed. The grid itself shows only while the player presses on the map with a build tool, and hides on release. Tiles open once the edge has passed over them. `approximated`
 - **Frame shape:** 16:9 is the target shape of the window that frames the fence. It is not the node count: the fence's starting width and height are set per map.
 - **Blocking:** roads and buildings cannot be placed beyond the fence, and roads cannot cross it. Bridges and tunnels cannot land outside it.
 - **Opening only:** the fence never shrinks.
@@ -195,7 +196,7 @@ Elevated links for faster travel between two points on the ground network. `appr
 
 ### Destination growth and rule hooks
 
-- **Growth:** every week, every destination gains `DEMAND_GROWTH_STEP` (default 0.25) demand, so demand rises as the game goes on. It is automatic: the player has no choice in it, and destinations are not upgraded by hand. `approximated`
+- **Growth:** every week, every destination gains `DEMAND_GROWTH_STEP` (default 0.1) demand, so demand rises as the game goes on. It is automatic: the player has no choice in it, and destinations are not upgraded by hand. `approximated`
 - **Rule hooks:** a map's rules are a list passed to the sim when it starts, so a map changes by data, not code. The one map rule kind is `allowedOffers`, which leaves out upgrade offers the map does not want. Colours are not a map rule: they arrive with businesses (see Business arrival and house supply). `approximated`
 
 ### Campaign unlocks

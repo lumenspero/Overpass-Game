@@ -189,7 +189,9 @@ import {
 import {
   applyIntent,
   type Controller,
+  cancelMotorway,
   createController,
+  startMotorway,
 } from './controller.ts';
 import {
   buildTestFence,
@@ -211,6 +213,8 @@ const LIGHT_RED_COLOUR = 0xd9534f;
 
 /** Stroke width of thin region and pavement borders, in pixels. */
 const BORDER_PX = 2;
+/** Radius of the ring that marks a motorway's first end, as a fraction of a tile. */
+const MOTORWAY_START_RING = 0.35;
 
 /** Radius of a building's symbol, as a share of the building's width. */
 const SYMBOL_RADIUS = 0.3;
@@ -361,8 +365,12 @@ export class GameScene extends Phaser.Scene {
   private offerPanel!: OfferPanel;
   private dock!: Dock;
   /** A piece being dragged from the dock: its item, and whether its stroke has started on the map. */
-  private dockDrag: { id: DockId; started: boolean; single: boolean } | null =
-    null;
+  private dockDrag: {
+    id: DockId;
+    started: boolean;
+    single: boolean;
+    motorway: boolean;
+  } | null = null;
   private topBar!: TopBar;
   private debugOn = false;
   private overlayDirty = true;
@@ -610,8 +618,16 @@ export class GameScene extends Phaser.Scene {
     // Timers fire here, not in an event, so a held finger can start an erase stroke.
     this.dispatch(updateTimers(this.mapper, time));
     this.panWithArrows(delta);
-    // Debug mode draws its own grid, so this one hides then.
-    this.gridGfx.setVisible(!this.debugOn && this.mapper.tool !== 'select');
+    // The grid shows only while the player presses on the map to build, so the map stays clean
+    // between strokes. Debug mode draws its own grid, so this one hides then.
+    // With the default tool, a press and drag on empty ground draws road, so the grid shows for it too.
+    const pressing =
+      this.mapper.mode.kind === 'stroke' || this.mapper.mode.kind === 'pending';
+    const stroke = this.controller.stroke;
+    const drawing = stroke !== null && stroke.nudge === null;
+    this.gridGfx.setVisible(
+      !this.debugOn && pressing && (this.mapper.tool !== 'select' || drawing),
+    );
     this.boundaryGfx.setVisible(!this.debugOn && this.mapper.tool !== 'select');
 
     // Businesses and houses arrive during play, and square businesses level up to round, so the building
@@ -729,16 +745,18 @@ export class GameScene extends Phaser.Scene {
   private onDockDragStart = (id: DockId): void => {
     if (id === 'tiles' || this.sim.over || this.sim.offers.length > 0) return;
     setTool(this.mapper, id);
+    cancelMotorway(this.controller);
     this.dockDrag = {
       id,
       started: false,
       single: id === 'roundabout' || id === 'light',
+      motorway: id === 'motorway',
     };
   };
 
   private onDockDragMove = (x: number, y: number): void => {
     const drag = this.dockDrag;
-    if (!drag || drag.single) return;
+    if (!drag || drag.single || drag.motorway) return;
     if (!drag.started) {
       // The stroke starts where the pointer first enters the map, so a bridge or tunnel is drawn from there.
       if (!this.overCanvas(x, y)) return;
@@ -754,7 +772,14 @@ export class GameScene extends Phaser.Scene {
     this.dockDrag = null;
     if (drag) {
       const inside = this.overCanvas(x, y);
-      if (drag.single) {
+      if (drag.motorway) {
+        // A motorway dropped on the map sets its first end. The next click sets the second.
+        if (inside)
+          startMotorway(
+            this.controller,
+            this.toTile(this.canvasPoint({ clientX: x, clientY: y })),
+          );
+      } else if (drag.single) {
         // A roundabout or traffic light is one tile: it goes where the piece is dropped.
         if (inside) {
           this.dispatch(pointerDown(this.mapper, this.dockSample(x, y)));
@@ -769,7 +794,10 @@ export class GameScene extends Phaser.Scene {
         );
       }
     }
-    setTool(this.mapper, 'select');
+    // A motorway waiting for its second end keeps its tool, so the next click places it.
+    if (!(drag?.motorway && this.controller.motorwayStart)) {
+      setTool(this.mapper, 'select');
+    }
   };
 
   private canvasPoint(e: { clientX: number; clientY: number }): Vec2 {
@@ -809,6 +837,9 @@ export class GameScene extends Phaser.Scene {
   };
 
   private onPointerMove = (e: PointerEvent): void => {
+    if (this.controller.motorwayStart) {
+      this.controller.motorwayCursor = this.toTile(this.canvasPoint(e));
+    }
     this.dispatch(pointerMove(this.mapper, this.sample(e)));
   };
 
@@ -1436,6 +1467,22 @@ export class GameScene extends Phaser.Scene {
       const preview = motorwayPreview(this.sim.grid, s.drag);
       if (preview) line(px(preview), width, this.pal.motorway, 0.4);
     }
+    // A motorway dropped from the dock shows from its first end to the cursor.
+    const start = this.controller.motorwayStart;
+    const cursor = this.controller.motorwayCursor;
+    if (!s && start && cursor) {
+      const preview = motorwayPreview(this.sim.grid, [start, cursor]);
+      if (preview) line(px(preview), width, this.pal.motorway, 0.4);
+    }
+    if (start) {
+      // A ring marks the first end on its tile until the second end is clicked.
+      const cx = (Math.floor(start.x) + 0.5) * TILE_SIZE;
+      const cy = (Math.floor(start.y) + 0.5) * TILE_SIZE;
+      gfx.fillStyle(this.pal.motorway, 1);
+      gfx.fillCircle(cx, cy, TILE_SIZE * MOTORWAY_START_RING);
+      gfx.lineStyle(BORDER_PX, this.pal.motorwayContrast, 1);
+      gfx.strokeCircle(cx, cy, TILE_SIZE * MOTORWAY_START_RING);
+    }
   }
 
   /** Draws each motorway's shield, with its number. The shields are drawn in the palette's badge colour on the paper colour. */
@@ -1802,7 +1849,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Esc ends an open waypoint chain. */
-  private onEscKey = (): void => finishChain(this.mapper);
+  private onEscKey = (): void => {
+    finishChain(this.mapper);
+    cancelMotorway(this.controller);
+  };
 
   private onSpaceDown = (): void => {
     this.mapper.panHeld = true;

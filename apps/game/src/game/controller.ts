@@ -101,6 +101,11 @@ interface Stroke {
   house: number | null;
   /** Water or mountain tiles a road stroke is crossing, held until it reaches land. Not laid yet. */
   pending?: { kind: CrossingKind; from: number; tiles: number[] } | null;
+  /**
+   * A road press with the default tool, held until the pointer moves: the first move lays road
+   * from here. A click that never moves lays nothing.
+   */
+  armedAt?: Vec2 | null;
 }
 
 /** The outcome of one bridge, tunnel or motorway release. `seq` rises with every release. */
@@ -123,13 +128,62 @@ export interface Controller {
   crossing: CrossingReport | null;
   /** The motorway currently selected, whose handles can be nudged. */
   selected: number | null;
+  /** The first end of a motorway dropped from the dock, waiting for its second click. */
+  motorwayStart: TileXY | null;
+  /** Where the pointer is, while a motorway waits for its second end. */
+  motorwayCursor: TileXY | null;
 }
 
 /** Converts a screen point to tile units. The result is fractional: 3.5 is the centre of tile 3. */
 export type ToTile = (screen: Vec2) => TileXY;
 
 export function createController(sim: SimState): Controller {
-  return { sim, stroke: null, note: null, crossing: null, selected: null };
+  return {
+    sim,
+    stroke: null,
+    note: null,
+    crossing: null,
+    selected: null,
+    motorwayStart: null,
+    motorwayCursor: null,
+  };
+}
+
+/** A motorway dropped on the map: `at` is its first end, and the next click sets the second. */
+export function startMotorway(ctl: Controller, at: TileXY): void {
+  ctl.motorwayStart = at;
+  ctl.motorwayCursor = at;
+}
+
+/** Drops a motorway that is waiting for its second end. Escape and a new dock drag call this. */
+export function cancelMotorway(ctl: Controller): void {
+  ctl.motorwayStart = null;
+  ctl.motorwayCursor = null;
+}
+
+/** Places a motorway along a path of tile points. Records the outcome for the debug line and the sounds. */
+function motorwayPath(ctl: Controller, drag: TileXY[]): boolean {
+  const start = drag[0];
+  const end = drag[drag.length - 1];
+  if (!start || !end) return false;
+  const a = indexOf(ctl.sim, {
+    x: Math.floor(start.x),
+    y: Math.floor(start.y),
+  });
+  const b = indexOf(ctl.sim, { x: Math.floor(end.x), y: Math.floor(end.y) });
+  const result: MotorwayResult =
+    a === null || b === null
+      ? { ok: false, reason: 'out-of-bounds' }
+      : placeMotorway(ctl.sim, a, b, drag);
+  ctl.note = result.ok
+    ? 'motorway built'
+    : `motorway refused: ${result.reason}`;
+  ctl.crossing = {
+    seq: (ctl.crossing?.seq ?? 0) + 1,
+    kind: 'motorway',
+    result,
+  };
+  return result.ok;
 }
 
 function indexOf(sim: SimState, t: TileXY): number | null {
@@ -525,28 +579,7 @@ function nudgeTo(ctl: Controller, stroke: Stroke, at: TileXY): boolean {
 function motorwayTo(ctl: Controller, stroke: Stroke, at: TileXY): boolean {
   const release = { x: at.x, y: at.y };
   const drag = stroke.drag.length > 0 ? [...stroke.drag, release] : [release];
-  const start = drag[0];
-  const a = indexOf(ctl.sim, {
-    x: Math.floor(start.x),
-    y: Math.floor(start.y),
-  });
-  const b = indexOf(ctl.sim, {
-    x: Math.floor(release.x),
-    y: Math.floor(release.y),
-  });
-  const result: MotorwayResult =
-    a === null || b === null
-      ? { ok: false, reason: 'out-of-bounds' }
-      : placeMotorway(ctl.sim, a, b, drag);
-  ctl.note = result.ok
-    ? 'motorway built'
-    : `motorway refused: ${result.reason}`;
-  ctl.crossing = {
-    seq: (ctl.crossing?.seq ?? 0) + 1,
-    kind: 'motorway',
-    result,
-  };
-  return result.ok;
+  return motorwayPath(ctl, drag);
 }
 
 function rollback(ctl: Controller, stroke: Stroke): boolean {
@@ -597,6 +630,15 @@ export function applyIntent(
 ): boolean {
   switch (intent.type) {
     case 'stroke-begin': {
+      if (intent.mode === 'motorway' && ctl.motorwayStart) {
+        // The second click of a motorway dropped from the dock. A refused end keeps the first.
+        const placed = motorwayPath(ctl, [
+          ctl.motorwayStart,
+          toTile(intent.at),
+        ]);
+        if (placed) cancelMotorway(ctl);
+        return placed;
+      }
       // A new stroke commits any unfinished one first.
       const at = toTile(intent.at);
       if (intent.mode === 'roundabout' || intent.mode === 'light') {
@@ -626,7 +668,9 @@ export function applyIntent(
         ctl.selected = null;
       }
       if (intent.mode === 'select') {
-        ctl.stroke = null;
+        // Anywhere else, a press and drag with the default tool draws road until release.
+        ctl.stroke = newStroke('draw');
+        ctl.stroke.armedAt = intent.at;
         return false;
       }
       ctl.stroke = newStroke(intent.mode);
@@ -645,6 +689,13 @@ export function applyIntent(
     case 'stroke-move': {
       const current = ctl.stroke;
       if (!current) return false;
+      if (current.armedAt) {
+        // The drag has begun: lay road from the press, then on to the pointer.
+        const from = current.armedAt;
+        current.armedAt = null;
+        const first = extend(ctl, current, from, toTile, true);
+        return extend(ctl, current, intent.at, toTile, false) || first;
+      }
       if (current.nudge) return nudgeTo(ctl, current, toTile(intent.at));
       if (current.mode === 'erase') {
         const id = curveAt(ctl, toTile(intent.at));
@@ -663,6 +714,8 @@ export function applyIntent(
     case 'stroke-end': {
       const stroke = ctl.stroke;
       ctl.stroke = null;
+      // A default-tool click that never moved lays nothing.
+      if (stroke?.armedAt) return false;
       if (stroke && intent.at && stroke.nudge) {
         return nudgeTo(ctl, stroke, toTile(intent.at));
       }
