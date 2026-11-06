@@ -11,15 +11,16 @@ import type { SimState } from './sim.ts';
  * and used up when the car arrives. A car that never arrives (lost, or sent home) leaves
  * its pin for the next car.
  *
- * A destination holds at most OVERFLOW_PIN_LIMIT pins. A request that arrives while that many wait starts
- * its overflow pin, which fills steadily, in the time OVERFLOW_FILL_PINS more requests would take. Each car
+ * A destination holds at most OVERFLOW_PIN_LIMIT pins that no car is on its way to. A request that arrives
+ * while that many wait starts its overflow pin. Pins with a car coming do not count, so a business only
+ * overflows once its houses cannot send cars fast enough. The overflow pin fills steadily, in the time OVERFLOW_FILL_PINS more requests would take. Each car
  * that arrives drains one OVERFLOW_FILL_PINS-th of the fill before it uses up a pin. When the fill empties
  * the overflow ends; when it is full, the game ends.
  */
 
 /**
  * Adds one pin to each destination whose cooldown has run down. A destination already holding
- * OVERFLOW_PIN_LIMIT pins gets no more: the request starts its overflow pin instead.
+ * OVERFLOW_PIN_LIMIT pins with no car on the way gets no more: the request starts its overflow pin.
  */
 export function generateDemand(state: SimState): void {
   for (const b of state.buildings) {
@@ -29,7 +30,9 @@ export function generateDemand(state: SimState): void {
     demand.cooldown = Math.max(0, demand.cooldown - 1);
     if (demand.cooldown > 0) continue;
     demand.cooldown = cooldownFor(demand, b.shape);
-    if (demand.pins < tuning.OVERFLOW_PIN_LIMIT) {
+    // Only pins still waiting for a car count toward the limit: a pin with a car on its way is
+    // being met, so houses keep sending until they run out of cars.
+    if (unclaimedPins(state, b.id) < tuning.OVERFLOW_PIN_LIMIT) {
       demand.pins += 1;
       emitEvent({ kind: 'pin-appeared', destination: b.id });
     } else {
@@ -95,8 +98,10 @@ export function servePin(state: SimState, destination: number): void {
 export function addDemandPin(state: SimState, destination: number): boolean {
   const demand = state.demand[destination];
   if (!demand) return false;
-  if (demand.pins < tuning.OVERFLOW_PIN_LIMIT) demand.pins += 1;
-  else startOverflow(demand, destination, state.buildings[destination]?.shape);
+  if (unclaimedPins(state, destination) < tuning.OVERFLOW_PIN_LIMIT) {
+    demand.pins += 1;
+  } else
+    startOverflow(demand, destination, state.buildings[destination]?.shape);
   return true;
 }
 

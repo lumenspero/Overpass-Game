@@ -1,4 +1,9 @@
-import { type ControlKind, dropControlsAt } from './controls.ts';
+import {
+  type ControlKind,
+  dropControlsAt,
+  type LightState,
+  updateLights,
+} from './controls.ts';
 import { emitEvent, type SimEvent, takeEvents } from './events.ts';
 import type { CrossingRun } from './crossings.ts';
 import { dropMotorwaysAt } from './motorway-placement.ts';
@@ -85,6 +90,8 @@ export interface SimState {
   nextMotorwayId: number;
   /** Roundabouts and traffic lights on junction tiles, by tile (spec: Roundabouts and lights). */
   controls: Record<number, ControlKind>;
+  /** Each traffic light's phase, by tile. Made when a light first switches; runs saved before have none. */
+  lights?: Record<number, LightState>;
   /** The map's rules, from its data (spec: Destination growth and rule hooks). */
   rules: MapRule[];
 }
@@ -306,6 +313,7 @@ export function step(state: SimState): SimEvent[] {
   updateOverflow(state);
   if (state.over) return takeEvents();
   spawnCars(state);
+  updateLights(state);
   moveCars(state);
   updateTrips(state);
   return takeEvents();

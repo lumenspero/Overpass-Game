@@ -11,6 +11,7 @@ import {
   replanExit,
   startLotExit,
   startLotTrip,
+  releaseQueued,
 } from './lot-trips.ts';
 import { nextFloat } from './rng.ts';
 import type { SimState } from './sim.ts';
@@ -72,7 +73,6 @@ export function spawnCars(state: SimState): void {
     if (options.length === 0) continue;
     const pick = options[Math.floor(nextFloat(state.rng) * options.length)];
 
-    home.cooldown = tuning.SPAWN_INTERVAL_TICKS;
     const added = addCar(state, b.id, pick.id);
     if (!added.ok) continue;
     const counts = unclaimedCounts(driving, pick.id, 1);
@@ -84,6 +84,8 @@ export function spawnCars(state: SimState): void {
     } else {
       car.along = 0;
       home.atHome -= 1;
+      // The wait starts once a car has left. A house whose pull-out was blocked tries again next tick.
+      home.cooldown = tuning.SPAWN_INTERVAL_TICKS;
     }
   }
 }
@@ -173,6 +175,9 @@ export function updateTrips(state: SimState): void {
         emitEvent({ kind: 'car-arrived', destination: car.destination });
         car.state = 'parked';
         car.timer = tuning.PARK_TICKS;
+      } else if (lot.phase === 'queued') {
+        // Waiting in the lot's inbound lane: it turns in once its space, or a deeper one, is free.
+        releaseQueued(state, car);
       } else if (lot.phase === 'parked') {
         car.timer -= 1;
         if (car.timer > 0) continue;

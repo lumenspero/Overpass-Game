@@ -44,7 +44,32 @@ export function laneFree(
       c.lot.inlet === inlet &&
       c.lot.phase !== 'parked' &&
       // A car waiting at the lot's edge only to join the road is no longer in the lane.
-      !holdingToJoin(c),
+      !holdingToJoin(c) &&
+      // Nor is a queued car once it is past the entrance: it drives straight up the inbound lane, or
+      // stands there beside its space, clear of cars turning in or out.
+      !clearOfEntrance(c),
+  );
+}
+
+/** How far past the end of its road approach a queued car must be before it is clear of the entrance. */
+const QUEUE_CLEARANCE = 0.75;
+
+/** Whether a queued car has driven past the lot's entrance, where the inbound and outbound lanes meet. */
+function clearOfEntrance(c: Car): boolean {
+  const lot = c.lot;
+  if (lot === undefined || lot.phase !== 'queued') return false;
+  if (standingInQueue(c)) return true;
+  const approach = lot.approach ? polylineLength(lot.approach) : 0;
+  return lot.s >= approach + QUEUE_CLEARANCE;
+}
+
+/** Whether a car has driven up to its place in a lot's inbound queue and stands there. */
+export function standingInQueue(c: Car): boolean {
+  const lot = c.lot;
+  return (
+    lot !== undefined &&
+    lot.phase === 'queued' &&
+    lot.s >= (lot.hold ?? 0) - 1e-9
   );
 }
 
@@ -94,7 +119,8 @@ function laneEmpty(
       c.lot.destination === destination &&
       c.lot.inlet === inlet &&
       c.lot.phase !== 'parked' &&
-      c.lot.cleared !== true,
+      c.lot.cleared !== true &&
+      !standingInQueue(c),
   );
 }
 
@@ -108,18 +134,127 @@ function inletOf(
   return lot?.farRoad !== undefined && lot.farRoad === node ? 'far' : 'near';
 }
 
-/** The first parking space of the lot that no car is using, or null when all are full. */
-function freeSpace(state: SimState, lot: number, count: number): number | null {
-  const taken = new Set<number>();
+/** Which spaces of a lot a car is in or driving to, and which have a car queued beside them. */
+function lotOccupancy(
+  state: SimState,
+  owner: number,
+  count: number,
+  except?: Car,
+): { occupied: boolean[]; waiting: boolean[] } {
+  const occupied = new Array<boolean>(count).fill(false);
+  const waiting = new Array<boolean>(count).fill(false);
   for (const c of state.cars) {
-    if (c.lot !== undefined && c.lot.destination === lot && !leftSpace(c)) {
-      taken.add(c.lot.space);
+    if (c === except || c.lot === undefined || c.lot.destination !== owner) {
+      continue;
     }
+    if (c.lot.phase === 'queued') waiting[c.lot.space] = true;
+    else if (!leftSpace(c)) occupied[c.lot.space] = true;
   }
-  for (let k = 0; k < count; k++) {
-    if (!taken.has(k)) return k;
+  return { occupied, waiting };
+}
+
+/**
+ * Where a car arriving at a lot goes: the nearest free space it can reach, or, when every space it
+ * can reach is taken, a place in the inbound queue beside the deepest of them. A queued car stands
+ * in the lane by its space, so spaces beyond it cannot be reached past it, and the queue fills from
+ * the deep end. A double lot's far inlet reaches the spaces from the other side and has no queue.
+ * Null when the lot can take no more.
+ */
+function lotPlan(
+  state: SimState,
+  owner: number,
+  count: number,
+  inlet: Inlet,
+  except?: Car,
+): { space: number; queue: boolean } | null {
+  const { occupied, waiting } = lotOccupancy(state, owner, count, except);
+  if (inlet === 'far') {
+    for (let k = 0; k < count; k++) {
+      if (!occupied[k] && !waiting[k]) return { space: k, queue: false };
+    }
+    return null;
   }
-  return null;
+  const reach = waiting.indexOf(true) === -1 ? count : waiting.indexOf(true);
+  for (let k = 0; k < reach; k++) {
+    if (!occupied[k]) return { space: k, queue: false };
+  }
+  return reach > 0 ? { space: reach - 1, queue: true } : null;
+}
+
+/** How far before the turn into its space a queued car stops: clear of the turn's rounding and the out lane. */
+const QUEUE_STOP_BACK = 0.35;
+
+/**
+ * Where along `path` a car queued for its space stops: just short of the point where the inbound lane
+ * turns into the space (`turn`, the lane's last point before the space's centre).
+ */
+function queueHold(path: readonly LotPoint[], turn: LotPoint): number {
+  let s = 0;
+  let best = { s: 0, d: Infinity };
+  for (let i = 0; i < path.length; i++) {
+    if (i > 0) {
+      const a = path[i - 1] as LotPoint;
+      const b = path[i] as LotPoint;
+      s += Math.hypot(b.x - a.x, b.y - a.y);
+    }
+    const p = path[i] as LotPoint;
+    const d = Math.hypot(p.x - turn.x, p.y - turn.y);
+    if (d < best.d) best = { s, d };
+  }
+  return Math.max(0, best.s - QUEUE_STOP_BACK);
+}
+
+/** The drive in to space `k`: the road approach, if any, then the lane rounded at its corners. */
+function pathToSpace(
+  state: SimState,
+  building: Building,
+  k: number,
+  inlet: Inlet,
+  approach: LotPoint[] | undefined,
+): { path: LotPoint[]; turn: LotPoint } | null {
+  const lane = lotPath(state.grid, building, k, 'in', inlet);
+  if (lane === null) return null;
+  const turn = lane[lane.length - 2] as LotPoint;
+  const path = approach
+    ? dedupe([...approach, ...roundedPath(lane.slice(1))])
+    : roundedPath(lane);
+  return { path, turn };
+}
+
+/**
+ * A queued car whose space has emptied turns in to it, once no other car is driving in the lane. If a
+ * deeper space empties first and no car is queued between, it drives on to that one instead.
+ */
+export function releaseQueued(state: SimState, car: Car): void {
+  const lot = car.lot;
+  if (!lot || !standingInQueue(car)) return;
+  const building = state.buildings[car.destination];
+  if (!building) return;
+  if (!laneFree(state, lot.destination, lot.inlet)) return;
+  const count = spacesFor(building.lot ?? 'single').length;
+  const { occupied, waiting } = lotOccupancy(
+    state,
+    lot.destination,
+    count,
+    car,
+  );
+  let target: number | null = occupied[lot.space] ? null : lot.space;
+  for (let m = lot.space + 1; target === null && m < count; m++) {
+    if (waiting[m]) break;
+    if (!occupied[m]) target = m;
+  }
+  if (target === null) return;
+  if (target !== lot.space) {
+    const next = pathToSpace(state, building, target, lot.inlet, lot.approach);
+    if (next === null) return;
+    // The queue stands on the straight inbound lane, which every space's drive shares, so the car's
+    // distance along it is the same on the new path.
+    lot.path = next.path;
+    lot.length = polylineLength(next.path);
+    lot.space = target;
+  }
+  lot.phase = 'in';
+  lot.hold = undefined;
 }
 
 /** The centre of a tile, in tile units. */
@@ -298,15 +433,9 @@ export function lotGateOpen(state: SimState, car: Car): boolean {
   const onNode = state.cars.some((c) => waitingNear(c, node, car));
   if (onNode) return false;
   const count = spacesFor(building.lot ?? 'single').length;
-  // Spaces already in use. Cars still on the way in take their space when they reach the node; a car
-  // waiting at the lot's edge to leave has given its space up.
-  let taken = 0;
-  for (const c of state.cars) {
-    if (c === car || c.lot === undefined || leftSpace(c)) continue;
-    const other = state.buildings[c.destination];
-    if (other && lotOwnerId(other) === owner) taken += 1;
-  }
-  return count - taken > 0;
+  // A free space it can reach, or a place in the inbound queue. A car waiting at the lot's edge to
+  // leave has given its space up.
+  return lotPlan(state, owner, count, inlet, car) !== null;
 }
 
 /** How far along a lot approach a car is when the sim takes over from the road: one tile. */
@@ -387,45 +516,40 @@ export function startLotTrip(state: SimState, car: Car): LotStart {
   const owner = lotOwnerId(building);
   const inlet = inletOf(state, building, car.route[car.progress]);
   if (!laneFree(state, owner, inlet)) return 'waiting';
-  const space = freeSpace(
+  const plan = lotPlan(
     state,
     owner,
     spacesFor(building.lot ?? 'single').length,
+    inlet,
   );
-  if (space === null) return 'waiting';
+  if (plan === null) return 'waiting';
   const node = car.route[car.progress];
   const prev = car.progress > 0 ? car.route[car.progress - 1] : undefined;
-  let path: LotPoint[];
+  let approach: LotPoint[] | undefined;
   let s = 0;
-  if (node === undefined || prev === undefined) {
-    const lane = lotPath(state.grid, building, space, 'in', inlet);
-    if (lane === null) return 'none';
-    path = roundedPath(lane);
-  } else {
+  if (node !== undefined && prev !== undefined) {
     const fromRing = state.controls[prev] === 'roundabout';
-    const approach = lotApproach(
-      state.grid,
-      building,
-      inlet,
-      prev,
-      node,
-      fromRing,
-    );
-    const lane = lotPath(state.grid, building, space, 'in', inlet);
-    if (approach === null || lane === null) return 'none';
-    path = dedupe([...approach, ...roundedPath(lane.slice(1))]);
+    approach =
+      lotApproach(state.grid, building, inlet, prev, node, fromRing) ??
+      undefined;
+    if (approach === undefined) return 'none';
     // The car is where the view drew it at the end of its last road tile: one tile along the approach, or
     // half a tile off a roundabout, whose ring covers the node's first half.
     s = fromRing ? RING_APPROACH_HANDOFF : APPROACH_HANDOFF;
   }
+  const drive = pathToSpace(state, building, plan.space, inlet, approach);
+  if (drive === null) return 'none';
   car.lot = {
     destination: owner,
-    space,
+    space: plan.space,
     inlet,
-    phase: 'in',
-    path,
+    phase: plan.queue ? 'queued' : 'in',
+    path: drive.path,
     s,
-    length: polylineLength(path),
+    length: polylineLength(drive.path),
+    approach,
+    // A queued car drives up the inbound lane and stops beside its space until the space is free.
+    hold: plan.queue ? queueHold(drive.path, drive.turn) : undefined,
   };
   return 'started';
 }
@@ -574,7 +698,7 @@ export function advanceLot(car: Car): void {
   const step = tuning.CAR_SPEED / tuning.TICKS_PER_SECOND;
   // On the way out the car stops at the lot's edge until the road is clear for it.
   const stop =
-    lot.phase === 'out' && lot.cleared !== true
+    (lot.phase === 'out' && lot.cleared !== true) || lot.phase === 'queued'
       ? (lot.hold ?? lot.length)
       : lot.length;
   lot.s = Math.min(stop, lot.s + step);

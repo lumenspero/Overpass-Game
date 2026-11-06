@@ -1658,9 +1658,9 @@ export class GameScene extends Phaser.Scene {
     gfx.clear();
     kerb.clear();
     const { cols } = this.sim.grid;
-    const horizontal = greenIsHorizontal(this.sim);
     for (const [key, kind] of Object.entries(this.sim.controls)) {
       const tile = Number(key);
+      const horizontal = greenIsHorizontal(this.sim, tile);
       const cx = ((tile % cols) + 0.5) * TILE_SIZE;
       const cy = (Math.floor(tile / cols) + 0.5) * TILE_SIZE;
       if (kind === 'roundabout') {

@@ -60,16 +60,24 @@ export interface LotTrip {
   space: number;
   /** The inlet the car drives in through, and out by. */
   inlet: 'near' | 'far';
-  /** `in` while driving to the space, `parked` in it, `out` while driving back to the node. */
-  phase: 'in' | 'parked' | 'out';
+  /**
+   * `in` while driving to the space, `queued` while waiting in the lot's inbound lane beside its taken
+   * space (at `hold`), `parked` in it, `out` while driving back to the node.
+   */
+  phase: 'in' | 'queued' | 'parked' | 'out';
   /** Map points (in tiles) of the drive, from the road node to the space, or back. */
   path: { x: number; y: number }[];
   /** Distance, in tiles, driven along `path`. */
   s: number;
   /** Total length of `path`, in tiles. */
   length: number;
-  /** On the way out: how far along `path` the car waits, just inside the lot, until it may join the road. */
+  /**
+   * How far along `path` the car stops: on the way out, just inside the lot until it may join the road;
+   * while queued, just short of the turn into its space.
+   */
   hold?: number;
+  /** The road part of the drive in, kept so a queued car can be sent on to another space. */
+  approach?: { x: number; y: number }[];
   /** On the way out: set once the road is clear and the car has started its turn on to it. */
   cleared?: boolean;
   /** On the way out: the turn on to the road crosses the other lane, as the lot is on the far side of it. */

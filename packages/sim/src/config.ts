@@ -66,8 +66,12 @@ export const DEFAULT_TUNING = {
   MOTORWAY_SPEED: 2.5, // approximated
   /** Most cars a roundabout holds at once. A plain junction holds one (spec: Roundabouts and lights). */
   ROUNDABOUT_CAPACITY: 3, // approximated
-  /** Ticks each phase of a traffic light stays green (spec: Roundabouts and lights). */
-  LIGHT_GREEN_TICKS: 240, // approximated
+  /** Shortest a light's green lasts before it may switch (spec: Roundabouts and lights). */
+  LIGHT_MIN_GREEN_TICKS: 60, // approximated
+  /** Longest a light keeps its green while cars wait on the red side. */
+  LIGHT_MAX_GREEN_TICKS: 240, // approximated
+  /** How many tiles ahead of a light it sees cars coming: the car at it and the one behind. */
+  LIGHT_SENSE_TILES: 2, // approximated
   /** Extra route cost, in tile steps, for each car waiting to enter a tile (spec: Congestion-aware routing). */
   CONGESTION_COST_PER_CAR: 1.5, // approximated
   /** Demand each destination gains every week, so demand rises as the game goes on. */
@@ -152,7 +156,8 @@ export const MOTORWAY_MAX_LENGTH = DEFAULT_TUNING.MOTORWAY_MAX_LENGTH;
 export const MOTORWAY_COST_PER_TILE = DEFAULT_TUNING.MOTORWAY_COST_PER_TILE;
 export const MOTORWAY_SPEED = DEFAULT_TUNING.MOTORWAY_SPEED;
 export const ROUNDABOUT_CAPACITY = DEFAULT_TUNING.ROUNDABOUT_CAPACITY;
-export const LIGHT_GREEN_TICKS = DEFAULT_TUNING.LIGHT_GREEN_TICKS;
+export const LIGHT_MIN_GREEN_TICKS = DEFAULT_TUNING.LIGHT_MIN_GREEN_TICKS;
+export const LIGHT_MAX_GREEN_TICKS = DEFAULT_TUNING.LIGHT_MAX_GREEN_TICKS;
 export const CONGESTION_COST_PER_CAR = DEFAULT_TUNING.CONGESTION_COST_PER_CAR;
 export const CAMPAIGN_UNLOCK_TRIPS = DEFAULT_TUNING.CAMPAIGN_UNLOCK_TRIPS;
 

@@ -10,7 +10,7 @@ import {
   tuning,
   type SimState,
 } from '../src/index.ts';
-import { at, makeGrid } from './helpers.ts';
+import { at, drawRoads, makeGrid } from './helpers.ts';
 
 /** A single round destination (id 0) with no road. Overflow does not depend on roads. */
 function world(): SimState {
@@ -109,5 +109,57 @@ describe('overflow', () => {
     servePin(sim, 0);
     expect(sim.demand[0].pins).toBe(2);
     expect(sim.over).toBeNull();
+  });
+});
+
+describe('pins with a car on the way', () => {
+  /** A 28-tile road, a busy business at its east end with all its pins up, and eight of its houses. */
+  function town(): { sim: SimState; dest: number } {
+    const sim = createSim({
+      seed: 7,
+      grid: makeGrid(32, 14),
+      roadBudget: 200,
+      rules: [{ kind: 'noSpawns' }],
+    });
+    drawRoads(
+      sim,
+      Array.from({ length: 28 }, (_, i) => at(sim.grid, i + 1, 5)),
+    );
+    placeBuilding(sim, {
+      kind: 'destination',
+      color: 0,
+      tile: at(sim.grid, 26, 6),
+      entrance: 'n',
+    });
+    const dest = sim.buildings[sim.buildings.length - 1]!.id;
+    for (let i = 0; i < 8; i++) {
+      placeBuilding(sim, {
+        kind: 'house',
+        color: 0,
+        tile: at(sim.grid, 2 + i * 2, 4),
+        entrance: 's',
+      });
+    }
+    const demand = sim.demand[dest]!;
+    demand.pins = OVERFLOW_PIN_LIMIT;
+    demand.growth = 16;
+    return { sim, dest };
+  }
+
+  it('do not fill the overflow pin while houses still have cars to send', () => {
+    const { sim, dest } = town();
+    for (let t = 0; t < 1200; t++) {
+      step(sim);
+      expect(sim.demand[dest]!.overflowFill ?? 0).toBe(0);
+    }
+  });
+
+  it('still start the overflow pin when the limit of pins wait with no car coming', () => {
+    const sim = world();
+    const demand = sim.demand[0]!;
+    demand.pins = OVERFLOW_PIN_LIMIT;
+    demand.cooldown = 1;
+    step(sim);
+    expect(demand.overflowFill ?? 0).toBeGreaterThan(0);
   });
 });

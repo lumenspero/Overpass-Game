@@ -92,7 +92,7 @@ describe('lot trips', () => {
     expect(startLotTrip(sim, b)).toBe('waiting');
   });
 
-  it('holds a car on the road while every space is taken', () => {
+  it('queues a car inside the lot beside the deepest taken space while every space is taken', () => {
     const sim = world();
     const cars = [0, 1, 2, 3].map(() => addCar(sim, 0, 1));
     if (cars.some((r) => !r.ok)) throw new Error('setup failed');
@@ -110,8 +110,47 @@ describe('lot trips', () => {
     }
     d.progress = d.route.length - 1;
     d.along = 1;
-    expect(startLotTrip(sim, d)).toBe('waiting');
-    expect(d.lot).toBeUndefined();
+    expect(startLotTrip(sim, d)).toBe('started');
+    expect(d.lot?.phase).toBe('queued');
+    expect(d.lot?.space).toBe(2);
+    // It stops short of the turn into its space.
+    expect(d.lot?.hold).toBeLessThan(d.lot?.length ?? 0);
+  });
+
+  it('holds a car on the road once every space is taken and the queue is full', () => {
+    const sim = world();
+    const cars = [0, 1, 2, 3, 4, 5, 6].map(() => addCar(sim, 0, 1));
+    if (cars.some((r) => !r.ok)) throw new Error('setup failed');
+    const parked = sim.cars.slice(0, 3);
+    const queued = sim.cars.slice(3, 6);
+    const last = sim.cars[6]!;
+    for (const [k, car] of parked.entries()) {
+      car.lot = {
+        destination: 1,
+        space: k,
+        inlet: 'near',
+        phase: 'parked',
+        path: [],
+        s: 0,
+        length: 0,
+      };
+    }
+    for (const [k, car] of queued.entries()) {
+      car.lot = {
+        destination: 1,
+        space: k,
+        inlet: 'near',
+        phase: 'queued',
+        path: [],
+        s: 1,
+        length: 2,
+        hold: 1,
+      };
+    }
+    last.progress = last.route.length - 1;
+    last.along = 1;
+    expect(startLotTrip(sim, last)).toBe('waiting');
+    expect(last.lot).toBeUndefined();
   });
 });
 

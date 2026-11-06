@@ -226,23 +226,95 @@ export function dropControlsAt(
     const kind = state.controls[tile];
     if (kind === undefined) continue;
     delete state.controls[tile];
+    if (state.lights) delete state.lights[tile];
     state.stock[kind] += 1;
     removed += 1;
   }
   return removed;
 }
 
-/** Which axis has green at this tick: horizontal first, then vertical, each for LIGHT_GREEN_TICKS. */
-export function greenIsHorizontal(state: SimState): boolean {
-  return Math.floor(state.tick / tuning.LIGHT_GREEN_TICKS) % 2 === 0;
+/** A light's own phase: which axis has green, and the tick that green began. */
+export interface LightState {
+  horizontal: boolean;
+  since: number;
+}
+
+/** The light at a tile, made on first use with green on the horizontal axis from now. */
+function lightAt(state: SimState, tile: number): LightState {
+  state.lights ??= {};
+  let light = state.lights[tile];
+  if (!light) {
+    light = { horizontal: true, since: state.tick };
+    state.lights[tile] = light;
+  }
+  return light;
+}
+
+/** Which axis has green at the light on `tile`. A light starts with the horizontal axis. */
+export function greenIsHorizontal(state: SimState, tile: number): boolean {
+  return state.lights?.[tile]?.horizontal ?? true;
 }
 
 /**
- * Whether a car entering in `lane` (a step code from movement.ts) has green.
- * Steps along x are on the horizontal axis, steps along y on the vertical one.
+ * Whether a car entering the light on `tile` in `lane` (a step code from movement.ts) has green.
+ * Steps with any x part are on the horizontal axis, steps along y only on the vertical one.
  */
-export function laneHasGreen(state: SimState, lane: number): boolean {
+export function laneHasGreen(
+  state: SimState,
+  lane: number,
+  tile: number,
+): boolean {
   const dx = Math.floor(lane / 3) - 1;
   const horizontal = dx !== 0;
-  return greenIsHorizontal(state) === horizontal;
+  return greenIsHorizontal(state, tile) === horizontal;
+}
+
+/**
+ * The cars at each light or coming to it within LIGHT_SENSE_TILES, counted by the axis they enter
+ * on. Cars in a lot or parked are not on the road.
+ */
+function lightDemand(
+  state: SimState,
+): Map<number, { horizontal: number; vertical: number }> {
+  const out = new Map<number, { horizontal: number; vertical: number }>();
+  for (const [key, kind] of Object.entries(state.controls)) {
+    if (kind === 'light') out.set(Number(key), { horizontal: 0, vertical: 0 });
+  }
+  if (out.size === 0) return out;
+  const { cols } = state.grid;
+  for (const car of state.cars) {
+    if (car.lot !== undefined || car.state === 'parked') continue;
+    for (let k = 1; k <= tuning.LIGHT_SENSE_TILES; k++) {
+      const tile = car.route[car.progress + k];
+      const from = car.route[car.progress + k - 1];
+      if (tile === undefined || from === undefined) break;
+      const seen = out.get(tile);
+      if (!seen) continue;
+      if (from % cols !== tile % cols) seen.horizontal += 1;
+      else seen.vertical += 1;
+      break;
+    }
+  }
+  return out;
+}
+
+/**
+ * Switches each light by the traffic it sees. Green stays at least LIGHT_MIN_GREEN_TICKS. After that
+ * the light switches when cars wait on the red axis and none come on the green one, or when the
+ * green has lasted LIGHT_MAX_GREEN_TICKS while cars wait on both. With no one waiting on the red
+ * axis it keeps its green.
+ */
+export function updateLights(state: SimState): void {
+  for (const [tile, seen] of lightDemand(state)) {
+    const light = lightAt(state, tile);
+    const green = state.tick - light.since;
+    if (green < tuning.LIGHT_MIN_GREEN_TICKS) continue;
+    const mine = light.horizontal ? seen.horizontal : seen.vertical;
+    const other = light.horizontal ? seen.vertical : seen.horizontal;
+    if (other === 0) continue;
+    if (mine === 0 || green >= tuning.LIGHT_MAX_GREEN_TICKS) {
+      light.horizontal = !light.horizontal;
+      light.since = state.tick;
+    }
+  }
 }

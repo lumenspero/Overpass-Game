@@ -3,7 +3,8 @@ import {
   type Car,
   createSim,
   Terrain,
-  LIGHT_GREEN_TICKS,
+  LIGHT_MAX_GREEN_TICKS,
+  LIGHT_MIN_GREEN_TICKS,
   linkTiles,
   placeBuilding,
   placeControl,
@@ -12,6 +13,7 @@ import {
   ROUNDABOUT_CAPACITY,
   type SimState,
   tileOpen,
+  updateLights,
 } from '../src/index.ts';
 import { at, makeGrid } from './helpers.ts';
 
@@ -128,13 +130,54 @@ describe('a roundabout', () => {
 });
 
 describe('a traffic light', () => {
-  it('gives green to one axis at a time, and switches on the tick count', () => {
+  /** A car on `from`, half way in, about to enter the junction at `centre`. */
+  const coming = (id: number, from: number, centre: number): Car => ({
+    ...carOn(id, from, 0.5),
+    route: [from, centre],
+  });
+
+  it('starts with green on the horizontal axis', () => {
     const { sim, centre } = junction();
     placeControl(sim, centre, 'light');
-    sim.tick = 0;
     expect(tileOpen(sim, centre, null, EAST)).toBe(true);
     expect(tileOpen(sim, centre, null, SOUTH)).toBe(false);
-    sim.tick = LIGHT_GREEN_TICKS;
+  });
+
+  it('switches to cars waiting on red once its green side is empty and the shortest green has passed', () => {
+    const { sim, centre, arms } = junction();
+    placeControl(sim, centre, 'light');
+    sim.cars.push(coming(1, arms[2]!, centre));
+    sim.tick = 0;
+    updateLights(sim);
+    expect(tileOpen(sim, centre, null, SOUTH)).toBe(false);
+    sim.tick = LIGHT_MIN_GREEN_TICKS;
+    updateLights(sim);
+    expect(tileOpen(sim, centre, null, SOUTH)).toBe(true);
+    expect(tileOpen(sim, centre, null, EAST)).toBe(false);
+  });
+
+  it('keeps its green while no car waits on the red side', () => {
+    const { sim, centre, arms } = junction();
+    placeControl(sim, centre, 'light');
+    sim.cars.push(coming(1, arms[0]!, centre));
+    sim.tick = 0;
+    updateLights(sim);
+    sim.tick = LIGHT_MAX_GREEN_TICKS * 3;
+    updateLights(sim);
+    expect(tileOpen(sim, centre, null, EAST)).toBe(true);
+  });
+
+  it('switches after the longest green when cars wait on both sides', () => {
+    const { sim, centre, arms } = junction();
+    placeControl(sim, centre, 'light');
+    sim.cars.push(coming(1, arms[0]!, centre), coming(2, arms[2]!, centre));
+    sim.tick = 0;
+    updateLights(sim);
+    sim.tick = LIGHT_MIN_GREEN_TICKS;
+    updateLights(sim);
+    expect(tileOpen(sim, centre, null, EAST)).toBe(true);
+    sim.tick = LIGHT_MAX_GREEN_TICKS;
+    updateLights(sim);
     expect(tileOpen(sim, centre, null, EAST)).toBe(false);
     expect(tileOpen(sim, centre, null, SOUTH)).toBe(true);
   });

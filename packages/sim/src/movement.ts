@@ -218,7 +218,11 @@ export function tileOpen(
   lane: number | null,
 ): boolean {
   const control = state.controls[tile];
-  if (control === 'light' && lane !== null && !laneHasGreen(state, lane)) {
+  if (
+    control === 'light' &&
+    lane !== null &&
+    !laneHasGreen(state, lane, tile)
+  ) {
     return false;
   }
   const junction = isJunction(state, tile);
