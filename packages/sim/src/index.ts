@@ -1,3 +1,4 @@
+export * from './arrivals.ts';
 export * from './buildings.ts';
 export * from './campaign.ts';
 export * from './cars.ts';

@@ -6,6 +6,7 @@ import type { Motorway } from './motorways.ts';
 import type { Building, Demand, Home } from './buildings.ts';
 import { type Car, onRoadsChanged } from './cars.ts';
 import { tuning } from './config.ts';
+import { arriveBusinesses, topUpSupply } from './arrivals.ts';
 import { generateDemand, growDestinations, updateOverflow } from './demand.ts';
 import { type MapRule, offerCandidates } from './rules.ts';
 import { type Fence, isOpenTile } from './expansion.ts';
@@ -287,7 +288,9 @@ export function step(state: SimState): SimEvent[] {
     grantWeeklyReward(state, offerCandidates(state));
     growDestinations(state);
     addSecondBuildings(state);
+    arriveBusinesses(state);
   }
+  if (state.tick % tuning.SUPPLY_CHECK_TICKS === 0) topUpSupply(state);
   generateDemand(state);
   updateOverflow(state);
   if (state.over) return takeEvents();

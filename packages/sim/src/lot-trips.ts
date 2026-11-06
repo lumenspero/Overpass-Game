@@ -156,24 +156,6 @@ function lanePoint(
   };
 }
 
-/** The distance along a path to the point on it nearest `target`. */
-function distanceTo(path: LotPoint[], target: LotPoint): number {
-  let best = Infinity;
-  let at = 0;
-  let total = 0;
-  for (let i = 0; i < path.length; i++) {
-    if (i > 0) {
-      total += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
-    }
-    const d = Math.hypot(path[i].x - target.x, path[i].y - target.y);
-    if (d < best) {
-      best = d;
-      at = total;
-    }
-  }
-  return at;
-}
-
 /** Radius of the turn between the lot's edge and the road's lane, in tiles. */
 const TURN_RADIUS = 0.25;
 /** How far a lot's node is drawn for a car leaving it, from the centre to the exit edge, in tiles. */
@@ -199,41 +181,6 @@ function axes(dir: { dx: number; dy: number }): {
     d: { x: dir.dx / len, y: dir.dy / len },
     n: { x: -dir.dy / len, y: dir.dx / len },
   };
-}
-
-/**
- * The lane-edge crossing for a car entering or leaving a lot. It is placed so the car's first turn meets its
- * lane at the node, and kept inside the inlet's two lanes, so it never crosses on a road edge or the centre.
- */
-function tabFor(
-  grid: Grid,
-  b: Building,
-  k: number,
-  phase: 'in' | 'out',
-  inlet: Inlet,
-  lanePt: LotPoint,
-  dir: { dx: number; dy: number },
-  ahead: number,
-): number | undefined {
-  const at = (a: number): LotPoint | undefined => {
-    const p = lotPath(grid, b, k, phase, inlet, a);
-    if (!p) return undefined;
-    return phase === 'in' ? p[1] : p[p.length - 2];
-  };
-  const t0 = at(0);
-  const t1 = at(1);
-  if (!t0 || !t1) return undefined;
-  const u = minus(t1, t0);
-  const { d, n } = axes(dir);
-  const along = dot(u, d);
-  let a: number;
-  if (Math.abs(along) > 0.5) {
-    a = (ahead - dot(minus(t0, lanePt), d)) / along;
-  } else {
-    const across = dot(u, n);
-    a = Math.abs(across) > 1e-9 ? -dot(minus(t0, lanePt), n) / across : 0.5;
-  }
-  return Math.min(0.625, Math.max(0.375, a));
 }
 
 /**
@@ -265,6 +212,26 @@ function turnRound(
   };
   const out: LotPoint[] = [];
   const SAMPLES = 8;
+  const square =
+    Math.abs(ri - ro) < 1e-9 &&
+    Math.abs(
+      (a.x - corner.x) * (b.x - corner.x) + (a.y - corner.y) * (b.y - corner.y),
+    ) < 1e-9;
+  if (square) {
+    // A right-angle turn with equal legs is a true quarter circle, so it keeps an even distance from
+    // the road's rounded corner. A Bézier through the corner would bulge outward at its middle.
+    const o = { x: a.x + b.x - corner.x, y: a.y + b.y - corner.y };
+    const u = { x: a.x - o.x, y: a.y - o.y };
+    const w = { x: b.x - o.x, y: b.y - o.y };
+    for (let i = 0; i <= SAMPLES; i++) {
+      const t = i / SAMPLES;
+      const vx = (1 - t) * u.x + t * w.x;
+      const vy = (1 - t) * u.y + t * w.y;
+      const len = Math.hypot(vx, vy);
+      out.push({ x: o.x + (vx / len) * ri, y: o.y + (vy / len) * ri });
+    }
+    return out;
+  }
   for (let i = 0; i <= SAMPLES; i++) {
     const t = i / SAMPLES;
     const v = 1 - t;
@@ -340,6 +307,39 @@ export function lotGateOpen(state: SimState, car: Car): boolean {
   return count - taken > 0;
 }
 
+/** How far along a lot approach a car is when the sim takes over from the road: one tile. */
+export const APPROACH_HANDOFF = 1;
+
+/**
+ * The path a car drives from the centre of the tile before a lot's access node to the lot's edge, in tile
+ * units. It keeps its lane, then turns on the road's rounded corner from the tile's entry edge to the
+ * inlet's lane, so it never runs on past the corner or pivots back. The view draws a car's last road tile along
+ * this path, and the sim takes over at APPROACH_HANDOFF, so the car never jumps. Null when the lot is
+ * off the map.
+ */
+export function lotApproach(
+  grid: Grid,
+  building: Building,
+  inlet: Inlet,
+  prev: number,
+  node: number,
+): LotPoint[] | null {
+  const lane = lotPath(grid, building, 0, 'in', inlet);
+  const tab = lane?.[1];
+  if (!tab) return null;
+  const dir = stepDir(grid, prev, node);
+  const nodeLane = lanePoint(grid, node, dir);
+  const before = lanePoint(grid, prev, dir);
+  const { d } = axes(dir);
+  const t = dot(minus(tab, nodeLane), d);
+  const corner = { x: nodeLane.x + d.x * t, y: nodeLane.y + d.y * t };
+  // The car turns on a circle tangent to its lane and the inlet's lane, starting at the tile's entry edge.
+  // That circle is the road's own rounded corner, in the car's lane: half a tile less the lane for a lot on
+  // the car's side, and half a tile plus it for a lot across the road.
+  const radius = Math.max(0.05, 0.5 + t);
+  return dedupe([before, ...turnRound(before, corner, tab, radius), tab]);
+}
+
 /**
  * Starts a car's drive into its destination's lot. The car stays on the road, waiting at the
  * node, until the lane is free and a space is open. The drive starts on the car's lane of the
@@ -369,33 +369,12 @@ export function startLotTrip(state: SimState, car: Car): LotStart {
     if (lane === null) return 'none';
     path = roundedPath(lane);
   } else {
-    // The car drives on in its lane past the node's centre, turns off the road there, and crosses the
-    // lot's edge ahead of where it stopped, so it never swings back against its direction of travel.
-    const dir = stepDir(state.grid, prev, node);
-    const nodeLane = lanePoint(state.grid, node, dir);
-    const tabA = tabFor(
-      state.grid,
-      building,
-      space,
-      'in',
-      inlet,
-      nodeLane,
-      dir,
-      TURN_RADIUS,
-    );
-    const lane = lotPath(state.grid, building, space, 'in', inlet, tabA);
-    if (lane === null) return 'none';
-    const tab = lane[1];
-    const { d } = axes(dir);
-    const t = dot(minus(tab, nodeLane), d);
-    const corner = { x: nodeLane.x + d.x * t, y: nodeLane.y + d.y * t };
-    path = dedupe([
-      lanePoint(state.grid, prev, dir),
-      nodeLane,
-      ...turnRound(nodeLane, corner, tab, TURN_RADIUS),
-      ...roundedPath(lane.slice(1)),
-    ]);
-    s = distanceTo(path, nodeLane);
+    const approach = lotApproach(state.grid, building, inlet, prev, node);
+    const lane = lotPath(state.grid, building, space, 'in', inlet);
+    if (approach === null || lane === null) return 'none';
+    path = dedupe([...approach, ...roundedPath(lane.slice(1))]);
+    // The car is where the view drew it at the end of its last road tile: one tile along the approach.
+    s = APPROACH_HANDOFF;
   }
   car.lot = {
     destination: owner,

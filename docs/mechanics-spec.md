@@ -29,6 +29,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Adjacency:** two road tiles are linked only when a drag stepped between them, across an edge or a corner. Each step of a drag links its two tiles. Placing a road never links it to a neighbour, so two roads side by side do not join unless a drag joins them, and a branch dragged off a straight road joins only the tile it starts from. A corner link is a diagonal road. Roads have no separate connection points. `approximated`
 - **Graph nodes:** dead ends, junctions, isolated road tiles, and one representative tile for any closed loop with no node.
 - **Graph edges:** chains of pass-through road tiles between nodes. Each edge stores its interior tiles and its length in steps (interior tiles + 1).
+- **Bends:** a road tile linked to two neighbours at right angles is a bend. It is drawn as a quarter circle of radius half a tile, centred on the tile corner the two arms turn round, so its inside edge is rounded rather than sharp. Car lanes through a bend follow the same curve (see On screen). Drawing only; routing is unchanged. Where a road turns into a lot's inlet, the inlet tab counts as a link for drawing, so the access node is drawn as a bend too. `approximated`
 - **Updates:** after a change, only the connected road components next to the changed tiles are rebuilt. The result always matches a full rebuild. Tested with 500 random edits per seed.
 
 ### Road budget
@@ -59,7 +60,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 - **Car ownership:** each house owns `CARS_PER_HOUSE` cars when placed. A car that is lost (no way home) leaves its house owning one fewer. `approximated`
 - **Spawning:** a connected house with a car at home sends one out every `SPAWN_INTERVAL_TICKS`, to a connected destination of its colour that has an unclaimed demand pin (see Demand), picked at random with equal chance. If no such destination or no route exists, the house waits for the next interval. `approximated`
 - **Parking:** a car that reaches its destination parks on the destination's entrance tile for `PARK_TICKS`. Parked cars don't move, and they block their tile for others, as a queue would. `approximated`
-- **On screen:** a car drives into its building on arrival, parks at the building's centre, and leaves from that centre. A car leaving home starts at the house's entrance edge, so it never jumps. Parked cars at one destination are drawn on top of each other.
+- **On screen:** a car drives into its building on arrival, parks at the building's centre, and leaves from that centre. A car leaving home starts at the house's entrance edge, so it never jumps. Parked cars at one destination are drawn on top of each other. A car going into a house turns onto the house's lane of the road where the road meets the house's stub, then drives into the doorway on its own lane, so it never cuts across the middle of the road. A car leaving a house does the same in reverse. Through a bend, a car's lane follows the rounded corner under Roads, so it stays inside the road.
 - **Return:** after parking, the car drives home. A car that reaches home rejoins its house, which may send it out again. `approximated`
 - **Movement along routes:** not yet implemented (C3).
 
@@ -176,7 +177,7 @@ Elevated links for faster travel between two points on the ground network. `appr
 
 ### Roundabouts and lights
 
-- **Placement:** a roundabout or a light goes on any open land, park or road tile with no building on it. Mountain and water are refused. Each tile takes at most one of them. Each comes from the weekly offer and takes one from stock, as bridges do. `approximated`
+- **Placement:** a roundabout or a light goes on any open land, park or road tile with no building on it. Mountain and water are refused. Each tile takes at most one of them. A roundabout's ring also reaches its four orthogonal neighbours, so it is refused where any of those holds a building, a lot tile, mountain or water, or another roundabout. Each comes from the weekly offer and takes one from stock, as bridges do. `approximated`
 - **Roundabout:** cars drive round the ring counter-clockwise on screen, keeping right, so they never cut across the middle. A car from one arm to another takes the counter-clockwise way round, so a left turn goes the long way. The ring is drawn as a donut two tiles across: its band is one road wide, centred 0.75 tiles from the tile's centre, with the centre left open. Each arm meets the ring at the neighbouring tile's centre, the ring's outer edge, and cars join and leave on a short curve so they turn smoothly rather than cut in. Road arms are drawn under the ring's kerb, so no curb shows where an arm joins. The junction stays open to several cars at once. A car may enter while no car on the junction is within `CAR_GAP` of the entrance, and it leaves once it has passed through. A plain junction still holds one car. Capacity is `ROUNDABOUT_CAPACITY` cars (default 3). `approximated`
 - **Light:** the tile has two phases, one for each axis (across and along). Each phase has green for `LIGHT_GREEN_TICKS` ticks (default 240), then the other phase has green. A car may enter only in its phase's green, and waits short of the junction otherwise. Phases switch on the tick count, so runs stay deterministic. `approximated`
 - **Keys:** O places a roundabout, L a light. Each is a toggle, like B, T and M.
@@ -225,18 +226,20 @@ These are rules for saving, not gameplay numbers, so they carry no tag.
 
 ### Business arrival and house supply
 
-_Planned for M14 with the spawn system. Not built yet._
+_Built in M14 (part 2). The spawn field for timed spawns is still to come._
 
 - **Arrival:** from `BUSINESS_ARRIVAL_START_WEEK` on, new destinations (businesses) arrive in each week, up to a count set by global tuning. Arrivals are not tied to a map's rules. `approximated`
 - **Colours:** a colour appears when a business of that colour arrives. There is no guarantee of a new colour at each arrival. `approximated`
 - **Supply at arrival:** a new business has its demand met by houses spawned at the same moment as the business.
 - **Supply through the week:** houses also spawn during the week, so a business can gain supply after it opens.
 - **Supply ratio:** for each colour, the sim keeps houses per destination inside a band, `SUPPLY_RATIO_MIN` to `SUPPLY_RATIO_MAX` (global tuning, `approximated`). Houses are added when the ratio falls below the minimum. None are added above the maximum. This stops a colour being oversupplied with houses where it has no demand, while still allowing new houses in the middle of the week.
-- **Open for M14:** how a new business's colour is chosen, and the tuning values.
+- **Colour choice:** a new business takes a colour picked at random from the colours the map allows that week. Nothing guarantees a new colour. `approximated`
+- **Values (approximated):** arrivals start in week 4, one business a week. A colour is topped up to 3 houses per business when it falls below 2. Supply is checked every 150 ticks (5 seconds). Houses spawn only within 5 tiles of an existing road or 10 tiles of a building (a business counts from every tile of its lot), and inside the fence. They need not be connected. Distances are Chebyshev, in tiles. All in `config.ts`.
+- **Stopgap:** the `unlockColour` map rule still applies to placement until it is removed.
 
 ### Parking lots and building kinds
 
-_Planned for M9a. Not built yet. Where this conflicts with the Buildings, Cars and routing, and Demand entries above, this section replaces them once M9a lands._
+_Built from M9a. Where this conflicts with the Buildings, Cars and routing, and Demand entries above, this section replaces them once M9a lands._
 
 - **Houses:** 1×1 square, as now. Houses start and end trips.
 - **Destinations:** 3×3 tiles. Two kinds:
@@ -249,9 +252,10 @@ _Planned for M9a. Not built yet. Where this conflicts with the Buildings, Cars a
 - **Leaving:** after finishing, the car turns in the lot and drives out through the inlet on the opposite lane to the one it came in on. The turn is a visible manoeuvre, not an instant change of direction.
 - **Waiting:** a car that finds the lot's spot taken waits in the lot, not on the road. `approximated`
 
+- **Crossing the inlet:** a car driving in crosses the lot's edge in the inlet's right-hand lane, and a car leaving crosses in the other lane, on both the near and far inlets of a double lot, never on a road edge. A leaving car's turn never starts behind the node it joins. A car turning into a lot starts its turn at the access tile's entry edge and follows the road's rounded corner in its lane, whichever side of the road the lot is on. Lots get no new inlets: roads may not be placed on a lot tile, so the starting inlet is the only one. `approximated`
 - **Spawning reserves the lot:** the lot is part of the destination. Spawning one reserves all fifteen of its lot tiles, so roads and other buildings cannot use them. A spawn is refused when any lot tile is water, mountain or locked, has a road or building on it, or is already reserved. A spawn may come before its road, as houses may.
 
-**Open for M9a:**
+**Open for M9a (not yet recorded here as answered):**
 
 - Demand interval for each kind, and the weeks each kind appears.
 - Parking spaces: how many, and where in the 2×3 strip.

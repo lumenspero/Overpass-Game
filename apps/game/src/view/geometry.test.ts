@@ -16,6 +16,7 @@ import {
   LANE_OFFSET,
   LOT_GAP,
   lotShapes,
+  linksWithTabs,
   roadShapes,
   terrainTiles,
 } from './geometry.ts';
@@ -91,7 +92,7 @@ describe('roadShapes', () => {
         ? [s]
         : [],
     );
-    expect(arc).toHaveLength(7);
+    expect(arc).toHaveLength(17);
     expect(shapes.filter((s) => s.kind === 'line')).toHaveLength(2);
   });
 
@@ -427,5 +428,62 @@ describe('cars entering a house', () => {
     // Travelling east into the house, the right-hand lane is the south side of the house's centre line.
     expect(dot?.y).toBeCloseTo(1.5 * TILE_SIZE + LANE_OFFSET, 3);
     expect(dot?.x).toBeCloseTo(2.5 * TILE_SIZE, 3);
+  });
+});
+
+describe('linksWithTabs', () => {
+  // As in lotShapes: the lot at (3,3) faces north, its road is (3,2) and its inlet (3,3).
+  const grid = createGrid(8, 8);
+  const d: Building = {
+    id: 0,
+    kind: 'destination',
+    color: 0,
+    tile: 3 * 8 + 3,
+    entrance: 'n',
+  };
+  const road = 2 * 8 + 3;
+  const west = 2 * 8 + 2;
+  const inlet = 3 * 8 + 3;
+
+  it('rounds a road that turns into a lot inlet, like any other bend', () => {
+    const roads = new Array<number>(64).fill(0);
+    roads[road] = 1;
+    roads[west] = 1;
+    const links = linked([[west, road]]);
+    const shapes = roadShapes(
+      grid,
+      roads,
+      linksWithTabs([d], grid, roads, links),
+    );
+    // A bend has no disc at its centre; its discs run round the tile corner the road turns about.
+    const c = centre(3, 2);
+    expect(shapes).not.toContainEqual({ kind: 'circle', ...c, r: R });
+    const corner = { x: 3 * TILE_SIZE, y: 3 * TILE_SIZE };
+    const arc = shapes.flatMap((s) =>
+      s.kind === 'circle' &&
+      Math.abs(Math.hypot(s.x - corner.x, s.y - corner.y) - 2 * R) < 1e-6
+        ? [s]
+        : [],
+    );
+    expect(arc.length).toBeGreaterThan(0);
+    // The lot draws no tab of its own once its road is placed; the roads draw it.
+    expect(lotShapes([d], grid, roads)).toHaveLength(1);
+  });
+
+  it('leaves the links the sim holds unchanged', () => {
+    const roads = new Array<number>(64).fill(0);
+    roads[road] = 1;
+    roads[west] = 1;
+    const links = linked([[west, road]]);
+    const before = JSON.stringify(links);
+    linksWithTabs([d], grid, roads, links);
+    expect(JSON.stringify(links)).toBe(before);
+  });
+
+  it('adds no tab link while the access road is not placed', () => {
+    const roads = new Array<number>(64).fill(0);
+    const out = linksWithTabs([d], grid, roads, {});
+    expect(out[road]).toBeUndefined();
+    expect(out[inlet]).toBeUndefined();
   });
 });

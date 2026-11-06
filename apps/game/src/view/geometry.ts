@@ -10,6 +10,8 @@ import {
   type Grid,
   Terrain,
   type TerrainKind,
+  APPROACH_HANDOFF,
+  lotApproach,
 } from '@overpass-game/sim';
 import {
   curveFrom,
@@ -73,7 +75,7 @@ export function roadShapes(
     const d = unit(i, toward);
     return { x: c.x + d.x * half, y: c.y + d.y * half };
   };
-  const SEGMENTS = 6;
+  const SEGMENTS = 16;
   for (let i = 0; i < roads.length; i++) {
     if (roads[i] !== 1) continue;
     const bend = bendOf(i);
@@ -218,6 +220,36 @@ export const LOT_CORNER = 0.2 * TILE_SIZE;
 export const LOT_GAP = ((1 - ROAD_WIDTH_TILES) / 2) * TILE_SIZE;
 
 /**
+ * The road links, plus a link from each lot's placed access road to its inlet. Drawn with these, a road
+ * that turns into a lot is a bend like any other, so its corner is rounded, and the tab is a road bar.
+ * For drawing only: the sim's links are not changed.
+ */
+export function linksWithTabs(
+  buildings: readonly Building[],
+  grid: Grid,
+  roads: readonly number[],
+  links: Links,
+): Links {
+  const out: Links = {};
+  for (const key of Object.keys(links)) out[key] = [...(links[key] ?? [])];
+  for (const b of buildings) {
+    if (b.kind !== 'destination' || b.lotOwner !== undefined) continue;
+    const lot = destinationLot(grid, b);
+    if (!lot) continue;
+    const pairs: [number, number][] = [[lot.road, lot.inlet]];
+    if (lot.farRoad !== undefined && lot.farInlet !== undefined) {
+      pairs.push([lot.farRoad, lot.farInlet]);
+    }
+    for (const [road, inlet] of pairs) {
+      if (roads[road] !== 1) continue;
+      (out[road] ??= []).push(inlet);
+      (out[inlet] ??= []).push(road);
+    }
+  }
+  return out;
+}
+
+/**
  * Each destination's lot as rounded pavement, with a rounded neck from its road's edge into the
  * inlet. Both go through the road painter, so where they meet a road the outline drops out, the
  * same way it does between two road sections. Houses have no lot.
@@ -225,6 +257,7 @@ export const LOT_GAP = ((1 - ROAD_WIDTH_TILES) / 2) * TILE_SIZE;
 export function lotShapes(
   buildings: readonly Building[],
   grid: Grid,
+  roads?: readonly number[],
 ): RoadShape[] {
   const out: RoadShape[] = [];
   const centreOfTile = (t: number) => ({
@@ -268,6 +301,8 @@ export function lotShapes(
       tabs.push([lot.farRoad, lot.farInlet]);
     }
     for (const [roadTile, inletTile] of tabs) {
+      // Once the access road is placed, the tab is drawn with the roads (see linksWithTabs).
+      if (roads?.[roadTile] === 1) continue;
       const inlet = centreOfTile(inletTile);
       const road = centreOfTile(roadTile);
       const dx = Math.sign(inlet.x - road.x);
@@ -604,10 +639,25 @@ export function carShapes(
         x = spot.x;
         y = spot.y;
       } else {
-        // A destination is reached in its lane, so the car stays in lane.
-        const b = { x: c.x + nIn.x, y: c.y + nIn.y };
-        x = edgeIn.x + (b.x - edgeIn.x) * along;
-        y = edgeIn.y + (b.y - edgeIn.y) * along;
+        // A lot is driven into along the sim's own approach, which turns early for a lot on the car's side.
+        // This tile is the approach's second half-tile; the sim takes over at its end, so the car never jumps.
+        const lot = destinationLot(grid, arrival);
+        const inlet = lot !== null && lot.farRoad === tile ? 'far' : 'near';
+        const approach =
+          prev !== null ? lotApproach(grid, arrival, inlet, prev, tile) : null;
+        if (approach) {
+          const spot = pointAtDistance(
+            approach,
+            APPROACH_HANDOFF - 0.5 + 0.5 * along,
+          );
+          x = spot.x * TILE_SIZE;
+          y = spot.y * TILE_SIZE;
+        } else {
+          // No lot to turn into: the car stays in its lane.
+          const b = { x: c.x + nIn.x, y: c.y + nIn.y };
+          x = edgeIn.x + (b.x - edgeIn.x) * along;
+          y = edgeIn.y + (b.y - edgeIn.y) * along;
+        }
       }
     } else if (
       route.length > 1 &&

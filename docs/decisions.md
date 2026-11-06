@@ -217,3 +217,23 @@ Short log of choices and why. Newest at the bottom.
 - **Device tests moved to after M14:** the iPhone, Android and touchscreen laptop checks, and the deferred M2 phone check of drawing roads with touch. They need a public address for the game (see `docs/M13-session-delta.md`).
 - **Why:** the phone checks need the game hosted at a public address, which is not set up yet. Doing the layout before the content would mean redoing it as new maps arrive.
 - **Not deferred:** the performance budget is closed for this milestone (see the performance section above).
+
+## M14 · Part 1: road, lot and house geometry
+
+- **Rounded bends:** a bend is a quarter circle of radius half a tile around the tile corner, so its inside edge is rounded. Car lanes follow the same curve, so cars stay inside the road through bends. Asked by the author, as the sharp inside corners let cars clip the road.
+- **Roundabout footprint:** a roundabout is refused where its four orthogonal neighbours hold a building, a lot tile, mountain or water, or another roundabout. Asked by the author, as roundabouts were placed over businesses and houses. The footprint is read from the ring's radius, so it may need adjusting if the ring looks wider on screen.
+- **Lot crossing lanes:** entering cars cross the inlet's edge in the right-hand lane and leaving cars in the other lane. The crossing stays inside the inlet's two lanes, never on the road edges. A leaving car's turn never starts behind its node. Asked by the author, as cars drove on the road edge and left from the centre of the inlet.
+- **House entry:** a car drives into a house on its own lane of the road, and when the road turns into the house it turns on that lane. Leaving follows the same lane. Asked by the author, as cars entered the middle of the road.
+- **Doorframe redraw (fix):** the building layer redraws with the roads, so a house's doorframe tick does not linger after its road changes. A bug fix, not a rule.
+
+## M14 · Part 2: business arrival and house supply
+
+- **Start week:** arrivals and supply begin in week 4, so the opening game is unchanged. Chosen as a first value. `approximated`
+- **Colour choice:** uniform over the colours the map allows that week, with no guarantee of a new colour, as the spec says. The spec left the choice open. `approximated`
+- **Supply band:** a colour is topped up to 3 houses per business when it has fewer than 2 per business. Houses are never added above 3 per business. A colour with no businesses gets no houses. `approximated`
+- **Supply timing:** checked every 150 ticks, so houses appear during the week as well as with a new business. `approximated`
+- **Redraw on new buildings:** the scene redraws when the building count changes, so arrivals appear without a redraw trigger. A fix that follows from the arrivals, not a rule.
+- **House reach:** a supplied house spawns within 5 tiles of an existing road or 10 tiles of a building, and inside the fence. Set by the author, to limit how far new houses appear. A house's own stub counts as a road only for later houses. Distances are Chebyshev, in tiles, as the starting pair's are. `approximated`
+- **Far inlet lanes:** a double lot's far inlet uses the mirror of the near lanes, so cars keep to the right on both inlets. The entering and leaving lanes are fixed, not solved per trip, so a car never crosses the other lane. Asked by the author, as cars entered on the left lane. `approximated`
+- **Inlet corners:** where a road turns into a lot's inlet, the access node is drawn as a bend, by counting the inlet tab as a road link for drawing. So the corner is rounded like any other bend, and the tab is a road bar. Fillets were tried first and drew spikes, so they were removed. Bends use 16 discs, not 6, so the outer curve is smooth. Asked by the author, as the join looked square. Drawing only.
+- **Turning into a lot:** a car turns from its lane into the inlet's lane on a quarter circle that starts at the access tile's entry edge. That circle follows the road's rounded corner: half a tile less the lane for a lot on the car's side, half a tile plus it for a lot across the road. Square turns are true arcs, not Béziers, so they don't bulge toward the road edge. The view draws the car's last road tile along the same approach, and the sim takes over one tile along it, so the car never jumps. Asked by the author, as cars ran on and pivoted, then clipped the road edge turning across it. `approximated`

@@ -52,6 +52,19 @@ function placePair(
   return destination !== null;
 }
 
+/**
+ * Places one building of `kind` and colour at random on the given tiles (by default, anywhere in the
+ * fence), or returns null if none fits.
+ */
+export function placeInFence(
+  state: SimState,
+  kind: 'house' | 'destination',
+  colour: number,
+  tiles: number[] = tilesInFence(state),
+): number | null {
+  return placeOn(state, tiles, null, kind, colour);
+}
+
 /** Every tile inside the fence now, row by row. */
 function tilesInFence(state: SimState): number[] {
   const fence = currentFence(state);

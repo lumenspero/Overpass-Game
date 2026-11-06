@@ -86,6 +86,7 @@ import {
   lotShapes,
   carShapes,
   entranceStubShapes,
+  linksWithTabs,
   roadShapes,
   terrainTiles,
   ENTRANCE_WIDTH,
@@ -322,6 +323,8 @@ export class GameScene extends Phaser.Scene {
   };
   private ended = false;
   private roadsDirty = true;
+  /** The building count the scene last drew, so new arrivals appear without a redraw trigger. */
+  private shownBuildings = -1;
   private overlayGfx!: Phaser.GameObjects.Graphics;
   /** Tile grid for building. Shown while a tool is picked, so placement lines up with tiles. */
   private gridGfx!: Phaser.GameObjects.Graphics;
@@ -581,6 +584,11 @@ export class GameScene extends Phaser.Scene {
     this.gridGfx.setVisible(!this.debugOn && this.mapper.tool !== 'select');
     this.boundaryGfx.setVisible(!this.debugOn && this.mapper.tool !== 'select');
 
+    // Businesses and houses arrive during play, so the building layer redraws when their count changes.
+    if (this.sim.buildings.length !== this.shownBuildings) {
+      this.shownBuildings = this.sim.buildings.length;
+      this.roadsDirty = true;
+    }
     if (this.roadsDirty) {
       // A house's stub and doorframe tick sit in the building layer, so it redraws with the roads.
       this.drawBuildings();
@@ -1222,9 +1230,13 @@ export class GameScene extends Phaser.Scene {
       r === 1 && !isOpenTile(this.sim, i) ? 0 : r,
     );
     const shapes = [
-      ...roadShapes(this.sim.grid, roads, this.sim.links),
+      ...roadShapes(
+        this.sim.grid,
+        roads,
+        linksWithTabs(visible, this.sim.grid, roads, this.sim.links),
+      ),
       ...entranceStubShapes(visible, this.sim.grid, roads),
-      ...lotShapes(visible, this.sim.grid),
+      ...lotShapes(visible, this.sim.grid, roads),
     ];
     // Kerb first, a little wider, then the pavement on top, so each road has a thin outline.
     this.paintRoadShapes(gfx, shapes, this.pal.kerb, BORDER_PX);

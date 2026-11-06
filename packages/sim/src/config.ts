@@ -80,6 +80,20 @@ export const DEFAULT_TUNING = {
   DOUBLE_LOT_WEEK: 4, // approximated
   /** Weeks after a double lot spawns before its second building is filled in, if its far half is clear. */
   SECOND_BUILDING_DELAY_WEEKS: 6, // approximated
+  /** From this week, businesses arrive in the fence and houses are topped up to supply them. */
+  BUSINESS_ARRIVAL_START_WEEK: 4, // approximated
+  /** New businesses arriving each week. */
+  BUSINESS_ARRIVALS_PER_WEEK: 1, // approximated
+  /** Houses per business below which a colour gets more houses (never fewer than this). */
+  SUPPLY_RATIO_MIN: 2, // approximated
+  /** Houses per business a colour is topped up to. Houses are never added above this. */
+  SUPPLY_RATIO_MAX: 3, // approximated
+  /** A new house spawns within this many tiles of a road (Chebyshev distance). */
+  HOUSE_ROAD_REACH: 5, // approximated
+  /** Or within this many tiles of a building. */
+  HOUSE_BUILDING_REACH: 10, // approximated
+  /** Ticks between supply checks. */
+  SUPPLY_CHECK_TICKS: 150, // approximated
   /** Trips a campaign run must reach to unlock the next map (spec: Campaign unlocks). */
   CAMPAIGN_UNLOCK_TRIPS: 20, // approximated
 };

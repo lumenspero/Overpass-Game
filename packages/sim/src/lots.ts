@@ -332,6 +332,8 @@ export interface LotPoint {
 
 /** The far lane's place on the far edge, in the lot frame: the car comes in on the right, a little off the inlet's centre. */
 const FAR_TAB_A = 0.625;
+/** The far inlet's leaving lane: the mirror of its entering lane, so cars keep to the right. */
+const FAR_OUT_TAB_A = 0.375;
 /** Where the far lane turns toward the spaces: on the building side of the strip, clear of the spaces. */
 const FAR_TURN_A = 1.9;
 /** How far in from the far edge the far lane runs. */
@@ -349,7 +351,7 @@ export function spacePathFar(
   k: number,
   phase: 'in' | 'out',
   kind: LotKind = 'double',
-  tabA: number = FAR_TAB_A,
+  tabA: number = phase === 'in' ? FAR_TAB_A : FAR_OUT_TAB_A,
 ): FramePoint[] {
   const space = spacesFor(kind)[k];
   if (!space) throw new Error(`no parking space ${k}`);

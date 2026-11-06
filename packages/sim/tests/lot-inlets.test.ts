@@ -63,3 +63,55 @@ describe('lot crossing lanes', () => {
     expect(Math.abs(crossOut.x - roadX)).toBeLessThanOrEqual(0.125 + 1e-9);
   });
 });
+
+describe('lot crossing on the right lane', () => {
+  it('enters and leaves every inlet of a double lot in the right-hand lane, on every side', () => {
+    for (const side of ['e', 's', 'w', 'n'] as const) {
+      const grid = makeGrid(14, 14);
+      const sim = createSim({ seed: 1, grid, roadBudget: 80 });
+      placeBuilding(sim, {
+        kind: 'destination',
+        color: 0,
+        tile: at(grid, 6, 6),
+        entrance: side,
+        lot: 'double',
+      });
+      const building = sim.buildings[0];
+      const lot = building ? destinationLot(sim.grid, building) : null;
+      if (!building || !lot) throw new Error('setup failed');
+      for (const inlet of ['near', 'far'] as const) {
+        const roadTile = inlet === 'near' ? lot.road : lot.farRoad;
+        const inletTile = inlet === 'near' ? lot.inlet : lot.farInlet;
+        if (roadTile === undefined || inletTile === undefined) continue;
+        const cols = grid.cols;
+        const road = {
+          x: (roadTile % cols) + 0.5,
+          y: Math.floor(roadTile / cols) + 0.5,
+        };
+        const into = {
+          x: (inletTile % cols) + 0.5,
+          y: Math.floor(inletTile / cols) + 0.5,
+        };
+        // Entering travel runs from the road into the lot; the right-hand lane is 90° clockwise of it on screen.
+        const dx = Math.sign(into.x - road.x);
+        const dy = Math.sign(into.y - road.y);
+        const right = { x: -dy, y: dx };
+        const enter = lotPath(sim.grid, building, 0, 'in', inlet);
+        const leave = lotPath(sim.grid, building, 0, 'out', inlet);
+        if (!enter || !leave) throw new Error('no lot path');
+        const crossIn = enter[1];
+        const crossOut = leave[leave.length - 2];
+        if (!crossIn || !crossOut) throw new Error('no crossing point');
+        const sideOf = (
+          p: { x: number; y: number },
+          n: { x: number; y: number },
+        ) => (p.x - road.x) * n.x + (p.y - road.y) * n.y;
+        expect(sideOf(crossIn, right)).toBeCloseTo(0.125, 6);
+        expect(sideOf(crossOut, { x: -right.x, y: -right.y })).toBeCloseTo(
+          0.125,
+          6,
+        );
+      }
+    }
+  });
+});
