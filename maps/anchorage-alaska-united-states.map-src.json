@@ -4,9 +4,7 @@
   "name": "Anchorage, Alaska, United States",
   "region": {
     "bbox": [
-      -150.00264983409434,
-      61.16436498339149,
-      -149.78705416590566,
+      -150.00264983409434, 61.16436498339149, -149.78705416590566,
       61.26817522690827
     ],
     "rotationDeg": 0
@@ -3288,12 +3286,7 @@
   "rules": [
     {
       "kind": "allowedOffers",
-      "options": [
-        "motorway",
-        "bridge",
-        "roundabout",
-        "tunnel"
-      ]
+      "options": ["motorway", "bridge", "roundabout", "tunnel"]
     }
   ],
   "palette": "indigo",

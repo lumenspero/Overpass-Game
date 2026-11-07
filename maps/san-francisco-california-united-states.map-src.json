@@ -4,9 +4,7 @@
   "name": "San Francisco, California, United States",
   "region": {
     "bbox": [
-      -122.5371335498803,
-      37.64543911140639,
-      -122.31929209348131,
+      -122.5371335498803, 37.64543911140639, -122.31929209348131,
       37.812404320735126
     ],
     "rotationDeg": 0
@@ -3491,12 +3489,7 @@
   "rules": [
     {
       "kind": "allowedOffers",
-      "options": [
-        "motorway",
-        "bridge",
-        "roundabout",
-        "tunnel"
-      ]
+      "options": ["motorway", "bridge", "roundabout", "tunnel"]
     }
   ],
   "palette": "red",

@@ -4,9 +4,7 @@
   "name": "Chicago, South Chicago Township, Cook County, Illinois, United States",
   "region": {
     "bbox": [
-      -87.73221903409436,
-      41.79524533140774,
-      -87.51662336590567,
+      -87.73221903409436, 41.79524533140774, -87.51662336590567,
       41.955777064288405
     ],
     "rotationDeg": 0
@@ -3611,12 +3609,7 @@
   "rules": [
     {
       "kind": "allowedOffers",
-      "options": [
-        "motorway",
-        "bridge",
-        "roundabout",
-        "tunnel"
-      ]
+      "options": ["motorway", "bridge", "roundabout", "tunnel"]
     }
   ],
   "palette": "black",

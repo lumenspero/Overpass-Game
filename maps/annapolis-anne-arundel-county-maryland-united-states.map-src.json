@@ -4,9 +4,7 @@
   "name": "Annapolis, Anne Arundel County, Maryland, United States",
   "region": {
     "bbox": [
-      -76.60058383409432,
-      38.894790586619884,
-      -76.38498816590564,
+      -76.60058383409432, 38.894790586619884, -76.38498816590564,
       39.06239043830338
     ],
     "rotationDeg": 0
@@ -15969,12 +15967,7 @@
   "rules": [
     {
       "kind": "allowedOffers",
-      "options": [
-        "motorway",
-        "bridge",
-        "roundabout",
-        "tunnel"
-      ]
+      "options": ["motorway", "bridge", "roundabout", "tunnel"]
     }
   ],
   "palette": "yellow",

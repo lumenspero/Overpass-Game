@@ -4,9 +4,7 @@
   "name": "Santa Barbara, Santa Barbara County, California, United States",
   "region": {
     "bbox": [
-      -119.81046483409433,
-      34.33316271641346,
-      -119.59486916590565,
+      -119.81046483409433, 34.33316271641346, -119.59486916590565,
       34.51100651131801
     ],
     "rotationDeg": 0

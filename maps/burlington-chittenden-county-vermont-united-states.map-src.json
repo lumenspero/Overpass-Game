@@ -4,9 +4,7 @@
   "name": "Burlington, Chittenden County, Vermont, United States",
   "region": {
     "bbox": [
-      -73.32070383409435,
-      44.39919112105768,
-      -73.10510816590566,
+      -73.32070383409435, 44.39919112105768, -73.10510816590566,
       44.553027689071534
     ],
     "rotationDeg": 0
@@ -4580,12 +4578,7 @@
   "rules": [
     {
       "kind": "allowedOffers",
-      "options": [
-        "motorway",
-        "bridge",
-        "roundabout",
-        "tunnel"
-      ]
+      "options": ["motorway", "bridge", "roundabout", "tunnel"]
     }
   ],
   "palette": "blue",

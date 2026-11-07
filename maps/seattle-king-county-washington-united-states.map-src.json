@@ -4,9 +4,7 @@
   "name": "Seattle, King County, Washington, United States",
   "region": {
     "bbox": [
-      -122.43785983409435,
-      47.531098589365776,
-      -122.22226416590567,
+      -122.43785983409435, 47.531098589365776, -122.22226416590567,
       47.676464622381424
     ],
     "rotationDeg": 0
@@ -6331,12 +6329,7 @@
   "rules": [
     {
       "kind": "allowedOffers",
-      "options": [
-        "motorway",
-        "bridge",
-        "roundabout",
-        "tunnel"
-      ]
+      "options": ["motorway", "bridge", "roundabout", "tunnel"]
     }
   ],
   "palette": "green",

@@ -4,9 +4,7 @@
   "name": "Asheville, Buncombe County, North Carolina, United States",
   "region": {
     "bbox": [
-      -82.65863853409435,
-      35.5076594417861,
-      -82.44304286590567,
+      -82.65863853409435, 35.5076594417861, -82.44304286590567,
       35.682970566836225
     ],
     "rotationDeg": 0

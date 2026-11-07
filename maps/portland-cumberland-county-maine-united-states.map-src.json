@@ -4,9 +4,7 @@
   "name": "Portland, Cumberland County, Maine, United States",
   "region": {
     "bbox": [
-      -70.36645963409434,
-      43.57932015881916,
-      -70.15086396590566,
+      -70.36645963409434, 43.57932015881916, -70.15086396590566,
       43.73529954571025
     ],
     "rotationDeg": 0
@@ -7170,12 +7168,7 @@
   "rules": [
     {
       "kind": "allowedOffers",
-      "options": [
-        "motorway",
-        "bridge",
-        "roundabout",
-        "tunnel"
-      ]
+      "options": ["motorway", "bridge", "roundabout", "tunnel"]
     }
   ],
   "palette": "indigo",

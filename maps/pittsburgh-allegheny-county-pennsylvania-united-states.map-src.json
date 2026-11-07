@@ -4,9 +4,7 @@
   "name": "Pittsburgh, Allegheny County, Pennsylvania, United States",
   "region": {
     "bbox": [
-      -80.11036443409434,
-      40.35860421089269,
-      -79.89476876590565,
+      -80.11036443409434, 40.35860421089269, -79.89476876590565,
       40.52268926383576
     ],
     "rotationDeg": 0

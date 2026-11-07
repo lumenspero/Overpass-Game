@@ -4,9 +4,7 @@
   "name": "Chattanooga, Hamilton County, East Tennessee, Tennessee, United States",
   "region": {
     "bbox": [
-      -85.41728613409434,
-      34.957420796881934,
-      -85.20169046590566,
+      -85.41728613409434, 34.957420796881934, -85.20169046590566,
       35.13392765666878
     ],
     "rotationDeg": 0
@@ -7846,12 +7844,7 @@
   "rules": [
     {
       "kind": "allowedOffers",
-      "options": [
-        "motorway",
-        "bridge",
-        "roundabout",
-        "tunnel"
-      ]
+      "options": ["motorway", "bridge", "roundabout", "tunnel"]
     }
   ],
   "palette": "red",

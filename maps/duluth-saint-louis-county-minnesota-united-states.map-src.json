@@ -4,9 +4,7 @@
   "name": "Duluth, Saint Louis County, Minnesota, United States",
   "region": {
     "bbox": [
-      -92.21306573409434,
-      46.709963220762354,
-      -91.99747006590566,
+      -92.21306573409434, 46.709963220762354, -91.99747006590566,
       46.857592968932046
     ],
     "rotationDeg": 0
@@ -6372,12 +6370,7 @@
   "rules": [
     {
       "kind": "allowedOffers",
-      "options": [
-        "motorway",
-        "bridge",
-        "roundabout",
-        "tunnel"
-      ]
+      "options": ["motorway", "bridge", "roundabout", "tunnel"]
     }
   ],
   "palette": "violet",
