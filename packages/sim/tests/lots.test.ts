@@ -158,7 +158,7 @@ describe('lotBlocker', () => {
     expect(lotBlocker(sim, at(sim.grid, 4, 2), 'n')).toBe('reserved');
   });
 
-  it('allows a lot beside a destination that is already placed', () => {
+  it('allows a lot beside a destination that is already placed, with its road outside that lot', () => {
     const sim = fresh();
     sim.buildings.push({
       id: 0,
@@ -167,7 +167,9 @@ describe('lotBlocker', () => {
       tile: at(sim.grid, 3, 3),
       entrance: 'n',
     });
-    expect(lotBlocker(sim, at(sim.grid, 3, 6), 'n')).toBeNull();
+    expect(lotBlocker(sim, at(sim.grid, 0, 6), 'n')).toBeNull();
+    // Facing the other lot, its only road would lie inside that lot: nothing could reach it.
+    expect(lotBlocker(sim, at(sim.grid, 3, 6), 'n')).toBe('reserved');
   });
 });
 
@@ -243,5 +245,40 @@ describe('the driving lane and parking spaces', () => {
         }
       }
     }
+  });
+});
+
+describe('a new lot facing another lot', () => {
+  it('refuses a business whose road access tile lies inside an existing lot', () => {
+    const grid = makeGrid(20, 20);
+    const sim = createSim({ seed: 1, grid, roadBudget: 0 });
+    placeBuilding(sim, {
+      kind: 'destination',
+      color: 0,
+      tile: at(grid, 8, 8),
+      entrance: 'n',
+    });
+    const first = sim.buildings[0]!;
+    const taken = new Set(
+      lotAt(grid, first.tile, first.entrance, 'single', 'near')?.tiles ?? [],
+    );
+    // Find a spot whose lot is clear of the first lot, but whose access road falls inside it.
+    let found: { tile: number; side: Side } | null = null;
+    for (let tile = 0; tile < 400 && !found; tile++) {
+      for (const side of ['n', 'e', 's', 'w'] as const) {
+        const lot = lotAt(grid, tile, side, 'single', 'near');
+        if (!lot || lot.tiles.some((t) => taken.has(t))) continue;
+        if (
+          lot.farRoad === undefined &&
+          taken.has(lot.road) &&
+          sim.buildingAt[lot.road] === -1
+        ) {
+          found = { tile, side };
+          break;
+        }
+      }
+    }
+    expect(found).not.toBeNull();
+    expect(lotBlocker(sim, found!.tile, found!.side)).toBe('reserved');
   });
 });

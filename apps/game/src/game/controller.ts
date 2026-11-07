@@ -1,5 +1,6 @@
 import type {
   CrossingKind,
+  CrossingReason,
   CrossingResult,
   CrossingTileRecord,
   CurvePoint,
@@ -285,10 +286,7 @@ function touchDrawTile(
     const from = k > 0 ? indexOf(ctl.sim, stroke.path[k - 1]) : null;
     if (from === null || ctl.sim.stock[kind] < 1) {
       stroke.halted = true;
-      ctl.note =
-        from === null
-          ? `${kind} refused: no land before it`
-          : `${kind} refused: no stock`;
+      refuseCrossing(ctl, kind, from === null ? 'bad-endpoint' : 'no-stock');
       return false;
     }
     stroke.pending = { kind, from, tiles: [i] };
@@ -300,13 +298,30 @@ function touchDrawTile(
     if (open.tiles.length >= span) {
       stroke.halted = true;
       stroke.pending = null;
-      ctl.note = `${open.kind} refused: too-long`;
+      refuseCrossing(ctl, open.kind, 'too-long');
       return false;
     }
     open.tiles.push(i);
     return false;
   }
   return closeCrossing(ctl, stroke, open, i);
+}
+
+/**
+ * Records a road drag's crossing that could not be built, as a placement report, so the player
+ * sees why on screen and hears it, as when a bridge or tunnel tool is refused.
+ */
+function refuseCrossing(
+  ctl: Controller,
+  kind: CrossingKind,
+  reason: CrossingReason,
+): void {
+  ctl.note = `${kind} refused: ${reason}`;
+  ctl.crossing = {
+    seq: (ctl.crossing?.seq ?? 0) + 1,
+    kind,
+    result: { ok: false, reason },
+  };
 }
 
 /** Builds the held crossing from its land tile to this one, as one piece. */
@@ -730,8 +745,8 @@ export function applyIntent(
       if (stroke && intent.at && stroke.mode === 'draw') {
         const changed = extend(ctl, stroke, intent.at, toTile, true);
         if (stroke.pending) {
-          // Released over water: the crossing never reached land, so nothing is built.
-          ctl.note = `${stroke.pending.kind} needs land on the far bank`;
+          // Released over water or mountain: the crossing never reached land, so nothing is built.
+          refuseCrossing(ctl, stroke.pending.kind, 'bad-endpoint');
           stroke.pending = null;
         }
         return changed;

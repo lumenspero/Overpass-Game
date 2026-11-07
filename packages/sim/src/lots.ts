@@ -200,9 +200,11 @@ export function lotBlocker(
     if (sim.buildingAt[t] !== -1) return 'occupied';
     if (reserved.has(t) || access.has(t)) return 'reserved';
   }
-  // The lot's own access road must be free of buildings, or nothing could reach it.
+  // The lot's own access road must be free of buildings and outside every other lot, or nothing
+  // could reach it.
   for (const t of lotRoads(lot)) {
     if (sim.buildingAt[t] !== -1) return 'occupied';
+    if (reserved.has(t)) return 'reserved';
   }
   return null;
 }

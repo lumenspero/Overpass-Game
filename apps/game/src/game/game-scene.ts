@@ -180,6 +180,7 @@ import {
   placementReport,
 } from '../audio/action-sounds.ts';
 import { strokeTally } from './controller.ts';
+import { toolAfterPlacement } from './placement-tool.ts';
 import { ensureHouseStubs, tuning } from '@overpass-game/sim';
 import {
   createTickMeter,
@@ -1079,13 +1080,21 @@ export class GameScene extends Phaser.Scene {
           this.overlayDirty = true;
         }
         const after = this.controller.stroke ?? stroke;
+        const reportAfter = placementReport(this.controller.crossing);
         const sounds = actionSounds(
           after === stroke ? tallyBefore : EMPTY_TALLY,
           strokeTally(after),
           reportBefore,
-          placementReport(this.controller.crossing),
+          reportAfter,
         );
         for (const sound of sounds) audio.playEffect(sound);
+        // A placement tool is used once: when its piece goes down, the default tool comes back.
+        const tool = toolAfterPlacement(
+          this.mapper.tool,
+          reportBefore,
+          reportAfter,
+        );
+        if (tool !== this.mapper.tool) setTool(this.mapper, tool);
       }
     }
   }

@@ -47,7 +47,7 @@ function strip(): SimState {
 
 /** The tick at which growth step `n` (counting from 1) has finished its reveal. */
 function stepDone(n: number): number {
-  return (n * WEEK_TICKS) / tuning.FENCE_GROWTH_PER_WEEK + REVEAL;
+  return (n * WEEK_TICKS) / tuning.FENCE_STEPS_PER_WEEK + REVEAL;
 }
 
 function atTick(sim: SimState, tick: number): void {
@@ -57,10 +57,10 @@ function atTick(sim: SimState, tick: number): void {
 describe('the fence', () => {
   afterEach(() => resetTuning());
 
-  it('grows two steps a week by default, one node a side per step', () => {
-    expect(tuning.FENCE_GROWTH_PER_WEEK).toBe(2);
+  it('grows one step a week by default', () => {
+    expect(tuning.FENCE_STEPS_PER_WEEK).toBe(1);
     expect(fenceSteps(0)).toBe(0);
-    expect(fenceSteps(WEEK_TICKS / 2)).toBe(0); // the first step is still sliding
+    expect(fenceSteps(WEEK_TICKS)).toBe(0); // the first step is still sliding
     expect(fenceSteps(stepDone(1) - 1)).toBe(0);
     expect(fenceSteps(stepDone(1))).toBe(1);
     expect(fenceSteps(stepDone(2))).toBe(2);
@@ -84,7 +84,7 @@ describe('the fence', () => {
     });
   });
 
-  it('grows on all four sides when the start fence is in the middle', () => {
+  it('grows a column each side every step, and a row on the north then the south', () => {
     const grid = makeGrid(10, 10);
     const sim = createSim({
       seed: 1,
@@ -96,13 +96,13 @@ describe('the fence', () => {
       col: 3,
       row: 3,
       cols: 4,
-      rows: 4,
+      rows: 3,
     });
     expect(fenceAt(sim, stepDone(2))).toEqual({
       col: 2,
-      row: 2,
+      row: 3,
       cols: 6,
-      rows: 6,
+      rows: 4,
     });
   });
 
@@ -119,7 +119,7 @@ describe('the fence', () => {
   it('slides the edge across the next strip during its reveal, and opens the tiles at the end', () => {
     const sim = strip();
     // Halfway through the first reveal the edge is halfway across column 2, and column 2 is still locked.
-    atTick(sim, WEEK_TICKS / 2 + REVEAL / 2);
+    atTick(sim, WEEK_TICKS + REVEAL / 2);
     const mid = fenceEdge(sim, sim.tick);
     expect(mid.right).toBeCloseTo(2.5);
     expect(mid.left).toBe(0);
@@ -166,9 +166,9 @@ describe('the fence', () => {
   });
 
   it('reads the growth rate and reveal from tuning, so the debug panel can move them', () => {
-    tuning.FENCE_GROWTH_PER_WEEK = 0;
+    tuning.FENCE_STEPS_PER_WEEK = 0;
     expect(fenceSteps(10 * WEEK_TICKS)).toBe(0);
-    tuning.FENCE_GROWTH_PER_WEEK = 2;
+    tuning.FENCE_STEPS_PER_WEEK = 2;
     tuning.FENCE_REVEAL_TICKS = 100;
     expect(fenceSteps(WEEK_TICKS / 2 + 99)).toBe(0);
     expect(fenceSteps(WEEK_TICKS / 2 + 100)).toBe(1);

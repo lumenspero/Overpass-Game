@@ -255,6 +255,87 @@ describe('bridges from a stroke', () => {
   });
 });
 
+describe('crossings from a road drag', () => {
+  for (const [terrain, kind] of [
+    [Terrain.Water, 'bridge'],
+    [Terrain.Mountain, 'tunnel'],
+  ] as const) {
+    for (const mode of ['draw', 'select'] as const) {
+      it(`a ${mode} road drag across ${kind === 'bridge' ? 'water' : 'mountain'} builds a ${kind}`, () => {
+        const sim = gapWorld(terrain);
+        sim.stock[kind] = 1;
+        const ctl = createController(sim);
+        applyIntent(
+          ctl,
+          { type: 'stroke-begin', mode, at: { x: 1.5, y: 1.5 } },
+          identity,
+        );
+        for (let x = 2; x <= 5; x++) {
+          applyIntent(
+            ctl,
+            { type: 'stroke-move', at: { x: x + 0.5, y: 1.5 } },
+            identity,
+          );
+        }
+        applyIntent(
+          ctl,
+          { type: 'stroke-end', at: { x: 5.5, y: 1.5 } },
+          identity,
+        );
+        expect(ctl.note).toBe(`${kind} built (1)`);
+        expect(sim.stock[kind]).toBe(0);
+      });
+    }
+  }
+});
+
+describe('road drags into a crossing that cannot be built', () => {
+  /** Drags a road along row 1 from x = 1 to `toX`, with the default tool. */
+  function dragAlong(sim: SimState, toX: number) {
+    const ctl = createController(sim);
+    applyIntent(
+      ctl,
+      { type: 'stroke-begin', mode: 'select', at: { x: 1.5, y: 1.5 } },
+      identity,
+    );
+    for (let x = 2; x <= toX; x++) {
+      applyIntent(
+        ctl,
+        { type: 'stroke-move', at: { x: x + 0.5, y: 1.5 } },
+        identity,
+      );
+    }
+    applyIntent(
+      ctl,
+      { type: 'stroke-end', at: { x: toX + 0.5, y: 1.5 } },
+      identity,
+    );
+    return ctl;
+  }
+
+  it('reports no tunnel in stock on screen, not only on the debug line', () => {
+    const sim = gapWorld(Terrain.Mountain);
+    sim.stock.tunnel = 0;
+    const ctl = dragAlong(sim, 5);
+    expect(ctl.crossing).toMatchObject({
+      kind: 'tunnel',
+      result: { ok: false, reason: 'no-stock' },
+    });
+  });
+
+  it('reports a mountain wider than a tunnel can cross', () => {
+    const sim = world();
+    for (let x = 2; x <= 6; x++) sim.grid.terrain[idx(x, 1)] = Terrain.Mountain;
+    sim.stock.tunnel = 1;
+    const ctl = dragAlong(sim, 7);
+    expect(ctl.crossing).toMatchObject({
+      kind: 'tunnel',
+      result: { ok: false, reason: 'too-long' },
+    });
+    expect(sim.stock.tunnel).toBe(1);
+  });
+});
+
 describe('freehand bridges', () => {
   it('builds a bridge across the corner of a lake along the dragged path', () => {
     const sim = world();

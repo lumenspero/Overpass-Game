@@ -102,7 +102,8 @@ function levelUp(state: SimState): boolean {
 /**
  * Brings this week's businesses. Each takes a random unlocked colour. Before SHAPE_SWITCH_WEEK each is
  * square; from then each is a new round business, a level-up of a square one, or a new square one, by
- * ARRIVAL_ROUND_CHANCE and ARRIVAL_LEVEL_UP_CHANCE. Houses for them come at the week's house moments.
+ * ARRIVAL_ROUND_CHANCE and ARRIVAL_LEVEL_UP_CHANCE. Each new business comes with one house of its
+ * colour; the rest of its houses come at the week's house moments.
  * Returns how many arrived, level-ups included.
  */
 export function arriveBusinesses(state: SimState): number {
@@ -132,6 +133,8 @@ export function arriveBusinesses(state: SimState): number {
     if (colour === undefined) break;
     if (placeInFence(state, 'destination', colour, undefined, shape) === null)
       break;
+    // A new business comes with one house of its colour, so its first pins can be met at once.
+    placeInFence(state, 'house', colour, houseSites(state));
     arrived += 1;
   }
   return arrived;

@@ -3,8 +3,9 @@ import type { SimState } from './sim.ts';
 
 /**
  * Map expansion (spec: Expansion). Each map starts inside a fence: a rectangle of grid tiles.
- * Every week the fence grows FENCE_GROWTH_PER_WEEK nodes on each side, one node a side per step,
- * the steps spread across the week. A step's new edge slides across its strip over
+ * Every week the fence grows FENCE_STEPS_PER_WEEK steps, spread across the week. Each step adds a
+ * column on the east and west sides and one row, on the north on odd steps and the south on even
+ * ones, so the fence grows 2 wide and 1 high a step. A step's new edge slides across its strip over
  * FENCE_REVEAL_TICKS. Tiles open once the edge has passed over them. The fence stops at the map
  * edge and never shrinks. Tiles outside it take no roads, and buildings on them are inactive
  * and hidden.
@@ -28,9 +29,9 @@ export interface FenceEdge {
 
 /** Growth steps finished by a tick. A step is finished once its edge has finished sliding. */
 export function fenceSteps(tick: number): number {
-  if (tuning.FENCE_GROWTH_PER_WEEK <= 0) return 0;
+  if (tuning.FENCE_STEPS_PER_WEEK <= 0) return 0;
   const done =
-    ((tick - tuning.FENCE_REVEAL_TICKS) * tuning.FENCE_GROWTH_PER_WEEK) /
+    ((tick - tuning.FENCE_REVEAL_TICKS) * tuning.FENCE_STEPS_PER_WEEK) /
     tuning.WEEK_TICKS;
   return Math.max(0, Math.floor(done));
 }
@@ -40,9 +41,13 @@ function fenceAtSteps(state: SimState, steps: number): Fence {
   const { cols, rows } = state.grid;
   const start = state.startFence;
   const left = Math.max(0, start.col - steps);
-  const top = Math.max(0, start.row - steps);
   const right = Math.min(cols - 1, start.col + start.cols - 1 + steps);
-  const bottom = Math.min(rows - 1, start.row + start.rows - 1 + steps);
+  // Rows alternate: odd steps add one on the north, even steps one on the south.
+  const top = Math.max(0, start.row - Math.ceil(steps / 2));
+  const bottom = Math.min(
+    rows - 1,
+    start.row + start.rows - 1 + Math.floor(steps / 2),
+  );
   return {
     col: left,
     row: top,
@@ -76,10 +81,10 @@ export function currentFence(state: SimState): Fence {
 export function fenceEdge(state: SimState, tick: number): FenceEdge {
   const done = fenceSteps(tick);
   let f = 0;
-  if (tuning.FENCE_GROWTH_PER_WEEK > 0) {
+  if (tuning.FENCE_STEPS_PER_WEEK > 0) {
     // The step after the finished ones starts at this tick, and slides over its reveal.
     const started =
-      ((done + 1) * tuning.WEEK_TICKS) / tuning.FENCE_GROWTH_PER_WEEK;
+      ((done + 1) * tuning.WEEK_TICKS) / tuning.FENCE_STEPS_PER_WEEK;
     f = Math.min(1, Math.max(0, (tick - started) / tuning.FENCE_REVEAL_TICKS));
   }
   const from = fenceAtSteps(state, done);

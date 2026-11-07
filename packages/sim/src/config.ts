@@ -41,8 +41,11 @@ export const DEFAULT_TUNING = {
   OVERFLOW_FILL_PINS: 9, // approximated
   /** Ticks in one week. The clock counts weeks; the first week is week 1. */
   WEEK_TICKS: 2700, // approximated: 90 seconds at 1x (30 ticks a second)
-  /** Nodes the fence grows on each side every week (spec: Expansion). Growth lands one node a side at a time, spread across the week. */
-  FENCE_GROWTH_PER_WEEK: 2, // approximated
+  /**
+   * Fence growth steps a week (spec: Expansion). Each step adds a column on the east and west sides
+   * and one row, on the north on odd steps and the south on even ones: 2 wide and 1 high per step.
+   */
+  FENCE_STEPS_PER_WEEK: 1, // approximated
   /** Ticks a fence edge takes to slide across its strip before the tiles open (spec: Expansion). */
   FENCE_REVEAL_TICKS: 45, // approximated: 1.5 seconds at 1x
   /** The starting destination lies at least this many tiles (Chebyshev) from the starting house (spec: Starting pair). */
@@ -138,7 +141,7 @@ export const DEMAND_INTERVAL_TICKS = DEFAULT_TUNING.DEMAND_INTERVAL_TICKS;
 export const OVERFLOW_PIN_LIMIT = DEFAULT_TUNING.OVERFLOW_PIN_LIMIT;
 export const OVERFLOW_FILL_PINS = DEFAULT_TUNING.OVERFLOW_FILL_PINS;
 export const WEEK_TICKS = DEFAULT_TUNING.WEEK_TICKS;
-export const FENCE_GROWTH_PER_WEEK = DEFAULT_TUNING.FENCE_GROWTH_PER_WEEK;
+export const FENCE_STEPS_PER_WEEK = DEFAULT_TUNING.FENCE_STEPS_PER_WEEK;
 export const FENCE_REVEAL_TICKS = DEFAULT_TUNING.FENCE_REVEAL_TICKS;
 export const START_PAIR_MIN_TILES = DEFAULT_TUNING.START_PAIR_MIN_TILES;
 export const START_PAIR_MAX_TILES = DEFAULT_TUNING.START_PAIR_MAX_TILES;

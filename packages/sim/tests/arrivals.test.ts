@@ -36,13 +36,23 @@ describe('business arrival and house supply', () => {
     expect(sim.buildings).toHaveLength(0);
   });
 
-  it('brings a square business, whose houses come later at a house moment', () => {
+  it('brings a square business with one house of its colour; the rest come at a house moment', () => {
     const sim = atWeek(tuning.BUSINESS_ARRIVAL_START_WEEK);
     expect(arriveBusinesses(sim)).toBe(tuning.BUSINESS_ARRIVALS_PER_WEEK);
     const business = sim.buildings.find((b) => b.kind === 'destination');
     if (!business) throw new Error('no business arrived');
     expect(business.shape).toBe('square');
-    expect(count(sim, 'house', business.color)).toBe(0);
+    expect(count(sim, 'house', business.color)).toBe(1);
+  });
+
+  it('gives every business that arrives a house of its colour at once', () => {
+    for (let week = tuning.BUSINESS_ARRIVAL_START_WEEK; week < 8; week++) {
+      const sim = atWeek(week);
+      arriveBusinesses(sim);
+      for (const b of sim.buildings.filter((x) => x.kind === 'destination')) {
+        expect(count(sim, 'house', b.color)).toBeGreaterThanOrEqual(1);
+      }
+    }
   });
 
   it('never adds houses above the maximum ratio', () => {

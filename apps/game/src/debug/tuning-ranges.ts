@@ -44,7 +44,7 @@ export const TUNING_RANGES: Record<TuningKey, TuningRange> = {
   OVERFLOW_PIN_LIMIT: { min: 1, max: 9, step: 1 },
   OVERFLOW_FILL_PINS: { min: 1, max: 30, step: 1 },
   WEEK_TICKS: { min: 300, max: 7200, step: 60 },
-  FENCE_GROWTH_PER_WEEK: { min: 0, max: 6, step: 1 },
+  FENCE_STEPS_PER_WEEK: { min: 0, max: 6, step: 1 },
   FENCE_REVEAL_TICKS: { min: 1, max: 300, step: 1 },
   START_PAIR_MIN_TILES: { min: 1, max: 30, step: 1 },
   START_PAIR_MAX_TILES: { min: 1, max: 40, step: 1 },
