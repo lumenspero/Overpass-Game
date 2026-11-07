@@ -10,8 +10,12 @@ export const MAX_FRAME_TILES = 192;
 /** Twice the old 48 per side, at a quarter of the metres per tile: the frame covers 24 km. */
 export const DEFAULT_FRAME_TILES = 96;
 
-/** Continental United States bounding box as [west, south, east, north] in degrees. Frames must lie inside it. */
-export const CONTINENTAL_US_BBOX = [-124.85, 24.4, -66.85, 49.45] as const;
+/**
+ * United States bounding box as [west, south, east, north] in degrees, covering the 50 states
+ * including Alaska and Hawaii. Frames must lie inside it. A box, so it also takes in some land and
+ * sea around the states. The Aleutians west of 180° are outside it.
+ */
+export const US_BBOX = [-179.15, 18.9, -66.85, 71.45] as const;
 
 /** Terrarium elevation tiles are read at this zoom: about 150 m of ground per pixel at the equator. */
 export const TERRAIN_ZOOM = 10;

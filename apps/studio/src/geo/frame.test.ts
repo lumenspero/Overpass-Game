@@ -10,7 +10,7 @@ import {
   frameBBox,
   frameCornersMercator,
   frameFromDrag,
-  isInsideContinentalUS,
+  isInsideUS,
   normaliseRotation,
   withRotation,
 } from './frame.ts';
@@ -69,40 +69,33 @@ describe('frameBBox', () => {
   });
 });
 
-describe('isInsideContinentalUS', () => {
+describe('isInsideUS', () => {
   it('accepts a frame in the middle of the country', () => {
-    expect(isInsideContinentalUS(frameAt(TULSA, 48, 48, 0))).toBe(true);
+    expect(isInsideUS(frameAt(TULSA, 48, 48, 0))).toBe(true);
   });
 
-  it('rejects a frame north of the border (Winnipeg)', () => {
-    expect(isInsideContinentalUS(frameAt([-97.14, 49.9], 48, 48, 0))).toBe(
-      false,
-    );
+  it('rejects a frame south of the border (Chiapas, Mexico)', () => {
+    expect(isInsideUS(frameAt([-92.6, 15.5], 48, 48, 0))).toBe(false);
   });
 
   it('is a bounding-box check, so Toronto passes: the box does not trace the coast', () => {
-    expect(isInsideContinentalUS(frameAt([-79.38, 43.65], 48, 48, 0))).toBe(
-      true,
-    );
+    expect(isInsideUS(frameAt([-79.38, 43.65], 48, 48, 0))).toBe(true);
   });
 
-  it('rejects Alaska', () => {
-    expect(isInsideContinentalUS(frameAt([-149.9, 61.2], 48, 48, 0))).toBe(
-      false,
-    );
+  it('accepts Alaska (Anchorage) and Hawaii (Honolulu)', () => {
+    expect(isInsideUS(frameAt([-149.9, 61.2], 48, 48, 0))).toBe(true);
+    expect(isInsideUS(frameAt([-157.86, 21.31], 48, 48, 0))).toBe(true);
   });
 
   it('rejects a frame that crosses the western edge', () => {
-    expect(isInsideContinentalUS(frameAt([-124.9, 40], 96, 96, 0))).toBe(false);
+    expect(isInsideUS(frameAt([-179.15, 60], 96, 96, 0))).toBe(false);
   });
 
   it('is judged on the rotated corners, not the unturned frame', () => {
     // The box's east edge is at -66.85°. Centred at -67.1°, a 192-tile frame (48 km at 250 m a tile)
     // unturned has its east edge at about -66.88°, inside the box; turned 45°, a corner reaches about -66.80°.
-    expect(isInsideContinentalUS(frameAt([-67.1, 40], 192, 192, 0))).toBe(true);
-    expect(isInsideContinentalUS(frameAt([-67.1, 40], 192, 192, 45))).toBe(
-      false,
-    );
+    expect(isInsideUS(frameAt([-67.1, 40], 192, 192, 0))).toBe(true);
+    expect(isInsideUS(frameAt([-67.1, 40], 192, 192, 45))).toBe(false);
   });
 });
 

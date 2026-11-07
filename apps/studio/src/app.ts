@@ -10,8 +10,8 @@ import {
   frameAt,
   frameBBox,
   frameFromDrag,
-  isInsideContinentalUS,
-  isInsideContinentalUSPoint,
+  isInsideUS,
+  isInsideUSPoint,
   withRotation,
   type Frame,
 } from './geo/frame.ts';
@@ -82,11 +82,11 @@ function el(
 
 function describeFrame(frame: Frame | null): string {
   if (!frame) return 'No frame yet.';
-  const inside = isInsideContinentalUS(frame);
+  const inside = isInsideUS(frame);
   return `${frame.cols} × ${frame.rows} tiles, turned ${frame.rotationDeg}°. ${
     inside
-      ? 'Inside the continental US box.'
-      : 'Outside the continental US box: move or shrink the frame.'
+      ? 'Inside the US box.'
+      : 'Outside the US box: move or shrink the frame.'
   }`;
 }
 
@@ -304,10 +304,7 @@ export function App(): VNode {
   // One source of truth: the frame drives both the real map and the preview.
   useEffect(() => {
     mapPanel.current?.setFrame(frame);
-    preview.current?.setFrame(
-      frame,
-      frame ? isInsideContinentalUS(frame) : true,
-    );
+    preview.current?.setFrame(frame, frame ? isInsideUS(frame) : true);
   }, [frame]);
 
   // Imported features show only while the frame is the one they were imported for.
@@ -509,7 +506,7 @@ export function App(): VNode {
 
   async function onImport(): Promise<void> {
     const current = latestFrame.current;
-    if (!current || !isInsideContinentalUS(current)) return;
+    if (!current || !isInsideUS(current)) return;
     // A draft is keyed by the place's slug, so a fresh import would replace it. Ask first.
     const name = placeName ?? 'Imported map';
     if (
@@ -586,8 +583,7 @@ export function App(): VNode {
   }
 
   const turn = frame?.rotationDeg ?? 0;
-  const importable =
-    frame !== null && isInsideContinentalUS(frame) && !importing && !busy;
+  const importable = frame !== null && isInsideUS(frame) && !importing && !busy;
   const importStale =
     imported !== null && frame !== null && !sameFrame(imported.frame, frame);
 
@@ -620,7 +616,7 @@ export function App(): VNode {
         'ul',
         { class: 'results', 'data-testid': 'results' },
         places.map((p): VNode => {
-          const inside = isInsideContinentalUSPoint(p.centre);
+          const inside = isInsideUSPoint(p.centre);
           return el(
             'li',
             { key: p.id },

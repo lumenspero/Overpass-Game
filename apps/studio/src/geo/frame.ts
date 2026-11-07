@@ -1,5 +1,5 @@
 import {
-  CONTINENTAL_US_BBOX,
+  US_BBOX,
   DEFAULT_FRAME_TILES,
   MAX_FRAME_TILES,
   METRES_PER_TILE,
@@ -92,15 +92,15 @@ export function frameBBox(frame: Frame): BBox {
   ];
 }
 
-/** True when a point lies inside the continental US bounding box. */
-export function isInsideContinentalUSPoint([lon, lat]: LonLat): boolean {
-  const [west, south, east, north] = CONTINENTAL_US_BBOX;
+/** True when a point lies inside the US bounding box. */
+export function isInsideUSPoint([lon, lat]: LonLat): boolean {
+  const [west, south, east, north] = US_BBOX;
   return lon >= west && lon <= east && lat >= south && lat <= north;
 }
 
-/** True when every corner lies inside the continental US bounding box. */
-export function isInsideContinentalUS(frame: Frame): boolean {
-  return frameCornersLonLat(frame).every(isInsideContinentalUSPoint);
+/** True when every corner lies inside the US bounding box. */
+export function isInsideUS(frame: Frame): boolean {
+  return frameCornersLonLat(frame).every(isInsideUSPoint);
 }
 
 /** Builds a frame from a drag across the map: the drag is the unrotated rectangle. */

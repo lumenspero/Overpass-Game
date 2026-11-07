@@ -4,7 +4,7 @@ Oct 28, 2026 · @Brett
 
 ## Overview and decisions
 
-Overpass\_Game is a free browser game that recreates Mini Motorways' mechanics as closely as possible, with 25 curated maps of real continental-US places built in a private Map Studio from OpenStreetMap data. It ships as one static build to itch.io and to your own Cloudflare site, with local save persistence and no online features.
+Overpass\_Game is a free browser game that recreates Mini Motorways' mechanics as closely as possible, with 25 curated maps of real US places built in a private Map Studio from OpenStreetMap data. It ships as one static build to itch.io and to your own Cloudflare site, with local save persistence and no online features.
 
 **Decisions made so far**
 

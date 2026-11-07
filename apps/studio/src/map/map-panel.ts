@@ -9,7 +9,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { DEFAULT_VIEW, STYLE_URL } from '../config.ts';
 import {
   frameCornersLonLat,
-  isInsideContinentalUS,
+  isInsideUS,
   type BBox,
   type Frame,
 } from '../geo/frame.ts';
@@ -90,7 +90,7 @@ export class MapPanel {
     this.map.on('mousedown', (e: MapMouseEvent) => this.onMouseDown(e));
   }
 
-  /** Shows the frame, in red when it lies outside the continental US box. */
+  /** Shows the frame, in red when it lies outside the US box. */
   setFrame(frame: Frame | null): void {
     this.frame = frame;
     this.renderFrame();
@@ -178,7 +178,7 @@ export class MapPanel {
     const data = this.frame
       ? polygonCollection(
           frameCornersLonLat(this.frame),
-          isInsideContinentalUS(this.frame) ? INSIDE_COLOUR : OUTSIDE_COLOUR,
+          isInsideUS(this.frame) ? INSIDE_COLOUR : OUTSIDE_COLOUR,
         )
       : EMPTY;
     this.map.getSource<GeoJSONSource>(FRAME_SOURCE)?.setData(data);
