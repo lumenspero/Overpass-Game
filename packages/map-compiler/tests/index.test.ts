@@ -6,6 +6,7 @@ import {
   compileMap,
   contentHash,
   sampleSpline,
+  shapeTiles,
   tilePaths,
   toSimMap,
   TRIM_MARGIN,
@@ -371,5 +372,44 @@ describe('spline sampling by length', () => {
     );
     expect(short).toHaveLength(3);
     expect(long).toHaveLength(17);
+  });
+});
+
+describe('stroke tiles', () => {
+  it('form one unbroken run of tiles, with no gaps where a thin stroke passes between tile centres', () => {
+    const cols = 40;
+    const rows = 40;
+    const tiles = shapeTiles(
+      {
+        kind: 'strokeSpline',
+        width: 1.2,
+        points: [
+          { x: 2, y: 3 },
+          { x: 35, y: 17 },
+        ],
+      },
+      cols,
+      rows,
+    );
+    const set = new Set(tiles);
+    // Flood-fill from the first tile over 8-connected neighbours: a gap would leave tiles unreached.
+    const start = tiles[0]!;
+    const seen = new Set<number>([start]);
+    const queue = [start];
+    while (queue.length > 0) {
+      const t = queue.pop()!;
+      const x = t % cols;
+      const y = Math.floor(t / cols);
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const n = (y + dy) * cols + (x + dx);
+          if (set.has(n) && !seen.has(n)) {
+            seen.add(n);
+            queue.push(n);
+          }
+        }
+      }
+    }
+    expect(seen.size).toBe(tiles.length);
   });
 });

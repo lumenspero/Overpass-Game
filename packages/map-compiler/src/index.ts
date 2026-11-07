@@ -150,7 +150,14 @@ function ringTiles(ring: Pt[], cols: number, rows: number): number[] {
   return out;
 }
 
-/** Tiles whose centre is within half the stroke width of the line. */
+/** Samples per tile along a stroke when walking it, so no tile it passes through is skipped. */
+const STROKE_SAMPLES_PER_TILE = 10;
+
+/**
+ * Tiles whose centre is within half the stroke width of the line, plus every tile the line passes
+ * through. Thin strokes would otherwise break into ragged runs with gaps at joins and ends; with the
+ * walk, a stroke is one unbroken run of tiles, so it reads the same whatever its width.
+ */
 function strokeTiles(
   line: Pt[],
   width: number,
@@ -163,7 +170,7 @@ function strokeTiles(
   const x1 = Math.min(cols - 1, Math.floor(b.maxX + r));
   const y0 = Math.max(0, Math.floor(b.minY - r));
   const y1 = Math.min(rows - 1, Math.floor(b.maxY + r));
-  const out: number[] = [];
+  const covered = new Set<number>();
   for (let y = y0; y <= y1; y++) {
     for (let x = x0; x <= x1; x++) {
       const c = { x: x + 0.5, y: y + 0.5 };
@@ -171,10 +178,25 @@ function strokeTiles(
       for (let i = 0; i < line.length - 1 && !near; i++) {
         near = distanceToSegment(c, line[i], line[i + 1]) <= r;
       }
-      if (near) out.push(y * cols + x);
+      if (near) covered.add(y * cols + x);
     }
   }
-  return out;
+  for (let i = 0; i < line.length - 1; i++) {
+    const a = line[i];
+    const z = line[i + 1];
+    const steps = Math.max(
+      1,
+      Math.ceil(Math.hypot(z.x - a.x, z.y - a.y) * STROKE_SAMPLES_PER_TILE),
+    );
+    for (let s = 0; s <= steps; s++) {
+      const px = Math.floor(a.x + ((z.x - a.x) * s) / steps);
+      const py = Math.floor(a.y + ((z.y - a.y) * s) / steps);
+      if (px >= 0 && py >= 0 && px < cols && py < rows) {
+        covered.add(py * cols + px);
+      }
+    }
+  }
+  return [...covered].sort((p, q) => p - q);
 }
 
 /** The tiles a shape covers. A closed shape covers its inside; a stroke covers its width. */

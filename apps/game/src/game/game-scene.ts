@@ -1179,6 +1179,19 @@ export class GameScene extends Phaser.Scene {
     colour: number,
     edge: number,
   ): void {
+    // Phaser strokes square off at the ends and at bends. A disc at each point rounds both, and
+    // hides the notches where separate pieces of one river meet.
+    const dropCaps = (
+      path: OutlinePath,
+      radius: number,
+      fill: number,
+    ): void => {
+      if (radius <= 0) return;
+      gfx.fillStyle(fill, 1);
+      for (const p of path.points) {
+        gfx.fillCircle(p.x * TILE_SIZE, p.y * TILE_SIZE, radius);
+      }
+    };
     const trace = (path: OutlinePath): void => {
       gfx.beginPath();
       path.points.forEach((p, i) => {
@@ -1193,10 +1206,13 @@ export class GameScene extends Phaser.Scene {
       if (path.closed) {
         gfx.closePath();
         gfx.lineStyle(BORDER_PX, edge, 1);
+        gfx.strokePath();
       } else {
-        gfx.lineStyle((path.width ?? 0) * TILE_SIZE + BORDER_PX * 2, edge, 1);
+        const radius = ((path.width ?? 0) * TILE_SIZE) / 2 + BORDER_PX;
+        gfx.lineStyle(radius * 2, edge, 1);
+        gfx.strokePath();
+        dropCaps(path, radius, edge);
       }
-      gfx.strokePath();
     }
     for (const path of paths) {
       trace(path);
@@ -1205,8 +1221,10 @@ export class GameScene extends Phaser.Scene {
         gfx.fillStyle(colour, 1);
         gfx.fillPath();
       } else {
-        gfx.lineStyle((path.width ?? 0) * TILE_SIZE, colour, 1);
+        const radius = ((path.width ?? 0) * TILE_SIZE) / 2;
+        gfx.lineStyle(radius * 2, colour, 1);
         gfx.strokePath();
+        dropCaps(path, radius, colour);
       }
     }
   }

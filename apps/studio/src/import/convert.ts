@@ -182,6 +182,11 @@ export function convertFeatures(
   const parks: Shape[] = [];
   const motorwayGuide: Polyline[] = [];
   const coastLines: LonLat[][] = [];
+  /** Rivers and canals, grouped by kind, name and width, so pieces of one waterway can be joined. */
+  const riverGroups = new Map<
+    string,
+    { id: string; name: string | undefined; width: number; lines: LonLat[][] }
+  >();
   const labels: MapLabel[] = [];
 
   /** A label for a feature's OSM name, when it has one and sits inside the frame. */
@@ -286,26 +291,13 @@ export function convertFeatures(
       waterway &&
       (RIVER_WATERWAYS as readonly string[]).includes(waterway)
     ) {
-      lineList.forEach((line, i) => {
-        const latitude = line[0]?.[1] ?? 0;
-        const gridLine = line.map(project);
-        const shape = strokeShape(
-          `${id}-${i}`,
-          gridLine,
-          riverWidthTiles(tags, latitude),
-        );
-        if (!shape) return;
-        water.push(shape);
-        if (!labelled) {
-          labelled = true;
-          addLabel(
-            'water',
-            id,
-            nameOf(tags),
-            gridLine[Math.floor(gridLine.length / 2)],
-          );
-        }
-      });
+      const latitude = lineList[0]?.[0]?.[1] ?? 0;
+      const name = nameOf(tags);
+      const width = riverWidthTiles(tags, latitude);
+      const key = `${waterway}|${name ?? ''}|${width}`;
+      const group = riverGroups.get(key) ?? { id, name, width, lines: [] };
+      group.lines.push(...lineList);
+      riverGroups.set(key, group);
     } else if (highway === 'motorway' || highway === 'trunk') {
       lineList.forEach((line, i) => {
         const points = simplifyLine(
@@ -316,6 +308,22 @@ export function convertFeatures(
           motorwayGuide.push({ id: `${id}-${i}`, points });
       });
     }
+  });
+
+  riverGroups.forEach((group) => {
+    let labelAt: { x: number; y: number } | undefined;
+    let labelLength = 0;
+    stitchLines(group.lines).forEach((line, i) => {
+      const gridLine = line.map(project);
+      const shape = strokeShape(`${group.id}-${i}`, gridLine, group.width);
+      if (!shape) return;
+      water.push(shape);
+      if (gridLine.length > labelLength) {
+        labelLength = gridLine.length;
+        labelAt = gridLine[Math.floor(gridLine.length / 2)];
+      }
+    });
+    if (labelAt) addLabel('water', group.id, group.name, labelAt);
   });
 
   stitchLines(coastLines).forEach((line, i) => {
