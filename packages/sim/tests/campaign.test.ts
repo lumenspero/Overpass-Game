@@ -111,3 +111,47 @@ describe('nextCampaignMap', () => {
     expect(nextCampaignMap(ORDER, 'zzz')).toBeNull();
   });
 });
+
+describe('openCampaignMaps with daisy-chained gates', () => {
+  const ORDER4 = ['a', 'b', 'c', 'd'];
+
+  it('opens the maps marked open by default, and the next one only from the previous threshold', () => {
+    const gates = {
+      a: { openByDefault: true },
+      b: { openByDefault: true },
+      c: { openByDefault: true, unlockTrips: 12 },
+    };
+    expect(openCampaignMaps(ORDER4, {}, gates)).toEqual(['a', 'b', 'c']);
+    expect(openCampaignMaps(ORDER4, { 'campaign/c': 11 }, gates)).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
+    expect(openCampaignMaps(ORDER4, { 'campaign/c': 12 }, gates)).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+    ]);
+  });
+
+  it('uses the shared threshold for a map with no unlockTrips of its own', () => {
+    const best = recordRun({}, 'campaign', 'a', tuning.CAMPAIGN_UNLOCK_TRIPS);
+    expect(openCampaignMaps(ORDER4, best, { c: { unlockTrips: 99 } })).toEqual([
+      'a',
+      'b',
+    ]);
+  });
+
+  it('keeps every map after a locked one closed, even one with a best run already', () => {
+    const best = { 'campaign/b': 999, 'campaign/c': 999 };
+    expect(openCampaignMaps(ORDER4, best)).toEqual(['a']);
+  });
+
+  it('opens a map open by default even when an earlier map is locked', () => {
+    const order = ['a', 'b', 'mine'];
+    expect(
+      openCampaignMaps(order, {}, { mine: { openByDefault: true } }),
+    ).toEqual(['a', 'mine']);
+  });
+});

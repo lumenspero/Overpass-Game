@@ -4,7 +4,7 @@ import {
   tuning,
   type BestScores,
 } from '@overpass-game/sim';
-import type { CampaignMap } from '../game/campaign-maps.ts';
+import { campaignGates, type CampaignMap } from '../game/campaign-maps.ts';
 
 /**
  * The campaign rows the map select shows: which maps are open, the best trips on each, and for a
@@ -38,15 +38,15 @@ export function campaignRows(
     openCampaignMaps(
       maps.map((m) => m.id),
       best,
+      campaignGates(maps),
     ),
   );
   return maps.map((m, i) => {
     const isOpen = options.showAll === true || open.has(m.id);
     const prev = i > 0 ? maps[i - 1] : undefined;
+    const need = prev?.unlockTrips ?? tuning.CAMPAIGN_UNLOCK_TRIPS;
     const hint =
-      !isOpen && prev
-        ? `Reach ${tuning.CAMPAIGN_UNLOCK_TRIPS} trips on ${prev.name} to unlock`
-        : null;
+      !isOpen && prev ? `Unlock after ${need} trips in ${prev.name}` : null;
     return {
       id: m.id,
       name: m.name,

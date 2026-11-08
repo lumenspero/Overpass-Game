@@ -37,25 +37,47 @@ export function unlocksNext(trips: number): boolean {
   return trips >= tuning.CAMPAIGN_UNLOCK_TRIPS;
 }
 
+/** How one campaign map opens. Absent fields take the defaults. */
+export interface MapGate {
+  /**
+   * Trips a run on this map needs to unlock the map after it. Defaults to CAMPAIGN_UNLOCK_TRIPS.
+   * A map's own threshold gates the next map, not itself.
+   */
+  unlockTrips?: number;
+  /** Open from the start, whatever comes before it. The first map is always open, too. */
+  openByDefault?: boolean;
+}
+
 /**
- * The campaign maps the player can play, in order. The first map is always open. Each later
- * map opens once the map before it has a best run that unlocks it. The list stops at the
- * first locked map, so a map later in the order never opens past a locked one.
+ * The campaign maps the player can play, in order. A map is open when it is open by default, or
+ * when the map before it is open and has a best run with at least that map's `unlockTrips`.
+ * Maps unlock one after another, so a map is never open past a locked one unless it is open by
+ * default.
  */
 export function openCampaignMaps(
   order: readonly string[],
   best: BestScores,
+  gates: Readonly<Record<string, MapGate>> = {},
 ): string[] {
   if (new Set(order).size !== order.length) {
     throw new Error('campaign order lists a map more than once');
   }
   const open: string[] = [];
+  const isOpen = new Set<string>();
   for (let i = 0; i < order.length; i++) {
-    if (i > 0) {
-      const prev = best[bestKey('campaign', order[i - 1])];
-      if (prev === undefined || !unlocksNext(prev)) break;
+    const id = order[i];
+    const gate = gates[id] ?? {};
+    let opens = i === 0 || gate.openByDefault === true;
+    if (!opens && i > 0 && isOpen.has(order[i - 1])) {
+      const prevId = order[i - 1];
+      const need = gates[prevId]?.unlockTrips ?? tuning.CAMPAIGN_UNLOCK_TRIPS;
+      const prev = best[bestKey('campaign', prevId)];
+      opens = prev !== undefined && prev >= need;
     }
-    open.push(order[i]);
+    if (opens) {
+      open.push(id);
+      isOpen.add(id);
+    }
   }
   return open;
 }

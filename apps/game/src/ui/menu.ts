@@ -192,7 +192,12 @@ export function showMenu(options: MenuOptions): Menu {
     const row = rows[selected];
     if (row?.open) onPick({ kind: 'campaign', id: row.id });
   });
-  const locked = el('p', `margin:8px 0;text-align:center;color:${MUTED}`);
+  // A locked map shows its unlock message where the Play button sits.
+  const locked = el(
+    'div',
+    `margin:8px 0;min-height:48px;padding:10px 16px;box-sizing:border-box;` +
+      `display:none;align-items:center;justify-content:center;text-align:center;font:600 18px sans-serif;background:#3b4654;color:${MUTED};border-radius:4px`,
+  );
   const error = el(
     'div',
     'display:none;margin:12px 0;padding:8px;background:#5a1a1a;color:#fff;border-radius:6px',
@@ -227,10 +232,10 @@ export function showMenu(options: MenuOptions): Menu {
     });
     const row = rows[selected];
     if (!row) return;
+    play.style.display = row.open ? 'block' : 'none';
     play.disabled = !row.open;
-    play.style.opacity = row.open ? '1' : '0.4';
-    play.textContent = row.open ? 'Play' : 'Locked';
-    locked.textContent = row.open ? '' : (row.hint ?? '');
+    locked.style.display = row.open ? 'none' : 'flex';
+    locked.textContent = row.open ? '' : (row.hint ?? 'Locked');
     if (row.open && row.savedWeek !== null) {
       resume.textContent = `Resume · week ${row.savedWeek}`;
       resume.style.display = 'block';

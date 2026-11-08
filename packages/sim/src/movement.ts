@@ -86,7 +86,13 @@ function stepLength(state: SimState, a: number, b: number): number {
 function segmentLength(state: SimState, car: Car): number {
   const { route, progress } = car;
   // A destination's lot node is drawn over half a tile on its road side, so its steps cost half.
-  if (progress === 0 && route.length > 1 && isLotNode(state, route[0])) {
+  // A ride out by motorway costs its curve, as from any other ramp.
+  if (
+    progress === 0 &&
+    route.length > 1 &&
+    isLotNode(state, route[0]) &&
+    motorwayBetween(state.motorways, route[0], route[1]) === null
+  ) {
     return 0.5;
   }
   if (progress < route.length - 1) {
@@ -113,10 +119,13 @@ function segmentLength(state: SimState, car: Car): number {
     // A roundabout's ring reaches this tile's centre, so the tile is drawn only on its other half: each side
     // the ring covers costs half a step less, which keeps the car's drawn speed even on and off the ring.
     let ringed = 0;
+    // Each side is half of its own step, so a diagonal arm loses half a diagonal, not half a tile.
     if (progress > 0 && state.controls[route[progress - 1]] === 'roundabout') {
-      ringed += 0.5;
+      ringed += 0.5 * stepLength(state, route[progress - 1], a);
     }
-    if (state.controls[b] === 'roundabout') ringed += 0.5;
+    if (state.controls[b] === 'roundabout') {
+      ringed += 0.5 * stepLength(state, a, b);
+    }
     return Math.max(0.05, stepLength(state, a, b) - ringed);
   }
   if (progress > 0) {

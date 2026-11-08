@@ -6,7 +6,7 @@ import {
 } from './controls.ts';
 import { emitEvent, type SimEvent, takeEvents } from './events.ts';
 import type { CrossingRun } from './crossings.ts';
-import { dropMotorwaysAt } from './motorway-placement.ts';
+import { dropMotorwaysAt, refreshRamps } from './motorway-placement.ts';
 import type { Motorway } from './motorways.ts';
 import type { Building, Demand, Home } from './buildings.ts';
 import { type Car, onRoadsChanged } from './cars.ts';
@@ -217,6 +217,7 @@ export function removeRoads(state: SimState, tiles: number[]): number {
   if (removed.length > 0) {
     updateRoadGraph(state.graph, state.grid, state.roads, state.links, removed);
     onRoadsChanged(state, [], removed);
+    refreshRamps(state);
   }
   return removed.length;
 }
@@ -279,6 +280,7 @@ export function linkTiles(state: SimState, a: number, b: number): boolean {
   if (!addLink(state.links, a, b)) return false;
   updateRoadGraph(state.graph, state.grid, state.roads, state.links, [a, b]);
   onRoadsChanged(state, [a, b], []);
+  refreshRamps(state);
   return true;
 }
 
@@ -288,6 +290,7 @@ export function unlinkTiles(state: SimState, a: number, b: number): boolean {
   removeLink(state.links, a, b);
   updateRoadGraph(state.graph, state.grid, state.roads, state.links, [a, b]);
   onRoadsChanged(state, [], [a, b]);
+  refreshRamps(state);
   return true;
 }
 

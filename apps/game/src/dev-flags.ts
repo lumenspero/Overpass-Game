@@ -4,5 +4,5 @@
  */
 export const DEV_FLAGS = {
   /** Opens every campaign map on the map select, so the layout of all the cards can be checked. */
-  showAllMaps: import.meta.env.DEV && true,
+  showAllMaps: false,
 };

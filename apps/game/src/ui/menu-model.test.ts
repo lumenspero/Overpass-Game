@@ -26,8 +26,8 @@ describe('campaignRows', () => {
   it('says what unlocks a locked map, using the live threshold', () => {
     tuning.CAMPAIGN_UNLOCK_TRIPS = 7;
     const rows = campaignRows(MAPS, {});
-    expect(rows[1].hint).toBe('Reach 7 trips on Alpha to unlock');
-    expect(rows[2].hint).toBe('Reach 7 trips on Beta to unlock');
+    expect(rows[1].hint).toBe('Unlock after 7 trips in Alpha');
+    expect(rows[2].hint).toBe('Unlock after 7 trips in Beta');
   });
 
   it('opens the next map once the threshold is reached', () => {

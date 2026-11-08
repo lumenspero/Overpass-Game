@@ -257,3 +257,26 @@ export function removeMotorway(state: SimState, id: number): Motorway | null {
   onRoadsChanged(state, [], [m.a, m.b]);
   return m;
 }
+
+/**
+ * Reads each motorway's ramp directions again from the roads at its ramps, so a motorway keeps meeting
+ * its road smoothly after the road there is redrawn. The handles and the cost paid stay as they are;
+ * the length follows the new curve. A new curve that would leave the map or run too long is not taken.
+ */
+export function refreshRamps(state: SimState): void {
+  const same = (p: CurvePoint | null, q: CurvePoint | null): boolean =>
+    p === q ||
+    (p !== null &&
+      q !== null &&
+      Math.abs(p.x - q.x) < 1e-9 &&
+      Math.abs(p.y - q.y) < 1e-9);
+  for (const m of state.motorways) {
+    const { aDir, bDir } = rampDirections(state, m.a, m.b);
+    if (same(aDir, m.aDir) && same(bDir, m.bDir)) continue;
+    const shape = shapeOf(state.grid, m.a, m.b, m.handles, aDir, bDir);
+    if (!shape.ok) continue;
+    m.aDir = aDir;
+    m.bDir = bDir;
+    m.length = shape.length;
+  }
+}

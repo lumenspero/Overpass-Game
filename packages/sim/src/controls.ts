@@ -50,7 +50,14 @@ export function roundaboutPath(
   // is always driven from entry down to exit.
   const sweep = (((entry - exit) % TAU) + TAU) % TAU;
   const R = ROUNDABOUT_RING_TILES;
-  const A = ROUNDABOUT_ARM_TILES;
+  // Each arm meets the ring at its neighbour's centre: one tile out on a straight arm, a diagonal's
+  // length on a diagonal one, so the road drawn up to that centre runs on into the ring without a jump.
+  const armOf = (n: number): number =>
+    ROUNDABOUT_ARM_TILES *
+    Math.hypot(
+      (n % grid.cols) - (tile % grid.cols),
+      Math.floor(n / grid.cols) - Math.floor(tile / grid.cols),
+    );
   const d = ROUNDABOUT_JOIN_RAD;
   const h = ROUNDABOUT_HANDLE_TILES;
   const at = (phi: number, r: number): CurvePoint => ({
@@ -95,10 +102,10 @@ export function roundaboutPath(
     }
     return out;
   };
-  const aIn = at(entry, A);
+  const aIn = at(entry, armOf(prev));
   const bIn = at(entry - d, R);
   const bOut = at(exit + d, R);
-  const aOut = at(exit, A);
+  const aOut = at(exit, armOf(next));
   const pts: CurvePoint[] = cubic(
     aIn,
     offset(aIn, outward(entry), -h),

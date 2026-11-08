@@ -243,3 +243,24 @@ export function distanceToCurve(
   }
   return best;
 }
+
+/**
+ * The tile beside `ramp` that the motorway's curve heads toward as it leaves the ramp, as one of the
+ * 8 neighbours, or null off the map. A ride's other ramp is not beside this one, so where a motorway
+ * ends on a lot's access tile, the lot treats this tile as the road a car arrives from or drives on to.
+ */
+export function motorwayNeighbour(
+  grid: Grid,
+  m: Motorway,
+  ramp: number,
+): number | null {
+  const curve = curveFrom(grid, m, ramp);
+  const c = tileCentre(grid, ramp);
+  const p = pointAtDistance(curve, Math.min(polylineLength(curve), 1));
+  const k = Math.round(Math.atan2(p.y - c.y, p.x - c.x) / (Math.PI / 4));
+  const x = (ramp % grid.cols) + Math.round(Math.cos((k * Math.PI) / 4));
+  const y =
+    Math.floor(ramp / grid.cols) + Math.round(Math.sin((k * Math.PI) / 4));
+  if (x < 0 || y < 0 || x >= grid.cols || y >= grid.rows) return null;
+  return y * grid.cols + x;
+}

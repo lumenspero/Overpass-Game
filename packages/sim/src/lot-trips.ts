@@ -11,7 +11,11 @@ import {
   destinationLot,
   type Inlet,
 } from './lots.ts';
-import { polylineLength } from './motorways.ts';
+import {
+  motorwayBetween,
+  motorwayNeighbour,
+  polylineLength,
+} from './motorways.ts';
 import type { SimState } from './sim.ts';
 
 /**
@@ -528,9 +532,15 @@ export function startLotTrip(state: SimState, car: Car): LotStart {
   let approach: LotPoint[] | undefined;
   let s = 0;
   if (node !== undefined && prev !== undefined) {
-    const fromRing = state.controls[prev] === 'roundabout';
+    // Off a motorway the ride's other ramp is not beside the node, so the approach starts from the tile
+    // the curve arrives over.
+    const ride = motorwayBetween(state.motorways, prev, node);
+    const from = ride
+      ? (motorwayNeighbour(state.grid, ride, node) ?? prev)
+      : prev;
+    const fromRing = !ride && state.controls[prev] === 'roundabout';
     approach =
-      lotApproach(state.grid, building, inlet, prev, node, fromRing) ??
+      lotApproach(state.grid, building, inlet, from, node, fromRing) ??
       undefined;
     if (approach === undefined) return 'none';
     // The car is where the view drew it at the end of its last road tile: one tile along the approach, or
@@ -603,8 +613,17 @@ function planExit(state: SimState, car: Car, home: Car | null): void {
   let hold: number | undefined;
   let crosses = false;
   let joinAt = 0;
+  // Onto a motorway the ride's other ramp is not beside the node, so the car turns toward the tile the
+  // curve leaves over, and joins at the node's centre, where the ride starts.
+  const ride =
+    from !== undefined && to !== undefined
+      ? motorwayBetween(state.motorways, from, to)
+      : null;
   if (building && from !== undefined && to !== undefined) {
-    const dir = stepDir(state.grid, from, to);
+    const toward = ride
+      ? (motorwayNeighbour(state.grid, ride, from) ?? to)
+      : to;
+    const dir = stepDir(state.grid, from, toward);
     const end = lanePoint(state.grid, from, dir);
     const lane = lotPath(state.grid, building, lot.space, 'out', lot.inlet);
     if (lane) {
@@ -613,7 +632,7 @@ function planExit(state: SimState, car: Car, home: Car | null): void {
       const { d, n } = axes(dir);
       const ahead = dot(minus(edge, end), d);
       const side = dot(minus(edge, end), n);
-      if (state.controls[to] === 'roundabout') {
+      if (ride || state.controls[to] === 'roundabout') {
         // A roundabout's ring starts at this node's centre, so the car drives from the lot's edge into its lane
         // there, and joins the road at the ring's edge, ready to go round.
         const lead = Math.max(RING_TURN_LEAD, -ahead);
@@ -623,7 +642,7 @@ function planExit(state: SimState, car: Car, home: Car | null): void {
           ...(Math.abs(side) > 1e-6 ? bezier(edge, control, end) : []),
           end,
         ]);
-        joinAt = 1;
+        joinAt = ride ? 0 : 1;
         hold = Math.max(0, polylineLength(body) - HOLD_BACK);
         const centre = centreOf(state.grid, from);
         crosses = dot(minus(edge, centre), n) < 0;

@@ -214,6 +214,8 @@ const LIGHT_RED_COLOUR = 0xd9534f;
 
 /** Stroke width of thin region and pavement borders, in pixels. */
 const BORDER_PX = 2;
+/** Sides of the disc that rounds each end of a river. */
+const CAP_SIDES = 24;
 /** Radius of the ring that marks a motorway's first end, as a fraction of a tile. */
 const MOTORWAY_START_RING = 0.35;
 
@@ -1179,17 +1181,33 @@ export class GameScene extends Phaser.Scene {
     colour: number,
     edge: number,
   ): void {
-    // Phaser strokes square off at the ends and at bends. A disc at each point rounds both, and
-    // hides the notches where separate pieces of one river meet.
+    // Phaser joins the segments within a stroke but ends it square. A disc at each end of an open path
+    // rounds it, and closes the notch where two pieces of one river meet. Only the ends: Phaser
+    // triangulates every filled shape again each frame, so a disc at every point slowed the whole game.
     const dropCaps = (
       path: OutlinePath,
       radius: number,
       fill: number,
     ): void => {
-      if (radius <= 0) return;
+      const n = path.points.length;
+      if (radius <= 0 || n === 0) return;
       gfx.fillStyle(fill, 1);
-      for (const p of path.points) {
-        gfx.fillCircle(p.x * TILE_SIZE, p.y * TILE_SIZE, radius);
+      for (const p of [path.points[0], path.points[n - 1]]) {
+        if (!p) continue;
+        const disc: { x: number; y: number }[] = [];
+        for (let k = 0; k < CAP_SIDES; k++) {
+          const t = (k / CAP_SIDES) * Math.PI * 2;
+          disc.push({
+            x: p.x * TILE_SIZE + Math.cos(t) * radius,
+            y: p.y * TILE_SIZE + Math.sin(t) * radius,
+          });
+        }
+        gfx.beginPath();
+        disc.forEach((q, i) =>
+          i === 0 ? gfx.moveTo(q.x, q.y) : gfx.lineTo(q.x, q.y),
+        );
+        gfx.closePath();
+        gfx.fillPath();
       }
     };
     const trace = (path: OutlinePath): void => {

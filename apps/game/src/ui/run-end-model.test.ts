@@ -73,7 +73,7 @@ describe('runEndModel', () => {
       id: 'b',
       name: 'Beta',
       open: false,
-      hint: 'Reach 15 trips here to unlock Beta',
+      hint: 'Unlock after 15 trips in Alpha',
       unlockedNow: false,
     });
   });

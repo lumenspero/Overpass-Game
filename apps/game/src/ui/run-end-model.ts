@@ -5,7 +5,7 @@ import {
   tuning,
   type BestScores,
 } from '@overpass-game/sim';
-import type { CampaignMap } from '../game/campaign-maps.ts';
+import { campaignGates, type CampaignMap } from '../game/campaign-maps.ts';
 
 /**
  * What the end-of-run screen says about the map just played: its best, and whether the next map
@@ -53,17 +53,18 @@ export function runEndModel(input: RunEndInput): RunEndModel {
   if (nextId === null) return { best: bestNow, newBest, next: null };
 
   const name = maps.find((m) => m.id === nextId)?.name ?? nextId;
-  const open = openCampaignMaps(order, best).includes(nextId);
+  const gates = campaignGates(maps);
+  const open = openCampaignMaps(order, best, gates).includes(nextId);
   // Open before this run: the best scores with this map's entry as it was.
   const key = bestKey('campaign', mapId);
   const bestBefore: Record<string, number> = { ...best };
   if (previousBest === null) delete bestBefore[key];
   else bestBefore[key] = previousBest;
   const unlockedNow =
-    open && !openCampaignMaps(order, bestBefore).includes(nextId);
-  const hint = open
-    ? null
-    : `Reach ${tuning.CAMPAIGN_UNLOCK_TRIPS} trips here to unlock ${name}`;
+    open && !openCampaignMaps(order, bestBefore, gates).includes(nextId);
+  const here = maps.find((m) => m.id === mapId)?.name ?? mapId;
+  const need = gates[mapId]?.unlockTrips ?? tuning.CAMPAIGN_UNLOCK_TRIPS;
+  const hint = open ? null : `Unlock after ${need} trips in ${here}`;
   return {
     best: bestNow,
     newBest,

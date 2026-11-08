@@ -201,10 +201,12 @@ export function lotBlocker(
     if (reserved.has(t) || access.has(t)) return 'reserved';
   }
   // The lot's own access road must be free of buildings and outside every other lot, or nothing
-  // could reach it.
+  // could reach it. It must also be land a road can be built on, or already hold a road: a business
+  // whose inlet faces water or a mountain could never be reached. (Spawning keeps it inside the fence.)
   for (const t of lotRoads(lot)) {
     if (sim.buildingAt[t] !== -1) return 'occupied';
     if (reserved.has(t)) return 'reserved';
+    if (sim.roads[t] !== 1 && !isBuildable(sim.grid, t)) return 'unbuildable';
   }
   return null;
 }

@@ -19,6 +19,7 @@ import {
   type Motorway,
   type ControlKind,
   motorwayBetween,
+  motorwayNeighbour,
   pointAtDistance,
   polylineLength,
   ROUNDABOUT_ARM_TILES,
@@ -569,9 +570,20 @@ export function carShapes(
         ? { x: end.x * TILE_SIZE, y: end.y * TILE_SIZE }
         : { x: c.x, y: c.y };
     };
+    // Out of a lot by motorway the car leaves the lot into its lane at the node's centre, facing the tile
+    // the curve leaves over, which is where the sim starts the ride.
+    const lotRide =
+      rideOut !== null && fromHome && home?.kind === 'destination'
+        ? motorwayNeighbour(grid, rideOut, tile)
+        : null;
+    const lotDir = lotRide !== null ? step(tile, lotRide) : null;
     if (rideOut) {
-      const enter =
-        fromHome && home
+      const enter = lotDir
+        ? {
+            x: c.x + rightOfTravel(lotDir).x,
+            y: c.y + rightOfTravel(lotDir).y,
+          }
+        : fromHome && home
           ? centreOf(home)
           : prev !== null && !rideIn && inRaw
             ? edgeIn(inRaw)
@@ -602,7 +614,9 @@ export function carShapes(
           const d = Math.hypot(v.x, v.y);
           return d > 0 ? { x: v.x / d, y: v.y / d } : { x: 0, y: 0 };
         };
-        const roadDir = unitOf({ x: c.x - enter.x, y: c.y - enter.y });
+        const roadDir = lotDir
+          ? unitOf({ x: lotDir.dx, y: lotDir.dy })
+          : unitOf({ x: c.x - enter.x, y: c.y - enter.y });
         const dir0 =
           roadDir.x === 0 && roadDir.y === 0 ? unitOf(jointDir) : roadDir;
         const dir1 = unitOf(jointDir);
@@ -687,12 +701,24 @@ export function carShapes(
         const lot = destinationLot(grid, arrival);
         const inlet = lot !== null && lot.farRoad === tile ? 'far' : 'near';
         // Off a roundabout the ring covers this tile's first half, so the approach starts at its centre.
-        const fromRing = prev !== null && controls[prev] === 'roundabout';
+        // Off a motorway the approach starts from the tile the curve arrives over, and the car runs from the
+        // curve's end to where the sim takes over, so it never jumps back toward the far ramp.
+        const from =
+          inMotorway && prev !== null
+            ? (motorwayNeighbour(grid, inMotorway, tile) ?? prev)
+            : prev;
+        const fromRing =
+          !inMotorway && prev !== null && controls[prev] === 'roundabout';
         const approach =
-          prev !== null
-            ? lotApproach(grid, arrival, inlet, prev, tile, fromRing)
+          from !== null
+            ? lotApproach(grid, arrival, inlet, from, tile, fromRing)
             : null;
-        if (approach) {
+        if (approach && inMotorway) {
+          const start = rideInStart();
+          const handoff = pointAtDistance(approach, APPROACH_HANDOFF);
+          x = start.x + (handoff.x * TILE_SIZE - start.x) * along;
+          y = start.y + (handoff.y * TILE_SIZE - start.y) * along;
+        } else if (approach) {
           const spot = pointAtDistance(
             approach,
             fromRing

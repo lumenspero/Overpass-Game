@@ -46,6 +46,7 @@ type TabId =
   | 'controls'
   | 'privacy'
   | 'credits'
+  | 'about'
   | 'tutorial';
 
 const TABS: readonly { id: TabId; label: string }[] = [
@@ -56,6 +57,7 @@ const TABS: readonly { id: TabId; label: string }[] = [
   { id: 'controls', label: 'Controls' },
   { id: 'privacy', label: 'Save Data' },
   { id: 'credits', label: 'Credits' },
+  { id: 'about', label: 'About' },
   { id: 'tutorial', label: 'Tutorial' },
 ];
 
@@ -159,6 +161,18 @@ function heading(text: string): HTMLElement {
 
 function paragraph(text: string): HTMLElement {
   return el('p', `margin:8px 0;color:${MUTED};line-height:1.4`, text);
+}
+
+/** The official Mini Motorways page, for players who want to support the original. */
+const OFFICIAL_RELEASE_URL = 'https://dinopoloclub.com/games/mini-motorways/';
+
+/** A link that opens in a new tab, so the game stays open behind it. */
+function link(text: string, href: string): HTMLAnchorElement {
+  const a = el('a', `color:${TEAL};text-decoration:underline`, text);
+  a.href = href;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  return a;
 }
 
 function controlLines(title: string, lines: readonly string[]): HTMLElement {
@@ -387,16 +401,31 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
         break;
       case 'credits':
         page.append(
-          heading('Overpass_Game'),
+          heading('Official Release'),
+          paragraph(
+            'Overpass_Game is a free fan recreation of Mini Motorways. If you enjoy it, please support the official release by Dinosaur Polo Club.',
+          ),
+          (() => {
+            const p = paragraph('');
+            p.append(
+              link(
+                'Mini Motorways by Dinosaur Polo Club',
+                OFFICIAL_RELEASE_URL,
+              ),
+            );
+            return p;
+          })(),
+          heading('Licenses'),
           paragraph(
             'Code is MIT licensed. Our art and sound effects are CC BY 4.0. The music is third-party and keeps its own licence, listed below. Map data is ODbL 1.0, derived from OpenStreetMap.',
           ),
           paragraph('© OpenStreetMap contributors. '),
-          heading('Team'),
-          paragraph('Team credits to be added.'),
           heading('Sounds'),
           ...soundCreditLines().map((line) => paragraph(line)),
         );
+        break;
+      case 'about':
+        page.append(heading('Team'), paragraph('Team credits to be added.'));
         break;
       case 'tutorial':
         page.append(
