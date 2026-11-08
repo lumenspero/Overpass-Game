@@ -20,6 +20,7 @@ import {
   type GameSettings,
 } from './game/settings.ts';
 import { setActiveMap } from './game/test-map.ts';
+import { setBackdrop } from './game/title-scene.ts';
 import { showMenu, type Menu, type MenuChoice } from './ui/menu.ts';
 import { showOptions, type OptionsScreen } from './ui/options-screen.ts';
 import type { AudioLevels } from './audio/audio-manager.ts';
@@ -60,10 +61,14 @@ function clearRunOverlays(): void {
   }
 }
 
-/** Starts the game with the map set in `setActiveMap`. Any game already running is stopped first. */
-function startGame(): void {
+/**
+ * Starts the game with the map set in `setActiveMap`. Any game already running is stopped first.
+ * With a backdrop seed, the game runs the start screen's scene instead, under the menu.
+ */
+function startGame(backdrop: number | null = null): void {
   game?.destroy(true);
   clearRunOverlays();
+  setBackdrop(backdrop);
   game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: root,
@@ -179,6 +184,8 @@ function showMainMenu(): void {
     onSettings: openOptions,
     sound: (event) => audio.playEffect(event),
   });
+  // The real game draws the start screen's scene behind the menu, new each time it opens.
+  startGame(Math.floor(Math.random() * 2 ** 31));
   audio.setStems(FULL_STEMS);
   audio.playMusic(MUSIC_TRACKS[0]);
 }

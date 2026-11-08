@@ -1,8 +1,8 @@
-# Overpass_Game
+# Overpass
 
-A free browser game that recreates Mini Motorways' mechanics, with 23 curated maps of real US places.
+A free browser game about drawing roads so a growing town's cars can get where they are going. It recreates the mechanics of Mini Motorways, with 23 curated maps of real US places.
 
-Status: content production (M14). See `Overpass_Game — Implementation Plan.md`.
+> **Unofficial fan project.** Overpass is not affiliated with, endorsed by or sponsored by Dinosaur Polo Club. Mini Motorways is a game and trademark of Dinosaur Polo Club. Overpass contains none of its art, sound or code. If you enjoy Overpass, please support the official release: [Mini Motorways by Dinosaur Polo Club](https://dinopoloclub.com/games/mini-motorways/).
 
 ## Setup
 
@@ -20,7 +20,15 @@ pnpm exec playwright install chromium
 | `pnpm check`      | Typecheck, lint, format check, tests, build |
 | `pnpm build`      | Production builds of both apps              |
 
-See `CLAUDE.md` for conventions and the folder map.
+## Repository
+
+- `apps/game`: the game (Phaser), the part that is deployed.
+- `apps/studio`: the Map Studio, for making maps from OpenStreetMap data. Development only.
+- `packages/sim`: the game rules, in plain TypeScript. Every gameplay number is in `packages/sim/src/config.ts`.
+- `packages/map-schema`, `packages/map-compiler`, `packages/render-style`: the map format, the compiler from Studio shapes to playable maps, and the palettes.
+- `maps/`: the Studio sources (`*.map-src.json`) and compiled maps (`*.map.json`).
+- `tools/`: command-line tools for compiling maps and making the audio.
+- `docs/`: the mechanics spec (`mechanics-spec.md`), the decision log (`decisions.md`), the implementation plan and the session notes.
 
 ## Adding your own map
 
@@ -65,4 +73,9 @@ Add one line to the end of `CAMPAIGN_MAPS` in `apps/game/src/game/campaign-maps.
 
 ## License
 
-Code MIT; our art and sound effects CC BY 4.0; third-party music under its own licence, listed in the game's credits; map data ODbL 1.0. Map data © OpenStreetMap contributors. Details arrive with `LICENSE` in M15.
+- **Code:** MIT. See [`LICENSE`](LICENSE).
+- **Our art and sound effects:** CC BY 4.0. Every sound effect is a tone made by `tools/audio/generate-tones.py`.
+- **Music:** loops from [Freesound](https://freesound.org), each under its own licence (CC BY 4.0), changed into the game's stems. Each one is credited, with its creator, licence and link, in the game under Options, Credits, and in `apps/game/src/audio/catalog.ts`.
+- **Map data:** © OpenStreetMap contributors, under the [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/). Each compiled map carries its attribution line.
+- **Font:** Space Grotesk, loaded from Google Fonts, under the SIL Open Font License.
+- **Mini Motorways** is a trademark of Dinosaur Polo Club, named here only to describe and credit the original game.

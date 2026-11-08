@@ -42,7 +42,6 @@ type TabId =
   | 'game'
   | 'audio'
   | 'display'
-  | 'language'
   | 'controls'
   | 'privacy'
   | 'credits'
@@ -53,7 +52,6 @@ const TABS: readonly { id: TabId; label: string }[] = [
   { id: 'game', label: 'Game' },
   { id: 'audio', label: 'Audio & Video' },
   { id: 'display', label: 'Display' },
-  { id: 'language', label: 'Language' },
   { id: 'controls', label: 'Controls' },
   { id: 'privacy', label: 'Save Data' },
   { id: 'credits', label: 'Credits' },
@@ -216,6 +214,126 @@ function toggleFullscreen(): void {
   change.catch(() => undefined);
 }
 
+/** The PaperBound logo, served from public/about. The page hides it if the file is missing. */
+const ABOUT_IMAGE_URL = `${import.meta.env.BASE_URL}about/paperbound-logo.jpg`;
+
+/** Stripe donation link. While this is empty, the donate button is not shown. */
+const STRIPE_DONATE_URL = '';
+
+/** Earlier projects, listed on the About tab. */
+const PROJECTS: readonly { name: string; href: string; description: string }[] =
+  [
+    {
+      name: 'Flightline',
+      href: 'https://flightline.top',
+      description:
+        'A crowdfunding platform based on a minimum threshold of 1,000 contributing partners to greenlight.',
+    },
+    {
+      name: 'Dendrite',
+      href: 'https://dendrite.top',
+      description:
+        'An LLM assisted morality engine to help visualize the moral deficit from harmful actions.',
+    },
+    {
+      name: 'Magonia',
+      href: 'https://magonia.top',
+      description:
+        'A vulnerability utility overlaying NOAA severe weather data with US Census demographics.',
+    },
+    {
+      name: 'Honeypot',
+      href: 'https://honeypotgame.top',
+      description:
+        'Browser-based arcade game where you collect honey and avoid encounters with hungry bears.',
+    },
+    {
+      name: 'Ad Valorem',
+      href: 'https://advalorem.top',
+      description:
+        'A detailed map visualizing nationwide demographic & economic metrics from the IRS and US Census.',
+    },
+    {
+      name: "Black Hole C'Thun",
+      href: 'https://blackholecthun.top',
+      description:
+        'Browser-based typing game featuring a titular character and two game modes of increasing difficulty.',
+    },
+    {
+      name: 'Starfruit',
+      href: 'https://starfruitanalytics.top',
+      description:
+        'A Steam gaming analytics site for top selling games and add-ons.',
+    },
+    {
+      name: 'Balk2',
+      href: 'https://github.com/lumenspero/Balk2',
+      description:
+        'A Node package that generates compact, deterministic Repository Connection Maps designed specifically for AI-assisted interconnected code changes.',
+    },
+    {
+      name: 'Card Chess',
+      href: 'https://cardchess.top',
+      description:
+        'A free to play browser version of chess that combines deck building and card mechanics with classic chess.',
+    },
+    {
+      name: 'Pressure Cooker',
+      href: 'https://pressurecooker.top',
+      description:
+        'Pressure Cooker is an interactive system dynamics model that shows how sustained pressure, isolation, and blame can build toward retaliatory harm.',
+    },
+  ];
+
+function projectList(): HTMLElement {
+  const list = el('ul', 'list-style:none;margin:8px 0;padding:0');
+  for (const project of PROJECTS) {
+    const item = el('li', 'margin:0 0 14px');
+    item.append(
+      link(project.name, project.href),
+      paragraph(project.description),
+    );
+    list.append(item);
+  }
+  return list;
+}
+
+/** The About tab: the author's photo and bio, earlier projects, then the donate button. */
+function aboutPage(): HTMLElement {
+  const section = el('div');
+
+  const photo = el(
+    'img',
+    'display:block;max-width:100%;height:auto;border-radius:4px;margin:8px 0',
+  );
+  photo.src = ABOUT_IMAGE_URL;
+  photo.alt = 'PaperBound';
+  photo.addEventListener('error', () => photo.remove());
+
+  section.append(
+    photo,
+    paragraph(
+      'Brett Magni is the sole proprietor and developer of PaperBound. He is a former Xbox Data and Applied Scientist, and media muse from Norman, Oklahoma. His recent work consists primarily of data visualizations, infographics, and a variety of browser based games.',
+    ),
+    heading('Previous projects'),
+    projectList(),
+  );
+
+  if (STRIPE_DONATE_URL) {
+    const donate = el(
+      'a',
+      `display:inline-block;margin:8px 0;padding:8px 18px;font:600 16px sans-serif;border-radius:4px;background:${TEAL};color:${INK};text-decoration:none`,
+      'Donate',
+    );
+    donate.href = STRIPE_DONATE_URL;
+    donate.target = '_blank';
+    donate.rel = 'noopener noreferrer';
+    section.append(heading('Support PaperBound'), donate);
+  }
+
+  return section;
+}
+
 export function showOptions(deps: OptionsDeps): OptionsScreen {
   const root = el(
     'div',
@@ -245,7 +363,7 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
 
   const strip = el(
     'div',
-    'display:flex;gap:8px;overflow-x:auto;padding:8px 0 12px;scrollbar-width:none',
+    'display:flex;justify-content:center;gap:8px;overflow-x:auto;padding:8px 0 12px;scrollbar-width:none',
   );
   const tabButtons = new Map<TabId, HTMLButtonElement>();
   for (const tab of TABS) {
@@ -262,7 +380,7 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
 
   const content = el(
     'div',
-    'flex:1;overflow:auto;width:100%;max-width:640px;margin:0 auto',
+    `flex:1;overflow:auto;width:100%;max-width:640px;margin:0 auto;scrollbar-width:thin;scrollbar-color:${OFF} transparent`,
   );
   root.append(top, strip, content);
   document.body.append(root);
@@ -369,12 +487,6 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
           ),
         );
         break;
-      case 'language':
-        page.append(
-          row('Language', el('span', '', 'English')),
-          paragraph('More languages will be added later.'),
-        );
-        break;
       case 'controls':
         page.append(
           controlLines('Mouse', [
@@ -403,7 +515,7 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
         page.append(
           heading('Official Release'),
           paragraph(
-            'Overpass_Game is a free fan recreation of Mini Motorways. If you enjoy it, please support the official release by Dinosaur Polo Club.',
+            'Overpass is a free fan recreation of Mini Motorways. If you enjoy it, please support the official release by Dinosaur Polo Club.',
           ),
           (() => {
             const p = paragraph('');
@@ -425,7 +537,7 @@ export function showOptions(deps: OptionsDeps): OptionsScreen {
         );
         break;
       case 'about':
-        page.append(heading('Team'), paragraph('Team credits to be added.'));
+        page.append(aboutPage());
         break;
       case 'tutorial':
         page.append(

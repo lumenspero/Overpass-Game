@@ -3,7 +3,7 @@
  * Every sound effect is a generated tone; the music comes from Freesound.
  *
  * A source is either a Freesound file or a tone made by `tools/audio/generate-tones.py`. Freesound
- * entries keep the id, title, creator, licence and the archived original in docs/sounds, and the
+ * entries keep the id, title, creator, licence and the original file's name, and the
  * credits are built from them, so a file can be renamed here without losing its attribution.
  * Generated tones are our own work and need no credit.
  */
@@ -55,7 +55,7 @@ export interface FreesoundSource {
   readonly title: string;
   readonly creator: string;
   readonly license: SoundLicense;
-  /** The archived original, under docs/sounds. */
+  /** The original file's name on Freesound. Not kept in the repo: download it to docs/sounds/ to remake the stems. */
   readonly archive: string;
 }
 

@@ -152,6 +152,12 @@ import { runEndModel } from '../ui/run-end-model.ts';
 import { CAMPAIGN_MAPS } from './campaign-maps.ts';
 import { currentBest, recordFinishedRun, saveRun } from './progress.ts';
 import { setRunSaver, takePendingResume } from './run-resume.ts';
+import {
+  backdropPalette,
+  backdropSeed,
+  buildTitleScene,
+  keepTitleBusy,
+} from './title-scene.ts';
 import { runActions } from './run-actions.ts';
 import { bestKey } from '@overpass-game/sim';
 import {
@@ -285,6 +291,12 @@ function newRunSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff) + 1;
 }
 
+/** Stands in for the top bar, dock and offer panel on the start screen's backdrop, which shows none. */
+const QUIET_OVERLAY = {
+  sync: (): void => undefined,
+  destroy: (): void => undefined,
+};
+
 export class GameScene extends Phaser.Scene {
   private sim!: SimState;
   private clock!: Clock;
@@ -365,6 +377,8 @@ export class GameScene extends Phaser.Scene {
   private frames = new FrameMeter();
   /** The 300-car demo tops its cars back up as trips finish. */
   private keepCars = false;
+  /** True for the start screen's backdrop: the scene runs with no input, overlays, sound or saving. */
+  private backdrop = false;
   private offerPanel!: OfferPanel;
   private dock!: Dock;
   /** A piece being dragged from the dock: its item, and whether its stroke has started on the map. */
@@ -397,10 +411,17 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     this.settings = currentSettings();
     const demo = activeDemo();
-    this.keepCars = demo === 'cars';
+    const titleSeed = backdropSeed();
+    this.backdrop = titleSeed !== null;
+    // The start screen's backdrop and the demos bring their own small boards.
+    const scripted = this.backdrop || demo !== null;
+    this.keepCars = !this.backdrop && demo === 'cars';
     // A saved run from the menu replaces the new board. It is taken once, so a restart begins fresh.
-    const resumed = takePendingResume();
-    if (demo) {
+    // The backdrop never takes it, so a run picked from the menu still resumes.
+    const resumed = this.backdrop ? null : takePendingResume();
+    if (titleSeed !== null) {
+      this.sim = buildTitleScene(titleSeed);
+    } else if (demo) {
       this.sim = buildDemo(demo);
     } else if (resumed) {
       this.sim = resumed;
@@ -423,28 +444,34 @@ export class GameScene extends Phaser.Scene {
       holdToErase: this.settings.holdToErase,
     });
     this.controller = createController(this.sim);
-    this.offerPanel = createOfferPanel(() => this.sim);
-    this.dock = createDock({
-      getSim: () => this.sim,
-      getArmed: () => this.mapper.tool,
-      onArm: (id) => {
-        if (id !== 'tiles') this.pickCrossing(id);
-      },
-      onDragStart: (id) => this.onDockDragStart(id),
-      onDragMove: (x, y) => this.onDockDragMove(x, y),
-      onDragEnd: (x, y) => this.onDockDragEnd(x, y),
-      getTilePx: () => TILE_SIZE * this.view.zoom,
-    });
-    this.topBar = createTopBar({
-      onMenu: () => runActions()?.menu(),
-      onChoice: this.onPlayChoice,
-    });
+    this.offerPanel = this.backdrop
+      ? QUIET_OVERLAY
+      : createOfferPanel(() => this.sim);
+    this.dock = this.backdrop
+      ? QUIET_OVERLAY
+      : createDock({
+          getSim: () => this.sim,
+          getArmed: () => this.mapper.tool,
+          onArm: (id) => {
+            if (id !== 'tiles') this.pickCrossing(id);
+          },
+          onDragStart: (id) => this.onDockDragStart(id),
+          onDragMove: (x, y) => this.onDockDragMove(x, y),
+          onDragEnd: (x, y) => this.onDockDragEnd(x, y),
+          getTilePx: () => TILE_SIZE * this.view.zoom,
+        });
+    this.topBar = this.backdrop
+      ? QUIET_OVERLAY
+      : createTopBar({
+          onMenu: () => runActions()?.menu(),
+          onChoice: this.onPlayChoice,
+        });
     this.mapSize = worldSize(grid.cols, grid.rows);
     this.view = createFocusedCamera(
       this.mapSize,
       this.focusRect(),
       this.viewport(),
-      this.settings.zoomLevel,
+      this.zoomLevel(),
     );
     this.shownSteps = -1;
     this.shownEdge = '';
@@ -487,26 +514,32 @@ export class GameScene extends Phaser.Scene {
       this.ringGfx,
       this.overlayGfx,
     ]);
-    this.paletteId = demo ? 'default' : playedMap().palette;
-    this.waterId = demo ? 'shared' : playedMap().waterPalette;
+    // The start screen's backdrop draws in a random land family, always in its dark theme.
+    this.paletteId =
+      titleSeed !== null
+        ? backdropPalette(titleSeed)
+        : scripted
+          ? 'default'
+          : playedMap().palette;
+    this.waterId = scripted ? 'shared' : playedMap().waterPalette;
     this.pal = resolvePalette(
       this.paletteId,
-      this.settings.theme,
+      this.backdrop ? 'dark' : this.settings.theme,
       this.waterId,
     );
     this.cameras.main.setBackgroundColor(this.pal.background);
     this.drawOutside(this.outsideGfx, grid, this.pal.background);
-    this.terrainOutlines = demo ? null : playedMap().outlines;
-    this.mapLabels = demo ? [] : playedMap().labels;
-    this.guideLines = demo ? null : testMapGuide();
+    this.terrainOutlines = scripted ? null : playedMap().outlines;
+    this.mapLabels = scripted ? [] : playedMap().labels;
+    this.guideLines = scripted ? null : testMapGuide();
     this.drawTerrain(terrainGfx, grid, this.terrainOutlines);
     this.drawLabels();
     this.drawGuide(this.guideLines);
     this.guideGfx.setVisible(this.settings.motorwayGuide);
     // Demo maps bring their own buildings. Only the test map places the hand-listed ones.
-    if (!demo && isTestMap()) this.placeTestBuildings();
+    if (!scripted && isTestMap()) this.placeTestBuildings();
     // A played map starts with one house and one destination (spec: Starting pair). A resumed run already has its buildings.
-    if (!demo && !resumed && !isTestMap()) placeStartingPair(this.sim);
+    if (!scripted && !resumed && !isTestMap()) placeStartingPair(this.sim);
     // Buildings already on the board when it opens are drawn in place; only later arrivals pop in.
     this.bornAt.clear();
     this.pinBornAt.clear();
@@ -544,42 +577,45 @@ export class GameScene extends Phaser.Scene {
       .setDepth(20)
       .setVisible(false);
     this.endPanel = null;
-    this.campaignId = demo || isTestMap() ? null : playedMap().id;
+    this.campaignId = scripted || isTestMap() ? null : playedMap().id;
     this.ended = false;
     this.lastSavedWeek = weekOf(this.sim.tick);
-    setRunSaver(this.saveNow);
+    if (!this.backdrop) setRunSaver(this.saveNow);
     window.addEventListener('pagehide', this.saveNow);
     document.addEventListener('visibilitychange', this.onVisibility);
 
     this.canvas = this.game.canvas;
-    this.canvas.style.touchAction = 'none';
-    this.canvas.addEventListener('pointerdown', this.onPointerDown);
-    this.canvas.addEventListener('pointermove', this.onPointerMove);
-    this.canvas.addEventListener('pointerup', this.onPointerUp);
-    this.canvas.addEventListener('pointercancel', this.onPointerCancel);
-    this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
-    this.canvas.addEventListener('contextmenu', this.onContextMenu);
+    // The backdrop sits under the menu, so it takes no pointer or key input.
+    if (!this.backdrop) {
+      this.canvas.style.touchAction = 'none';
+      this.canvas.addEventListener('pointerdown', this.onPointerDown);
+      this.canvas.addEventListener('pointermove', this.onPointerMove);
+      this.canvas.addEventListener('pointerup', this.onPointerUp);
+      this.canvas.addEventListener('pointercancel', this.onPointerCancel);
+      this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
+      this.canvas.addEventListener('contextmenu', this.onContextMenu);
 
-    this.input.keyboard?.on('keydown-E', this.toggleTool);
-    this.input.keyboard?.on('keydown-D', this.toggleDebug);
-    this.input.keyboard?.on('keydown-R', this.restartIfOver);
-    this.input.keyboard?.on('keydown-B', this.onBridgeKey);
-    this.input.keyboard?.on('keydown-T', this.onTunnelKey);
-    this.input.keyboard?.on('keydown-M', this.onMotorwayKey);
-    this.input.keyboard?.on('keydown-O', this.onRoundaboutKey);
-    this.input.keyboard?.on('keydown-L', this.onLightKey);
-    this.input.keyboard?.on('keydown-F', this.onRoadKey);
-    this.input.keyboard?.on('keydown-P', this.togglePause);
-    this.input.keyboard?.on('keydown-H', this.onTutorialKey);
-    this.input.keyboard?.on('keydown-G', this.onGuideKey);
-    this.input.keyboard?.on('keydown-N', this.onThemeKey);
-    this.input.keyboard?.on('keydown', this.onKey);
-    this.cursors = this.input.keyboard?.createCursorKeys() ?? null;
-    // Holding Space and dragging with the left button pans. Capture stops the page from scrolling.
-    this.input.keyboard?.addCapture('SPACE');
-    this.input.keyboard?.on('keydown-SPACE', this.onSpaceDown);
-    this.input.keyboard?.on('keydown-ESC', this.onEscKey);
-    this.input.keyboard?.on('keyup-SPACE', this.onSpaceUp);
+      this.input.keyboard?.on('keydown-E', this.toggleTool);
+      this.input.keyboard?.on('keydown-D', this.toggleDebug);
+      this.input.keyboard?.on('keydown-R', this.restartIfOver);
+      this.input.keyboard?.on('keydown-B', this.onBridgeKey);
+      this.input.keyboard?.on('keydown-T', this.onTunnelKey);
+      this.input.keyboard?.on('keydown-M', this.onMotorwayKey);
+      this.input.keyboard?.on('keydown-O', this.onRoundaboutKey);
+      this.input.keyboard?.on('keydown-L', this.onLightKey);
+      this.input.keyboard?.on('keydown-F', this.onRoadKey);
+      this.input.keyboard?.on('keydown-P', this.togglePause);
+      this.input.keyboard?.on('keydown-H', this.onTutorialKey);
+      this.input.keyboard?.on('keydown-G', this.onGuideKey);
+      this.input.keyboard?.on('keydown-N', this.onThemeKey);
+      this.input.keyboard?.on('keydown', this.onKey);
+      this.cursors = this.input.keyboard?.createCursorKeys() ?? null;
+      // Holding Space and dragging with the left button pans. Capture stops the page from scrolling.
+      this.input.keyboard?.addCapture('SPACE');
+      this.input.keyboard?.on('keydown-SPACE', this.onSpaceDown);
+      this.input.keyboard?.on('keydown-ESC', this.onEscKey);
+      this.input.keyboard?.on('keyup-SPACE', this.onSpaceUp);
+    }
     this.scale.on('resize', this.onResize);
     this.events.once('shutdown', this.teardown);
     this.applyTransform();
@@ -592,13 +628,14 @@ export class GameScene extends Phaser.Scene {
       const before = this.sim.tick;
       for (const event of step(this.sim)) {
         const sound = soundForSimEvent(event);
-        if (sound) audio.playEffect(sound);
+        if (sound && !this.backdrop) audio.playEffect(sound);
       }
       // The clock ticks through the last hours of Sunday, before the week ends.
       const tock = weekEndSound(before, this.sim.tick, tuning.WEEK_TICKS);
-      if (tock) audio.playEffect(tock);
+      if (tock && !this.backdrop) audio.playEffect(tock);
     }
     if (this.keepCars) keepCarDemoFull(this.sim);
+    if (this.backdrop) keepTitleBusy(this.sim);
     // Frame time is the real gap between updates. Phaser's delta is capped when frames run slow, which
     // would hide a slow frame rate, and the sim's pace follows that cap.
     const now = performance.now();
@@ -607,14 +644,16 @@ export class GameScene extends Phaser.Scene {
     this.lastUpdateAt = now;
     // The music's stems follow traffic, pin pressure and the week.
     const demands = Object.values(this.sim.demand);
-    audio.setStems(
-      stemLevels({
-        cars: this.sim.cars.length,
-        pins: demands.reduce((sum, d) => sum + d.pins, 0),
-        overflowing: demands.some((d) => (d.overflowFill ?? 0) > 0),
-        weekHour: hourOfWeek(this.sim.tick, tuning.WEEK_TICKS),
-      }),
-    );
+    // The menu sets the music while the backdrop runs.
+    if (!this.backdrop)
+      audio.setStems(
+        stemLevels({
+          cars: this.sim.cars.length,
+          pins: demands.reduce((sum, d) => sum + d.pins, 0),
+          overflowing: demands.some((d) => (d.overflowFill ?? 0) > 0),
+          weekHour: hourOfWeek(this.sim.tick, tuning.WEEK_TICKS),
+        }),
+      );
     // Once each week the run is saved, so a reload resumes from the start of that week.
     if (ticks > 0 && weekOf(this.sim.tick) > this.lastSavedWeek) this.saveNow();
 
@@ -666,7 +705,7 @@ export class GameScene extends Phaser.Scene {
     this.showCrossingLine(time);
     this.offerPanel.sync();
     this.dock.sync();
-    if (this.sim.over && !this.ended) this.showEnd();
+    if (this.sim.over && !this.ended && !this.backdrop) this.showEnd();
     if (this.debugOn) {
       if (this.overlayDirty) {
         this.drawOverlay();
@@ -727,6 +766,11 @@ export class GameScene extends Phaser.Scene {
 
   private viewport(): Size {
     return { width: this.scale.width, height: this.scale.height };
+  }
+
+  /** The player's zoom setting. The backdrop ignores it, so its scene always fits the screen. */
+  private zoomLevel(): number {
+    return this.backdrop ? 1 : this.settings.zoomLevel;
   }
 
   /** Canvas-relative position of a DOM event, in game pixels. */
@@ -969,7 +1013,7 @@ export class GameScene extends Phaser.Scene {
       this.view,
       this.mapSize,
       this.viewport(),
-      this.settings.zoomLevel,
+      this.zoomLevel(),
       this.focusRect(),
     );
     this.crossingText.setX(this.scale.width / 2);
@@ -1950,7 +1994,7 @@ export class GameScene extends Phaser.Scene {
     if (steps !== this.shownSteps) {
       // The first sync sets the count when the game starts; only a later rise is growth.
       if (this.shownSteps >= 0 && steps > this.shownSteps) {
-        audio.playEffect('fence.grew');
+        if (!this.backdrop) audio.playEffect('fence.grew');
       }
       this.shownSteps = steps;
       // Stubs on the newly open land appear with their houses.
@@ -2121,6 +2165,6 @@ export class GameScene extends Phaser.Scene {
     this.scale.off('resize', this.onResize);
     window.removeEventListener('pagehide', this.saveNow);
     document.removeEventListener('visibilitychange', this.onVisibility);
-    setRunSaver(null);
+    if (!this.backdrop) setRunSaver(null);
   };
 }

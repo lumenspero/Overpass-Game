@@ -41,6 +41,9 @@ export interface Menu {
 }
 
 const CARD_WIDTH = 260;
+/** The game's source code, linked from the start screen. */
+const GITHUB_URL = 'https://github.com/lumenspero/Overpass-Game';
+const TITLE_FONT = '"Space Grotesk", sans-serif';
 const TEAL = '#97c3c3';
 const INK = '#1d232c';
 const PANEL = '#1d232c';
@@ -97,40 +100,63 @@ export function showMenu(options: MenuOptions): Menu {
 
   const root = el(
     'div',
-    'position:fixed;inset:0;overflow:hidden;background:#111;color:#eee;font:16px sans-serif;z-index:5',
+    'position:fixed;inset:0;overflow:hidden;color:#eee;font:16px sans-serif;z-index:5',
   );
   root.id = 'menu';
 
-  // Main screen: the wordmark, Play and Options.
-  const main = el(
+  // Main screen: see-through, so the game's backdrop scene shows under a frosted layer, with the
+  // wordmark, Play and Options on top.
+  const main = el('div', 'position:absolute;inset:0;overflow:hidden');
+  const frost = el(
     'div',
-    'position:absolute;inset:0;overflow:auto;padding:16px;box-sizing:border-box',
+    'position:absolute;inset:0;background:rgba(20,24,30,0.3);' +
+      'backdrop-filter:blur(6px) saturate(120%);-webkit-backdrop-filter:blur(6px) saturate(120%)',
   );
-  const mainInner = el('div', 'max-width:420px;margin:0 auto;padding-top:10vh');
+  const mainInner = el(
+    'div',
+    'position:relative;z-index:1;height:100%;box-sizing:border-box;padding:12vh 16px 16px;' +
+      'display:flex;flex-direction:column;align-items:center;text-align:center;overflow:auto',
+  );
   const wordmark = el(
     'h1',
-    'font:700 40px sans-serif;margin:0 0 32px;letter-spacing:0.5px',
-    'Overpass_Game',
+    `margin:0 0 48px;font-family:${TITLE_FONT};font-weight:700;font-size:clamp(64px,12vw,128px);` +
+      'line-height:1;letter-spacing:-0.02em;color:#efe9dc',
+    'Overpass',
   );
-  mainInner.append(wordmark);
+  const menuBox = el('div', 'width:min(320px,100%)');
   if (storage.problem !== null) {
-    mainInner.append(el('div', NOTE_CSS, storage.problem));
+    menuBox.append(el('div', NOTE_CSS, storage.problem));
   }
-  const playMain = button('Play', '', () => {
+  const playMain = button('Play', `font-family:${TITLE_FONT}`, () => {
     options.sound?.('menu.enter');
     showSelect();
   });
-  const optionsMain = button('Options', SECONDARY_CSS, () => {
-    options.sound?.('menu.enter');
-    onSettings();
-  });
-  mainInner.append(playMain, optionsMain);
-  main.append(mainInner);
+  const optionsMain = button(
+    'Options',
+    `${SECONDARY_CSS};font-family:${TITLE_FONT}`,
+    () => {
+      options.sound?.('menu.enter');
+      onSettings();
+    },
+  );
+  // The project page opens in a new tab, so the game stays open behind it.
+  const githubMain = el(
+    'a',
+    `${BUTTON_CSS};${SECONDARY_CSS};font-family:${TITLE_FONT};text-decoration:none`,
+    'GitHub',
+  );
+  githubMain.href = GITHUB_URL;
+  githubMain.target = '_blank';
+  githubMain.rel = 'noopener noreferrer';
+  githubMain.addEventListener('click', () => options.sound?.('menu.enter'));
+  menuBox.append(playMain, optionsMain, githubMain);
+  mainInner.append(wordmark, menuBox);
+  main.append(frost, mainInner);
 
   // Select screen: back arrow, the carousel, and the actions for the selected card.
   const select = el(
     'div',
-    'position:absolute;inset:0;display:none;flex-direction:column;padding:16px;box-sizing:border-box',
+    'position:absolute;inset:0;display:none;flex-direction:column;padding:16px;box-sizing:border-box;background:#111',
   );
   const topBar = el('div', 'display:flex;align-items:center;min-height:48px');
   const back = el(

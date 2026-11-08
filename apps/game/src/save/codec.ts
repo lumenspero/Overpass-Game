@@ -44,7 +44,7 @@ export function saveFileText(bundle: SaveBundle): string {
 export function decodeSaveCode(code: string): unknown {
   const compact = code.replace(/\s+/g, '');
   if (!compact.startsWith(CODE_PREFIX)) {
-    throw new Error('This is not an Overpass_Game save code.');
+    throw new Error('This is not an Overpass save code.');
   }
   try {
     const json = strFromU8(

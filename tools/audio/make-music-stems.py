@@ -2,6 +2,9 @@
 """
 Make the game's music stems from the Freesound music WAVs in docs/sounds/.
 
+The WAVs are not kept in the repo. To remake the stems, download each track from its Freesound page
+(the ids and file names are in apps/game/src/audio/catalog.ts) into docs/sounds/ first.
+
 Each source loop is split into three stems that add back to the original:
   percussion  the transient (vertical) part of the spectrogram
   pad         the sustained part below the crossover

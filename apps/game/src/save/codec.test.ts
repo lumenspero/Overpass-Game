@@ -68,9 +68,7 @@ describe('save codes', () => {
   });
 
   it('refuses text that is not a save code', () => {
-    expect(() => decodeSaveCode('hello')).toThrow(
-      /not an Overpass_Game save code/,
-    );
+    expect(() => decodeSaveCode('hello')).toThrow(/not an Overpass save code/);
   });
 
   it('says so when a code has been cut short', () => {
