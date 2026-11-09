@@ -350,11 +350,11 @@ Done when: a run survives a reload mid-game, and a save exported on one host imp
 - ~~Challenge set with starter roads~~ (dropped by the author on 2026-11-08)
 - [x] Studio rules panel: a Rules section with the starting fence (typed, or moved and resized on the preview), the upgrade pool, and the map's pace (colours, fence growth, first arrival week, arrivals a week, demand pace, starting road tiles). Grid size stays with the frame, palettes with Appearance (moved from M8)
 - [x] Double lots in play: each business arrival rolls once for a double lot at the week's chance. A double lot is legal only with both inlet roads usable and inside the fence; when none fits, the arrival takes a single lot (roll wiring, deferred from M9)
-- [ ] Campaign card descriptions: a short description for each map on its map-select card; the map data has no field for one yet
+- [x] Campaign card descriptions: each campaign map has a short line about the place (`description` in `campaign-maps.ts`), shown small under the best score on its map-select card, locked or not
 - [ ] 300-car demo: retire it or drop its "demo" label, now that houses spawn cars in map play (M13 decision, 300-car check)
 - [ ] Balance pass using fast-forward and recorded seeds, including each map's `unlockTrips` (Pierre, Seattle and Chicago are at 500)
 
-> **Status (in progress):** content, spawning and the unlock chain are in; see `docs/M14-session-delta.md`. Card descriptions, the 300-car demo and the balance pass remain, then Checkpoint F.
+> **Status (in progress):** content, spawning and the unlock chain are in; see `docs/M14-session-delta.md`. The 300-car demo and the balance pass remain, then Checkpoint F.
 
 > **Checkpoint F · Full campaign.** Play through the unlock path; sign off on difficulty curve and each map.
 

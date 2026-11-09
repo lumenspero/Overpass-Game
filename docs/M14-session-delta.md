@@ -1,6 +1,6 @@
 # M14 · Content production: session delta
 
-**Status: in progress.** The campaign content, spawning and unlock chain are in, and the game is being readied for a public repo. The challenge set is dropped. Still open: campaign card descriptions, the 300-car demo's label, the balance pass and Checkpoint F (a full play through the unlock path).
+**Status: in progress.** The campaign content, spawning and unlock chain are in, and the game is being readied for a public repo. The challenge set is dropped. Still open: the 300-car demo's label, the balance pass and Checkpoint F (a full play through the unlock path).
 
 Covers M14 from the M13 close (2026-11-04) through 2026-11-08. Checks run by the author: playtests on Tulsa, Los Angeles and Pierre, which found most of the fixes listed below. Automated checks run for this delta: the sim suite (307 tests) passed after the last sim change; in the game, the game and save suites (18 files, 109 tests), the UI suite (7 files, 45 tests) and the audio suite (7 files, 34 tests) pass; typecheck, ESLint and Prettier are clean on the changed files. A full `pnpm check` and `pnpm build` were not run in the session.
 
@@ -65,6 +65,10 @@ Covers M14 from the M13 close (2026-11-04) through 2026-11-08. Checks run by the
 - **Turning off a motorway:** a car that turns as it leaves drives across the ramp tile, instead of jumping to the edge it leaves by.
 - **Second building:** a double lot's second building arrives the set number of whole weeks after its business; it was a week late.
 
+### Campaign card descriptions
+
+- **Descriptions:** each of the 23 campaign maps has a short line about the place, at most 48 characters, in `campaign-maps.ts`. The card shows it small and dim under the best-score line, on locked maps too. A map added by hand may leave it out.
+
 ### Campaign and unlocks
 
 - **Daisy chain:** the first three maps (Tulsa, Los Angeles, Pierre) are open from the start. Each later map opens when the map before it has a best run of at least that map's `unlockTrips`. Pierre, Seattle and Chicago are set to 500; the rest ramp from 24 to 40.
@@ -121,9 +125,8 @@ See `docs/decisions.md`: the M14 Part 1 and Part 2 sections, and the rows from 2
 
 Finish M14, item by item, as listed in the plan:
 
-1. Campaign card descriptions on the map-select cards.
-2. 300-car demo: retire it or drop its "demo" label.
-3. Balance pass with fast-forward and recorded seeds, including each map's `unlockTrips`.
-4. Checkpoint F: a play through the full unlock path.
+1. 300-car demo: retire it or drop its "demo" label.
+2. Balance pass with fast-forward and recorded seeds, including each map's `unlockTrips`.
+3. Checkpoint F: a play through the full unlock path.
 
 Then M15 · Release: production builds (itch.io and Cloudflare Pages), OSM attribution with every map, contributing notes, the store page, and making the repo public.

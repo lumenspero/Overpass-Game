@@ -14,6 +14,8 @@ import { campaignGates, type CampaignMap } from '../game/campaign-maps.ts';
 export interface MenuRow {
   id: string;
   name: string;
+  /** A short line about the place, shown small on the card, locked or not. Null when the map has none. */
+  description: string | null;
   open: boolean;
   /** Best trips on this map in the campaign, or null before any run on it. */
   best: number | null;
@@ -50,6 +52,7 @@ export function campaignRows(
     return {
       id: m.id,
       name: m.name,
+      description: m.description ?? null,
       open: isOpen,
       best: best[bestKey('campaign', m.id)] ?? null,
       hint,

@@ -197,7 +197,13 @@ export function showMenu(options: MenuOptions): Menu {
       `margin:0;color:${MUTED};font-size:15px`,
       cardSubtitle(row),
     );
-    card.append(canvas, name, sub);
+    // The description is the least important line on the card, so it is small, dim and last.
+    const about = el(
+      'p',
+      `margin:8px 0 0;min-height:32px;color:${MUTED};opacity:0.75;font-size:12px;line-height:16px;text-wrap:balance`,
+      row.description ?? '',
+    );
+    card.append(canvas, name, sub, about);
     card.addEventListener('click', () => {
       if (index !== selected) {
         options.sound?.(index > selected ? 'map.next' : 'map.previous');

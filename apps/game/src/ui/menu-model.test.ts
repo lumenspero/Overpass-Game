@@ -23,6 +23,23 @@ describe('campaignRows', () => {
     expect(rows[0].hint).toBeNull();
   });
 
+  it("passes a map's description to its card, locked or not, and null when it has none", () => {
+    const rows = campaignRows(
+      [
+        { id: 'a', name: 'Alpha', description: 'First town' },
+        { id: 'b', name: 'Beta', description: 'Second town' },
+        { id: 'c', name: 'Gamma' },
+      ],
+      {},
+    );
+    expect(rows.map((r) => r.open)).toEqual([true, false, false]);
+    expect(rows.map((r) => r.description)).toEqual([
+      'First town',
+      'Second town',
+      null,
+    ]);
+  });
+
   it('says what unlocks a locked map, using the live threshold', () => {
     tuning.CAMPAIGN_UNLOCK_TRIPS = 7;
     const rows = campaignRows(MAPS, {});

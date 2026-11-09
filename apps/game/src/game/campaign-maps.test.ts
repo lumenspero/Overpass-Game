@@ -1,7 +1,11 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { CAMPAIGN_MAPS, campaignGates } from './campaign-maps.ts';
+import {
+  CAMPAIGN_MAPS,
+  campaignGates,
+  DESCRIPTION_MAX,
+} from './campaign-maps.ts';
 
 const MAPS_DIR = fileURLToPath(new URL('../../../../maps/', import.meta.url));
 
@@ -11,6 +15,17 @@ describe('CAMPAIGN_MAPS', () => {
     expect(new Set(ids).size).toBe(ids.length);
     for (const id of ids) {
       expect(existsSync(`${MAPS_DIR}${id}.map.json`), id).toBe(true);
+    }
+  });
+
+  it('gives every map a short description for its card', () => {
+    for (const m of CAMPAIGN_MAPS) {
+      const text = m.description ?? '';
+      expect(text.trim(), m.id).toBe(text);
+      expect(text.length, m.id).toBeGreaterThan(0);
+      expect(text.length, m.id).toBeLessThanOrEqual(DESCRIPTION_MAX);
+      // A card line, not a sentence.
+      expect(text.endsWith('.'), m.id).toBe(false);
     }
   });
 

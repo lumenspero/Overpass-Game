@@ -54,10 +54,15 @@ The map's id is the slug of its name, such as `denver-colorado-united-states`. E
 Add one line to the end of `CAMPAIGN_MAPS` in `apps/game/src/game/campaign-maps.ts`, after the last campaign map:
 
 ```ts
-{ id: 'denver-colorado-united-states', name: 'Denver', openByDefault: true },
+{
+  id: 'denver-colorado-united-states',
+  name: 'Denver',
+  description: 'The Mile High City, below the Rockies',
+  openByDefault: true,
+},
 ```
 
-`openByDefault: true` opens the map from the start, whatever comes before it. Without it the map would sit behind the campaign's unlock chain.
+`openByDefault: true` opens the map from the start, whatever comes before it. Without it the map would sit behind the campaign's unlock chain. `description` is a short line about the place for the map's card, at most 48 characters with no full stop; the tests ask for one on every listed map.
 
 ### 3. Check and build
 
