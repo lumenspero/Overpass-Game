@@ -67,8 +67,9 @@ Covers M14 from the M13 close (2026-11-04) through 2026-11-08. Checks run by the
 ### Public release preparation (pulled forward from M15)
 
 - **Licence and README:** an MIT `LICENSE` at the root. The README now opens with an unofficial-fan-project notice and a link to the official release, and its License section covers code, art and sound, music, map data, font and trademark.
-- **Repo rules and layout:** `CLAUDE.md` rule 9 allows naming the original to describe and credit it, while still banning its assets and screenshots. The implementation plan moved to `docs/`.
+- **Repo layout:** the implementation plan moved to `docs/`, and `CLAUDE.md` is no longer in the repo.
 - **Removed:** the reference screenshots of the original game (`docs/screenshots`). The original Freesound WAVs (`docs/sounds`) are no longer needed; the audio catalog and the stem script note where to download them.
+- **Music trimmed to one track:** only Synth Pad Chords was ever played, so the other six tracks (about 52 MB) are dropped from the catalog, the credits and the stem script. Its three stems are distinct files, all used: the pad follows the week, the melody traffic, the percussion pins.
 - **History check:** a history check found the screenshots in four commits and `.env.local` in none. The author will strip `docs/screenshots` (and optionally `docs/sounds`) from history with `git filter-repo` before the repo goes public.
 
 ## Tests
@@ -90,7 +91,6 @@ Covers M14 from the M13 close (2026-11-04) through 2026-11-08. Checks run by the
 - **Stripe link:** `STRIPE_DONATE_URL` in `options-screen.ts` is empty, so the donate button is hidden.
 - **Unlock thresholds:** Pierre, Seattle and Chicago are at 500 trips; the balance pass should confirm or change them.
 - **Re-imports:** maps imported before waterway stitching may need re-importing to pick up joined rivers.
-- **Music stems:** each track's three stems look like the same file, judging by byte size; worth checking before release.
 - **Studio rules panel:** grid size, growth, colours, timing and upgrade pool are still not in the Studio.
 - **Mobile layout and device tests:** still deferred from M13.
 

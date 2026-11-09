@@ -220,6 +220,7 @@ export interface MusicTrack {
   readonly source: FreesoundSource;
 }
 
+/** The game's one music track. The menu and every run play it; its stems follow the game. */
 export const MUSIC_TRACKS: readonly MusicTrack[] = [
   {
     folder: 'stems/synth-pad-chords',
@@ -232,85 +233,6 @@ export const MUSIC_TRACKS: readonly MusicTrack[] = [
       creator: 'nnaudio',
       license: 'CC BY 4.0',
       archive: '518198__nnaudio__synth-pad-chords-130bpm-cmin.wav',
-    },
-  },
-  {
-    folder: 'stems/vibey-synth',
-    loops: 9,
-    gainDb: -1.1,
-    source: {
-      kind: 'freesound',
-      freesoundId: 518644,
-      title: 'Vibey Synth 10 - 133bpm - Emin.wav',
-      creator: 'nnaudio',
-      license: 'CC BY 4.0',
-      archive: '518644__nnaudio__vibey-synth-10-133bpm-emin.wav',
-    },
-  },
-  {
-    folder: 'stems/summer-love-keys',
-    loops: 10,
-    gainDb: -0.7,
-    source: {
-      kind: 'freesound',
-      freesoundId: 583356,
-      title: 'Summer Love Tyler "Flower" Synth Keys - 80bpm - C',
-      creator: 'nnaudio',
-      license: 'CC BY 4.0',
-      archive:
-        '583356__nnaudio__summer-love-tyler-flower-synth-keys-80bpm-c.wav',
-    },
-  },
-  {
-    folder: 'stems/lofi-zelda-bells',
-    loops: 8,
-    gainDb: -1.2,
-    source: {
-      kind: 'freesound',
-      freesoundId: 507032,
-      title: 'Lofi Zelda Quest Bells - 120bpm - Gmin.wav',
-      creator: 'nnaudio',
-      license: 'CC BY 4.0',
-      archive: '507032__nnaudio__lofi-zelda-quest-bells-120bpm-gmin.wav',
-    },
-  },
-  {
-    folder: 'stems/lofi-bells-140',
-    loops: 9,
-    gainDb: -2.7,
-    source: {
-      kind: 'freesound',
-      freesoundId: 518189,
-      title: 'Lofi Bells - 140bpm - Amin.wav',
-      creator: 'nnaudio',
-      license: 'CC BY 4.0',
-      archive: '518189__nnaudio__lofi-bells-140bpm-amin.wav',
-    },
-  },
-  {
-    folder: 'stems/uber-smooth-chords',
-    loops: 10,
-    gainDb: 1.6,
-    source: {
-      kind: 'freesound',
-      freesoundId: 518203,
-      title: 'Uber Smooth Chords - 153bpm - Dmin',
-      creator: 'nnaudio',
-      license: 'CC BY 4.0',
-      archive: '518203__nnaudio__uber-smooth-chords-153bpm-dmin.wav',
-    },
-  },
-  {
-    folder: 'stems/lofi-bells-145',
-    loops: 9,
-    gainDb: -2.5,
-    source: {
-      kind: 'freesound',
-      freesoundId: 518194,
-      title: 'Lofi Bells - 145bpm - C#min.wav',
-      creator: 'nnaudio',
-      license: 'CC BY 4.0',
-      archive: '518194__nnaudio__lofi-bells-145bpm-cmin.wav',
     },
   },
 ];

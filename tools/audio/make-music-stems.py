@@ -42,12 +42,6 @@ STEMS = ["pad", "melody", "percussion"]
 # (source archive without .wav, output folder, loop count, gain dB) as in the game's catalog
 TRACKS = [
     ("518198__nnaudio__synth-pad-chords-130bpm-cmin", "synth-pad-chords", 9, -1.3),
-    ("518644__nnaudio__vibey-synth-10-133bpm-emin", "vibey-synth", 9, -1.1),
-    ("583356__nnaudio__summer-love-tyler-flower-synth-keys-80bpm-c", "summer-love-keys", 10, -0.7),
-    ("507032__nnaudio__lofi-zelda-quest-bells-120bpm-gmin", "lofi-zelda-bells", 8, -1.2),
-    ("518189__nnaudio__lofi-bells-140bpm-amin", "lofi-bells-140", 9, -2.7),
-    ("518203__nnaudio__uber-smooth-chords-153bpm-dmin", "uber-smooth-chords", 10, 1.6),
-    ("518194__nnaudio__lofi-bells-145bpm-cmin", "lofi-bells-145", 9, -2.5),
 ]
 
 

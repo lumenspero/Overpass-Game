@@ -75,7 +75,7 @@ Add one line to the end of `CAMPAIGN_MAPS` in `apps/game/src/game/campaign-maps.
 
 - **Code:** MIT. See [`LICENSE`](LICENSE).
 - **Our art and sound effects:** CC BY 4.0. Every sound effect is a tone made by `tools/audio/generate-tones.py`.
-- **Music:** loops from [Freesound](https://freesound.org), each under its own licence (CC BY 4.0), changed into the game's stems. Each one is credited, with its creator, licence and link, in the game under Options, Credits, and in `apps/game/src/audio/catalog.ts`.
+- **Music:** one loop from [Freesound](https://freesound.org), Synth Pad Chords by nnaudio, under CC BY 4.0, changed into the game's stems. It is credited, with its creator, licence and link, in the game under Options, Credits, and in `apps/game/src/audio/catalog.ts`.
 - **Map data:** © OpenStreetMap contributors, under the [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/). Each compiled map carries its attribution line.
 - **Font:** Space Grotesk, loaded from Google Fonts, under the SIL Open Font License.
 - **Mini Motorways** is a trademark of Dinosaur Polo Club, named here only to describe and credit the original game.

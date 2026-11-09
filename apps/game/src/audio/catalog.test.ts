@@ -79,9 +79,9 @@ describe('sound catalog', () => {
   it('credits each Freesound source once and leaves out generated tones', () => {
     const lines = soundCreditLines();
     expect(lines.length).toBe(new Set(lines).size);
-    // The seven music tracks, then the note that they are changed: every effect is generated.
-    expect(lines.length).toBe(8);
-    expect(lines[7]).toBe(MUSIC_CREDIT_NOTE);
+    // The one music track, then the note that it is changed: every effect is generated.
+    expect(lines.length).toBe(2);
+    expect(lines[1]).toBe(MUSIC_CREDIT_NOTE);
     expect(lines.some((line) => line.includes('nnaudio, CC BY 4.0'))).toBe(
       true,
     );
