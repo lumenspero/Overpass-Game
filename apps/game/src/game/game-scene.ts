@@ -17,7 +17,7 @@ import {
   createSim,
   isOpenTile,
   fenceEdge,
-  fenceSteps,
+  fenceStepsOf,
   placeStartingPair,
   type FenceEdge,
   placeBuilding,
@@ -1990,7 +1990,7 @@ export class GameScene extends Phaser.Scene {
    * grid mask are redrawn whenever it moves. Roads and buildings change only when a step finishes.
    */
   private syncFence(): void {
-    const steps = fenceSteps(this.sim.tick);
+    const steps = fenceStepsOf(this.sim, this.sim.tick);
     if (steps !== this.shownSteps) {
       // The first sync sets the count when the game starts; only a later rise is growth.
       if (this.shownSteps >= 0 && steps > this.shownSteps) {

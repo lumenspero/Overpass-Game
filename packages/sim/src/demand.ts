@@ -2,6 +2,7 @@ import { tuning, demandIntervalFor } from './config.ts';
 import { isOpenTile } from './expansion.ts';
 import type { Demand } from './buildings.ts';
 import { emitEvent } from './events.ts';
+import { paceOf } from './rules.ts';
 import type { SimState } from './sim.ts';
 
 /**
@@ -23,20 +24,21 @@ import type { SimState } from './sim.ts';
  * OVERFLOW_PIN_LIMIT pins with no car on the way gets no more: the request starts its overflow pin.
  */
 export function generateDemand(state: SimState): void {
+  const pace = paceOf(state.rules).demandPace;
   for (const b of state.buildings) {
     if (b.kind !== 'destination' || !isOpenTile(state, b.tile)) continue;
     const demand = state.demand[b.id];
     if (!demand) continue;
     demand.cooldown = Math.max(0, demand.cooldown - 1);
     if (demand.cooldown > 0) continue;
-    demand.cooldown = cooldownFor(demand, b.shape);
+    demand.cooldown = cooldownFor(demand, b.shape, pace);
     // Only pins still waiting for a car count toward the limit: a pin with a car on its way is
     // being met, so houses keep sending until they run out of cars.
     if (unclaimedPins(state, b.id) < tuning.OVERFLOW_PIN_LIMIT) {
       demand.pins += 1;
       emitEvent({ kind: 'pin-appeared', destination: b.id });
     } else {
-      startOverflow(demand, b.id, b.shape);
+      startOverflow(demand, b.id, b.shape, pace);
     }
   }
 }
@@ -45,9 +47,11 @@ export function generateDemand(state: SimState): void {
 function fillPerTick(
   demand: Demand,
   shape: 'square' | 'round' | undefined,
+  pace: number,
 ): number {
   return (
-    1 / (Math.max(1, tuning.OVERFLOW_FILL_PINS) * cooldownFor(demand, shape))
+    1 /
+    (Math.max(1, tuning.OVERFLOW_FILL_PINS) * cooldownFor(demand, shape, pace))
   );
 }
 
@@ -56,9 +60,10 @@ function startOverflow(
   demand: Demand,
   destination: number,
   shape: 'square' | 'round' | undefined,
+  pace: number,
 ): void {
   if ((demand.overflowFill ?? 0) > 0) return;
-  demand.overflowFill = fillPerTick(demand, shape);
+  demand.overflowFill = fillPerTick(demand, shape, pace);
   emitEvent({ kind: 'overflow-started', destination });
 }
 
@@ -101,19 +106,25 @@ export function addDemandPin(state: SimState, destination: number): boolean {
   if (unclaimedPins(state, destination) < tuning.OVERFLOW_PIN_LIMIT) {
     demand.pins += 1;
   } else
-    startOverflow(demand, destination, state.buildings[destination]?.shape);
+    startOverflow(
+      demand,
+      destination,
+      state.buildings[destination]?.shape,
+      paceOf(state.rules).demandPace,
+    );
   return true;
 }
 
 /** Fills each overflowing destination's pin, one tick's worth. Ends the game when one is full. */
 export function updateOverflow(state: SimState): void {
+  const pace = paceOf(state.rules).demandPace;
   for (const b of state.buildings) {
     if (b.kind !== 'destination' || !isOpenTile(state, b.tile)) continue;
     const demand = state.demand[b.id];
     if (!demand) continue;
     const fill = demand.overflowFill ?? 0;
     if (fill <= 0) continue;
-    const rate = fillPerTick(demand, b.shape);
+    const rate = fillPerTick(demand, b.shape, pace);
     const now = Math.min(1, fill + rate);
     demand.overflowFill = now >= 1 - 1e-9 ? 1 : now;
     // Once a second while the pin fills, so the sound can tick without a call every tick.
@@ -136,12 +147,16 @@ export function demandRate(demand: Demand): number {
   return 1 + demand.growth * tuning.DEMAND_GROWTH_STEP;
 }
 
-/** Ticks between one pin and the next at this destination's rate and shape. */
+/** Ticks between one pin and the next at this destination's rate and shape, and the run's demand pace. */
 function cooldownFor(
   demand: Demand,
   shape: 'square' | 'round' | undefined,
+  pace: number,
 ): number {
-  return Math.max(1, Math.round(demandIntervalFor(shape) / demandRate(demand)));
+  return Math.max(
+    1,
+    Math.round(demandIntervalFor(shape) / (demandRate(demand) * pace)),
+  );
 }
 
 /** Every destination grows by one step. Called once a week. */

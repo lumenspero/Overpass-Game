@@ -17,13 +17,11 @@ import {
   type Pt,
   type Target,
 } from './hit.ts';
-import {
-  buildPainted,
-  PAINT_SPECS,
-  type PaintTool,
-  type Tool,
-} from './paint.ts';
+import { buildPainted, PAINT_SPECS, isPaintTool, type Tool } from './paint.ts';
 import * as ops from './ops.ts';
+import * as rules from './rules.ts';
+import type { FenceGrip, FenceRect } from './rules.ts';
+import type { PaceKey } from '@overpass-game/map-schema';
 import { smoothSource } from '../import/smooth.ts';
 import { insideRect, lengthOf, type Rect } from './select.ts';
 import type { EditableLayer } from './ops.ts';
@@ -67,6 +65,12 @@ type Drag =
       readonly centre: Pt;
       readonly startSize: number;
       readonly startDist: number;
+    }
+  | {
+      readonly kind: 'fence';
+      readonly grip: FenceGrip;
+      readonly start: FenceRect;
+      readonly from: Pt;
     };
 
 const sameTarget = (a: Target, b: Target): boolean =>
@@ -132,6 +136,18 @@ function applyDrag(
         Math.round(((drag.startSize * dist) / drag.startDist) * 10) / 10;
       return ops.setLabel(base, drag.id, { size });
     }
+    case 'fence':
+      return rules.setFence(
+        base,
+        rules.dragFence(
+          drag.start,
+          drag.grip,
+          drag.from,
+          at,
+          base.grid.cols,
+          base.grid.rows,
+        ),
+      );
   }
 }
 
@@ -250,11 +266,7 @@ export class Editor {
   /** True when the current tool makes a closed shape, which a click on its first point closes. */
   get closesOnFirst(): boolean {
     const tool = this.toolState;
-    return (
-      tool !== 'select' &&
-      tool !== 'label' &&
-      PAINT_SPECS[tool].form === 'closed'
-    );
+    return isPaintTool(tool) && PAINT_SPECS[tool].form === 'closed';
   }
 
   get undoable(): boolean {
@@ -504,6 +516,42 @@ export class Editor {
     this.apply((m) => ops.setAllowedOffers(m, options));
   }
 
+  /** The part of the starting fence at a point, for the fence tool: an edge or corner, inside, or null. */
+  pickFence(at: Pt, tol: number): FenceGrip | null {
+    return rules.pickFence(this.timeline.present.grid.fence, at, tol);
+  }
+
+  /** Starts moving or resizing the starting fence. The drag is one undoable edit when it ends. */
+  beginFenceDrag(grip: FenceGrip, at: Pt): void {
+    const base = this.timeline.present;
+    this.gesture = {
+      drag: { kind: 'fence', grip, start: { ...base.grid.fence }, from: at },
+      base,
+    };
+    this.draft = null;
+    this.emit();
+  }
+
+  /** Sets the starting fence from typed values, kept inside the grid. Undoable. */
+  setFence(fence: FenceRect): void {
+    this.apply((m) => rules.setFence(m, fence));
+  }
+
+  /** Centres the starting fence in the grid, keeping its size. Undoable. */
+  centreFence(): void {
+    this.apply((m) => rules.centreFence(m));
+  }
+
+  /** Sets one pace setting, or returns it to the game default with `undefined`. Undoable. */
+  setPace(key: PaceKey, value: number | undefined): void {
+    this.apply((m) => rules.setPace(m, key, value));
+  }
+
+  /** Returns every pace setting to the game default. Undoable. */
+  clearPace(): void {
+    this.apply((m) => rules.clearPace(m));
+  }
+
   /** Removes every label, for pruning an import in one step. Undo restores them. */
   clearLabels(): void {
     this.apply((m) => ops.clearLabels(m));
@@ -731,7 +779,7 @@ export class Editor {
 
   /** Adds a point to the shape being painted, snapped to the grid when snapping is on. */
   addPaintPoint(at: Pt): void {
-    if (this.toolState === 'select' || this.toolState === 'label') return;
+    if (!isPaintTool(this.toolState)) return;
     this.pending = [...this.pending, ops.snapPoint(at, this.step)];
     this.emit();
   }
@@ -739,15 +787,10 @@ export class Editor {
   /** Makes the painted shape from the pending points and selects it; too few points make nothing. */
   finishPaint(): void {
     const tool = this.toolState;
-    if (tool === 'select' || tool === 'label') return;
-    const built = buildPainted(
-      this.timeline.present,
-      tool as PaintTool,
-      this.pending,
-      {
-        riverWidth: this.river,
-      },
-    );
+    if (!isPaintTool(tool)) return;
+    const built = buildPainted(this.timeline.present, tool, this.pending, {
+      riverWidth: this.river,
+    });
     this.pending = [];
     if (built) {
       this.apply((m) => ops.addItem(m, built.layer, built.item));

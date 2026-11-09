@@ -14,7 +14,7 @@ export const DEFAULT_TUNING = {
   /** Upper bound on ticks run for one frame, so a long stall can't freeze the game. */
   MAX_CATCHUP_TICKS: 15, // approximated
   /** Road tiles the player can place before the first weekly reward. */
-  ROAD_BUDGET_START: 120, // approximated
+  ROAD_BUDGET_START: 30, // approximated
   /** Number of building colours. A house pairs with destinations of its own colour. */
   BUILDING_COLOR_COUNT: 4, // approximated
   /** How far a car travels along its route per second, in tiles. */

@@ -348,13 +348,13 @@ Done when: a run survives a reload mid-game, and a save exported on one host imp
 - [x] Business arrivals and house supply, placed by the fence and reach rules (spawn zones removed)
 - [x] Houses connect through a free, permanent stub that the player can drag to any of their 8 neighbours (pulled forward from M14 on 2026-11-03; see the Buildings section of the spec)
 - ~~Challenge set with starter roads~~ (dropped by the author on 2026-11-08)
-- [ ] Studio rules panel: grid size, growth schedule, colours and timing, upgrade pool (moved from M8)
+- [x] Studio rules panel: a Rules section with the starting fence (typed, or moved and resized on the preview), the upgrade pool, and the map's pace (colours, fence growth, first arrival week, arrivals a week, demand pace, starting road tiles). Grid size stays with the frame, palettes with Appearance (moved from M8)
 - [ ] Double lots in play: business arrivals place with `lot: 'roll'`, so a new business gets a double lot at the week's chance. Today every arrival gets a single lot (roll wiring, deferred from M9)
 - [ ] Campaign card descriptions: a short description for each map on its map-select card; the map data has no field for one yet
 - [ ] 300-car demo: retire it or drop its "demo" label, now that houses spawn cars in map play (M13 decision, 300-car check)
 - [ ] Balance pass using fast-forward and recorded seeds, including each map's `unlockTrips` (Pierre, Seattle and Chicago are at 500)
 
-> **Status (in progress):** content, spawning and the unlock chain are in; see `docs/M14-session-delta.md`. The rules panel, double lots in play, card descriptions, the 300-car demo and the balance pass remain, then Checkpoint F.
+> **Status (in progress):** content, spawning and the unlock chain are in; see `docs/M14-session-delta.md`. Double lots in play, card descriptions, the 300-car demo and the balance pass remain, then Checkpoint F.
 
 > **Checkpoint F · Full campaign.** Play through the unlock path; sign off on difficulty curve and each map.
 

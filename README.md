@@ -41,7 +41,8 @@ Your own maps are playable as soon as they are added, with no unlock needed. The
 3. Click **Draw frame** and drag the area to map. Turn it with the slider if you need to. Frames are 16 to 192 tiles a side and must sit inside the US box shown on the frame panel.
 4. Click **Import OpenStreetMap data**. Water, parks, mountains and roads come in as shapes.
 5. Optional: click **Smooth shapes** to tidy outlines, and use the mountain slider to set how high a mountain must be to count. Lock or delete any shape you don't want.
-6. Click **Play this map** to export it and open the game on it straight away, or **Export to maps/** to export without opening the game.
+6. Optional: in **Rules**, move or resize the starting fence (type its values, or use **Edit on preview** and drag it), choose the upgrade pool, and set the map's pace. Pace fields left blank use the game's defaults.
+7. Click **Play this map** to export it and open the game on it straight away, or **Export to maps/** to export without opening the game.
 
 The map's id is the slug of its name, such as `denver-colorado-united-states`. Export writes two files into `maps/`:
 

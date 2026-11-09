@@ -15,6 +15,18 @@ import {
   reservedLotTiles,
 } from './lots.ts';
 import { nextFloat } from './rng.ts';
+import { paceOf } from './rules.ts';
+
+/** Ticks until a new business's first pin, at the run's demand pace. */
+function firstCooldown(
+  state: SimState,
+  shape: 'square' | 'round' | undefined,
+): number {
+  return Math.max(
+    1,
+    Math.round(demandIntervalFor(shape) / paceOf(state.rules).demandPace),
+  );
+}
 
 /**
  * Buildings: houses (where cars start and end) and destinations (where they go).
@@ -317,7 +329,7 @@ export function placeBuilding(
   } else {
     state.demand[id] = {
       pins: 0,
-      cooldown: demandIntervalFor(shape),
+      cooldown: firstCooldown(state, shape),
       overflowFill: 0,
       growth: 0,
     };
@@ -376,7 +388,7 @@ export function addSecondBuildings(state: SimState): void {
     for (const t of far.footprint) state.buildingAt[t] = id;
     state.demand[id] = {
       pins: 0,
-      cooldown: demandIntervalFor(near.shape),
+      cooldown: firstCooldown(state, near.shape),
       overflowFill: 0,
       growth: state.demand[near.id]?.growth ?? 0,
     };

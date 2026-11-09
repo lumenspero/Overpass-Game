@@ -1,5 +1,7 @@
 import { EDIT } from '../config.ts';
 import type { Editor } from './editor.ts';
+import { isPaintTool } from './paint.ts';
+import type { FenceGrip } from './rules.ts';
 import type { Pt } from './hit.ts';
 import { rectFrom, type Rect } from './select.ts';
 
@@ -21,6 +23,19 @@ function isTyping(target: EventTarget | null): boolean {
     ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
   );
 }
+
+/** The pointer shown over each part of the starting fence while the fence tool is on. */
+const FENCE_CURSORS: Record<FenceGrip, string> = {
+  move: 'move',
+  n: 'ns-resize',
+  s: 'ns-resize',
+  e: 'ew-resize',
+  w: 'ew-resize',
+  ne: 'nesw-resize',
+  sw: 'nesw-resize',
+  nw: 'nwse-resize',
+  se: 'nwse-resize',
+};
 
 /** A press that moves less than this, in tiles, counts as a click rather than a box. */
 const CLICK_TILES = 0.25;
@@ -97,7 +112,17 @@ export function attachInteraction(
     const found = locate(editor, e);
     if (!found) return;
 
-    if (editor.tool !== 'select' && editor.tool !== 'label') {
+    // Fence tool: a press inside the starting fence moves it; on an edge or corner, resizes it.
+    if (editor.tool === 'fence') {
+      const grip = editor.pickFence(found.loc.point, found.tol);
+      if (!grip) return;
+      editor.beginFenceDrag(grip, found.loc.point);
+      dragging = true;
+      canvas.setPointerCapture(e.pointerId);
+      return;
+    }
+
+    if (isPaintTool(editor.tool)) {
       const first = editor.pendingPoints[0];
       const closes =
         editor.closesOnFirst &&
@@ -155,7 +180,18 @@ export function attachInteraction(
       }
       return;
     }
-    if (!dragging) return;
+    if (!dragging) {
+      // Over the fence, the pointer shows whether a drag would move it or resize it.
+      const editor = getEditor();
+      if (editor?.tool === 'fence' && !spaceHeld) {
+        const loc = surface.locate(e.clientX, e.clientY);
+        const grip = loc
+          ? editor.pickFence(loc.point, EDIT.hitRadiusPx * loc.tilesPerPixel)
+          : null;
+        canvas.style.cursor = grip ? FENCE_CURSORS[grip] : '';
+      }
+      return;
+    }
     const editor = getEditor();
     const loc = surface.locate(e.clientX, e.clientY);
     if (editor && loc) editor.dragTo(loc.point);
@@ -233,7 +269,7 @@ export function attachInteraction(
     if (!editor || isTyping(e.target)) return;
     const mod = e.ctrlKey || e.metaKey;
     const key = e.key.toLowerCase();
-    const painting = editor.tool !== 'select' && editor.tool !== 'label';
+    const painting = isPaintTool(editor.tool);
 
     if (e.key === ' ') {
       e.preventDefault();

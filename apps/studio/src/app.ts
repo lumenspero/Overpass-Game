@@ -36,7 +36,7 @@ import {
   type LabelKind,
   type ThemeMode,
 } from '@overpass-game/render-style';
-import { PAINT_SPECS, PAINT_TOOLS } from './edit/paint.ts';
+import { isPaintTool, PAINT_SPECS, PAINT_TOOLS } from './edit/paint.ts';
 import type { Pt, Target } from './edit/hit.ts';
 import { PreviewCanvas } from './preview/preview-canvas.ts';
 import { searchPlaces, type PlaceCandidate } from './search/nominatim.ts';
@@ -53,9 +53,13 @@ import { listDrafts, removeDraft, saveDraft } from './drafts/store.ts';
  */
 /** Label kinds with the names the Labels panel shows. */
 import {
+  defaultPace,
+  PACE_LIMITS,
+  type PaceKey,
   RESTRICTABLE_OFFERS,
   type RestrictableOffer,
 } from '@overpass-game/map-schema';
+import { paceOverrides, type FenceRect } from './edit/rules.ts';
 
 /** Names for the offer checkboxes. */
 const OFFER_NAMES: Record<RestrictableOffer, string> = {
@@ -65,6 +69,24 @@ const OFFER_NAMES: Record<RestrictableOffer, string> = {
   tunnel: 'Tunnels',
   lights: 'Traffic lights',
 };
+
+/** The starting fence's fields in the Rules section, in tiles. */
+const FENCE_FIELDS: readonly { key: keyof FenceRect; label: string }[] = [
+  { key: 'col', label: 'Left column' },
+  { key: 'row', label: 'Top row' },
+  { key: 'cols', label: 'Width' },
+  { key: 'rows', label: 'Height' },
+];
+
+/** The pace settings in the Rules section, with the names it shows. */
+const PACE_FIELDS: readonly { key: PaceKey; label: string }[] = [
+  { key: 'colours', label: 'Business colours' },
+  { key: 'fenceStepsPerWeek', label: 'Fence growth, steps a week' },
+  { key: 'arrivalStartWeek', label: 'First business arrives, week' },
+  { key: 'arrivalsPerWeek', label: 'Businesses a week' },
+  { key: 'demandPace', label: 'Demand pace (×)' },
+  { key: 'startRoads', label: 'Starting road tiles' },
+];
 
 const LABEL_KIND_OPTIONS: readonly [LabelKind, string][] = [
   ['park', 'Park'],
@@ -329,7 +351,7 @@ export function App(): VNode {
   const riverWidth = editor.current?.riverWidth ?? IMPORT.riverWidthDefault;
   useEffect(() => {
     preview.current?.setPending(
-      tool === 'select' || tool === 'label' ? null : tool,
+      isPaintTool(tool) ? tool : null,
       pendingPoints,
       riverWidth,
     );
@@ -341,6 +363,12 @@ export function App(): VNode {
   const allowedOffers = editor.current
     ? allowedOffersOf(editor.current.map)
     : [...RESTRICTABLE_OFFERS];
+  const fence = editor.current?.map.grid.fence ?? null;
+  const pace = editor.current ? paceOverrides(editor.current.map) : {};
+  const paceDefaults = defaultPace();
+  useEffect(() => {
+    preview.current?.setFenceEditing(tool === 'fence');
+  }, [tool]);
   useEffect(() => {
     preview.current?.setPalette(resolvePalette(paletteId, themeMode, waterId));
   }, [paletteId, waterId, themeMode]);
@@ -981,40 +1009,153 @@ export function App(): VNode {
                   ),
                 ),
               ),
-              el(
-                'fieldset',
-                { class: 'offers' },
-                el(
-                  'legend',
-                  null,
-                  'Allowed offers (road tiles are always allowed)',
-                ),
-                RESTRICTABLE_OFFERS.map((id) => {
-                  const on = allowedOffers.includes(id);
-                  return el(
-                    'label',
-                    { key: id },
-                    el('input', {
-                      type: 'checkbox',
-                      checked: on,
-                      // The last option stays on, so the player always has a choice.
-                      disabled: on && allowedOffers.length === 1,
-                      onChange: (e: Event) => {
-                        const checked = (e.currentTarget as HTMLInputElement)
-                          .checked;
-                        const next = checked
-                          ? [...allowedOffers, id]
-                          : allowedOffers.filter((x) => x !== id);
-                        editor.current?.setAllowedOffers(next);
-                      },
-                    }),
-                    ' ' + OFFER_NAMES[id],
-                  );
-                }),
-              ),
             )
           : null,
       ),
+      imported && fence
+        ? el(
+            'section',
+            { class: 'rules' },
+            el('h2', null, 'Rules'),
+            el('h3', null, 'Starting fence (tiles)'),
+            el(
+              'div',
+              { class: 'rule-fields' },
+              FENCE_FIELDS.map(({ key, label }) =>
+                el(
+                  'label',
+                  { key },
+                  label,
+                  el('input', {
+                    type: 'number',
+                    min: key === 'cols' || key === 'rows' ? 1 : 0,
+                    step: 1,
+                    value: fence[key],
+                    onChange: (e: Event) => {
+                      const input = e.currentTarget as HTMLInputElement;
+                      const value = Number(input.value);
+                      if (Number.isFinite(value) && input.value.trim() !== '')
+                        editor.current?.setFence({ ...fence, [key]: value });
+                      // A value kept inside the grid shows as kept.
+                      const now = editor.current?.map.grid.fence;
+                      if (now) input.value = String(now[key]);
+                    },
+                  }),
+                ),
+              ),
+            ),
+            el(
+              'div',
+              { class: 'tool-grid' },
+              el(
+                'button',
+                {
+                  type: 'button',
+                  class: tool === 'fence' ? 'toggle on' : 'toggle',
+                  'aria-pressed': tool === 'fence' ? 'true' : 'false',
+                  onClick: () =>
+                    editor.current?.setTool(
+                      tool === 'fence' ? 'select' : 'fence',
+                    ),
+                },
+                'Edit on preview',
+              ),
+              el(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () => editor.current?.centreFence(),
+                },
+                'Centre',
+              ),
+            ),
+            tool === 'fence'
+              ? el(
+                  'p',
+                  { class: 'frame-status' },
+                  'Fence: drag inside the fence to move it, or drag an edge or corner to resize it. Ctrl+Z undoes.',
+                )
+              : null,
+            el(
+              'fieldset',
+              { class: 'offers' },
+              el(
+                'legend',
+                null,
+                'Allowed offers (road tiles are always allowed)',
+              ),
+              RESTRICTABLE_OFFERS.map((id) => {
+                const on = allowedOffers.includes(id);
+                return el(
+                  'label',
+                  { key: id },
+                  el('input', {
+                    type: 'checkbox',
+                    checked: on,
+                    // The last option stays on, so the player always has a choice.
+                    disabled: on && allowedOffers.length === 1,
+                    onChange: (e: Event) => {
+                      const checked = (e.currentTarget as HTMLInputElement)
+                        .checked;
+                      const next = checked
+                        ? [...allowedOffers, id]
+                        : allowedOffers.filter((x) => x !== id);
+                      editor.current?.setAllowedOffers(next);
+                    },
+                  }),
+                  ' ' + OFFER_NAMES[id],
+                );
+              }),
+            ),
+            el(
+              'fieldset',
+              { class: 'pace' },
+              el('legend', null, 'Pace (blank uses the game default)'),
+              el(
+                'div',
+                { class: 'rule-fields' },
+                PACE_FIELDS.map(({ key, label }) => {
+                  const { min, max, integer } = PACE_LIMITS[key];
+                  return el(
+                    'label',
+                    { key },
+                    label,
+                    el('input', {
+                      type: 'number',
+                      min,
+                      max,
+                      step: integer ? 1 : 0.05,
+                      placeholder: String(paceDefaults[key]),
+                      value: pace[key] ?? '',
+                      onChange: (e: Event) => {
+                        const input = e.currentTarget as HTMLInputElement;
+                        const raw = input.value.trim();
+                        editor.current?.setPace(
+                          key,
+                          raw === '' ? undefined : Number(raw),
+                        );
+                        // A value kept inside its range shows as kept.
+                        const now = editor.current
+                          ? paceOverrides(editor.current.map)[key]
+                          : undefined;
+                        input.value = now === undefined ? '' : String(now);
+                      },
+                    }),
+                  );
+                }),
+              ),
+              el(
+                'button',
+                {
+                  type: 'button',
+                  disabled: Object.keys(pace).length === 0,
+                  onClick: () => editor.current?.clearPace(),
+                },
+                'Reset pace to defaults',
+              ),
+            ),
+          )
+        : null,
       imported
         ? el(
             'section',
@@ -1087,7 +1228,7 @@ export function App(): VNode {
                   'Label: click to place a label of the chosen kind. Drag a label to move it, or its bottom-right corner to resize it. Delete removes the selected label.',
                 )
               : null,
-            tool !== 'select' && tool !== 'label'
+            isPaintTool(tool)
               ? el(
                   'p',
                   { class: 'frame-status', 'data-testid': 'paint-status' },

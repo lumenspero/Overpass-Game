@@ -189,3 +189,43 @@ button[aria-pressed='true'] {
   flex: 1 1 100%;
   font-size: 0.9em;
 }
+
+/* Rules: the starting fence and the map's pace. */
+.rules {
+  display: grid;
+  gap: 8px;
+}
+
+.rules h3 {
+  margin: 0;
+  font-size: 0.9em;
+}
+
+.rule-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.rule-fields label {
+  display: grid;
+  gap: 2px;
+  font-size: 0.9em;
+}
+
+.rule-fields input[type='number'] {
+  font: inherit;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #3a4048;
+  background: #101214;
+  color: inherit;
+}
+
+.rules fieldset {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}

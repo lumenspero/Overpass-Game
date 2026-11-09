@@ -1,3 +1,4 @@
+import { DEFAULT_TUNING, tuning } from './config.ts';
 import type { SimState } from './sim.ts';
 import { OFFER_IDS, type OfferId } from './upgrades.ts';
 
@@ -19,8 +20,86 @@ export const RESTRICTABLE_OFFERS = [
 
 export type RestrictableOffer = (typeof RESTRICTABLE_OFFERS)[number];
 
+/**
+ * A map's pace: optional overrides of a few game-wide numbers, set per map in the Studio's Rules
+ * section. A setting left out uses the game's default, so a map without the rule plays as before.
+ */
+export interface PaceRule {
+  kind: 'pace';
+  /** Business colours in play, counted from the first. */
+  colours?: number;
+  /** Fence growth steps a week. */
+  fenceStepsPerWeek?: number;
+  /** The week businesses start to arrive. */
+  arrivalStartWeek?: number;
+  /** Businesses that arrive each week, before the bonus weeks. */
+  arrivalsPerWeek?: number;
+  /** Demand speed: 2 draws pins twice as often, 0.5 half as often. */
+  demandPace?: number;
+  /** Road tiles the run starts with. */
+  startRoads?: number;
+}
+
+export type PaceKey = Exclude<keyof PaceRule, 'kind'>;
+
+export const PACE_KEYS = [
+  'colours',
+  'fenceStepsPerWeek',
+  'arrivalStartWeek',
+  'arrivalsPerWeek',
+  'demandPace',
+  'startRoads',
+] as const satisfies readonly PaceKey[];
+
+/** The range each pace setting may take. Values outside it are clamped when a run reads them. */
+export const PACE_LIMITS: Readonly<
+  Record<PaceKey, { min: number; max: number; integer: boolean }>
+> = {
+  colours: { min: 1, max: DEFAULT_TUNING.BUILDING_COLOR_COUNT, integer: true },
+  fenceStepsPerWeek: { min: 0, max: 6, integer: true },
+  arrivalStartWeek: { min: 1, max: 30, integer: true },
+  arrivalsPerWeek: { min: 0, max: 4, integer: true },
+  demandPace: { min: 0.25, max: 4, integer: false },
+  startRoads: { min: 0, max: 500, integer: true },
+};
+
+export type Pace = Record<PaceKey, number>;
+
+/** The game's own value for each pace setting. Read from `tuning` each call, so the debug panel applies. */
+export function defaultPace(): Pace {
+  return {
+    colours: tuning.BUILDING_COLOR_COUNT,
+    fenceStepsPerWeek: tuning.FENCE_STEPS_PER_WEEK,
+    arrivalStartWeek: tuning.BUSINESS_ARRIVAL_START_WEEK,
+    arrivalsPerWeek: tuning.BUSINESS_ARRIVALS_PER_WEEK,
+    demandPace: 1,
+    startRoads: tuning.ROAD_BUDGET_START,
+  };
+}
+
+/** A run's pace: the map's overrides over the defaults, each kept inside its range. */
+export function paceOf(rules: readonly MapRule[]): Pace {
+  const out = defaultPace();
+  const rule = rules.find((r): r is PaceRule => r.kind === 'pace');
+  if (rule) {
+    for (const key of PACE_KEYS) {
+      const value = rule[key];
+      if (typeof value !== 'number' || !Number.isFinite(value)) continue;
+      const { min, max, integer } = PACE_LIMITS[key];
+      out[key] = Math.min(
+        max,
+        Math.max(min, integer ? Math.round(value) : value),
+      );
+    }
+  }
+  // Colours can't pass the game's own count, which buildings are checked against.
+  out.colours = Math.min(out.colours, tuning.BUILDING_COLOR_COUNT);
+  return out;
+}
+
 export type MapRule =
   | { kind: 'allowedOffers'; options: RestrictableOffer[] }
+  | PaceRule
   // Sim only, not in the map format: no businesses arrive and no houses are topped up. For scripted
   // demos, which bring their own buildings.
   | { kind: 'noSpawns' };

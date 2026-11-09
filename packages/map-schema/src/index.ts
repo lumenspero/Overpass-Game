@@ -1,8 +1,18 @@
 import { z } from 'zod';
-import { RESTRICTABLE_OFFERS, Terrain } from '@overpass-game/sim';
+import {
+  PACE_LIMITS,
+  type PaceKey,
+  RESTRICTABLE_OFFERS,
+  Terrain,
+} from '@overpass-game/sim';
 import { parseWith } from './errors.ts';
 
 export {
+  defaultPace,
+  PACE_KEYS,
+  PACE_LIMITS,
+  type PaceKey,
+  type PaceRule,
   RESTRICTABLE_OFFERS,
   type RestrictableOffer,
 } from '@overpass-game/sim';
@@ -73,10 +83,26 @@ export const PolylineSchema = z.object({
   points: z.array(Vec2).min(2),
 });
 
+/** One pace setting: a number inside its range, a whole number where the setting counts things. */
+function paceField(key: PaceKey) {
+  const { min, max, integer } = PACE_LIMITS[key];
+  return (integer ? z.int() : z.number().finite()).min(min).max(max).optional();
+}
+
 export const MapRuleSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('allowedOffers'),
     options: z.array(z.enum(RESTRICTABLE_OFFERS)).min(1),
+  }),
+  // A map's pace: each setting is optional, and a missing one uses the game's default.
+  z.object({
+    kind: z.literal('pace'),
+    colours: paceField('colours'),
+    fenceStepsPerWeek: paceField('fenceStepsPerWeek'),
+    arrivalStartWeek: paceField('arrivalStartWeek'),
+    arrivalsPerWeek: paceField('arrivalsPerWeek'),
+    demandPace: paceField('demandPace'),
+    startRoads: paceField('startRoads'),
   }),
 ]);
 

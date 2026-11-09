@@ -166,4 +166,35 @@ describe('label colour override', () => {
       MapLabelSchema.parse({ ...base, colour: '#ff0000' }),
     ).toThrow();
   });
+
+  it('accepts a pace rule inside its ranges and rejects one outside them', () => {
+    const map = (rules: unknown[]) => ({
+      schemaVersion: 2,
+      id: 'tiny',
+      name: 'Tiny',
+      cols: 2,
+      rows: 2,
+      terrain: [0, 0, 0, 0],
+      fence: { col: 0, row: 0, cols: 2, rows: 2 },
+      outlines: { water: [], mountains: [], parks: [] },
+      motorwayGuide: [],
+      starterRoads: [],
+      rules,
+      palette: 'default',
+      attribution: 'test',
+      contentHash: '00000000',
+    });
+    const ok = parseCompiledMap(
+      map([{ kind: 'pace', colours: 3, demandPace: 1.5, startRoads: 30 }]),
+    );
+    expect(ok.rules).toEqual([
+      { kind: 'pace', colours: 3, demandPace: 1.5, startRoads: 30 },
+    ]);
+    expect(() =>
+      parseCompiledMap(map([{ kind: 'pace', colours: 9 }])),
+    ).toThrow();
+    expect(() =>
+      parseCompiledMap(map([{ kind: 'pace', arrivalsPerWeek: 1.5 }])),
+    ).toThrow();
+  });
 });

@@ -1,4 +1,5 @@
 import { tuning } from './config.ts';
+import { paceOf } from './rules.ts';
 import type { SimState } from './sim.ts';
 
 /**
@@ -27,13 +28,23 @@ export interface FenceEdge {
   bottom: number;
 }
 
-/** Growth steps finished by a tick. A step is finished once its edge has finished sliding. */
-export function fenceSteps(tick: number): number {
-  if (tuning.FENCE_STEPS_PER_WEEK <= 0) return 0;
+/**
+ * Growth steps finished by a tick. A step is finished once its edge has finished sliding.
+ * `perWeek` is the run's steps a week; it defaults to the game's.
+ */
+export function fenceSteps(
+  tick: number,
+  perWeek: number = tuning.FENCE_STEPS_PER_WEEK,
+): number {
+  if (perWeek <= 0) return 0;
   const done =
-    ((tick - tuning.FENCE_REVEAL_TICKS) * tuning.FENCE_STEPS_PER_WEEK) /
-    tuning.WEEK_TICKS;
+    ((tick - tuning.FENCE_REVEAL_TICKS) * perWeek) / tuning.WEEK_TICKS;
   return Math.max(0, Math.floor(done));
+}
+
+/** Growth steps a run has finished by a tick, at its own pace. */
+export function fenceStepsOf(state: SimState, tick: number): number {
+  return fenceSteps(tick, paceOf(state.rules).fenceStepsPerWeek);
 }
 
 /** The fence after `steps` finished steps, kept inside the grid. */
@@ -58,7 +69,7 @@ function fenceAtSteps(state: SimState, steps: number): Fence {
 
 /** The tile fence at a tick: the tiles the edge has fully passed. */
 export function fenceAt(state: SimState, tick: number): Fence {
-  return fenceAtSteps(state, fenceSteps(tick));
+  return fenceAtSteps(state, fenceStepsOf(state, tick));
 }
 
 // Tile checks run many times a tick, so the fence is worked out once per tick and kept.
@@ -79,12 +90,12 @@ export function currentFence(state: SimState): Fence {
  * has passed them, so the edge leads the tile fence by at most one reveal.
  */
 export function fenceEdge(state: SimState, tick: number): FenceEdge {
-  const done = fenceSteps(tick);
+  const perWeek = paceOf(state.rules).fenceStepsPerWeek;
+  const done = fenceSteps(tick, perWeek);
   let f = 0;
-  if (tuning.FENCE_STEPS_PER_WEEK > 0) {
+  if (perWeek > 0) {
     // The step after the finished ones starts at this tick, and slides over its reveal.
-    const started =
-      ((done + 1) * tuning.WEEK_TICKS) / tuning.FENCE_STEPS_PER_WEEK;
+    const started = ((done + 1) * tuning.WEEK_TICKS) / perWeek;
     f = Math.min(1, Math.max(0, (tick - started) / tuning.FENCE_REVEAL_TICKS));
   }
   const from = fenceAtSteps(state, done);

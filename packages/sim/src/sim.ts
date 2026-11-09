@@ -13,7 +13,7 @@ import { type Car, onRoadsChanged } from './cars.ts';
 import { tuning } from './config.ts';
 import { arriveBusinesses, houseMomentNow, topUpSupply } from './arrivals.ts';
 import { generateDemand, growDestinations, updateOverflow } from './demand.ts';
-import { type MapRule, offerCandidates } from './rules.ts';
+import { type MapRule, offerCandidates, paceOf } from './rules.ts';
 import { type Fence, isOpenTile } from './expansion.ts';
 import { reservedLotTiles } from './lots.ts';
 import { buildRoadGraph, type RoadGraph, updateRoadGraph } from './graph.ts';
@@ -122,7 +122,7 @@ export type PlaceResult =
 export function createSim({
   seed,
   grid,
-  roadBudget = tuning.ROAD_BUDGET_START,
+  roadBudget,
   startFence,
   rules = [],
 }: CreateSimOptions): SimState {
@@ -134,7 +134,7 @@ export function createSim({
     grid,
     roads,
     links,
-    budget: roadBudget,
+    budget: roadBudget ?? paceOf(rules).startRoads,
     graph: buildRoadGraph(roads, links),
     buildings: [],
     buildingAt: new Array<number>(grid.cols * grid.rows).fill(-1),

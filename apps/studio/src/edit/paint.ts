@@ -7,10 +7,16 @@ export type PaintTool =
   'lake' | 'river' | 'mountain' | 'park' | 'guide' | 'road';
 
 /**
- * The tool in use. `select` edits shapes and labels, `label` places and moves text labels, and
- * the paint tools make new shapes. Only the paint tools have a PaintSpec.
+ * The tool in use. `select` edits shapes and labels, `label` places and moves text labels,
+ * `fence` moves and resizes the starting fence, and the paint tools make new shapes. Only the
+ * paint tools have a PaintSpec.
  */
-export type Tool = 'select' | 'label' | PaintTool;
+export type Tool = 'select' | 'label' | 'fence' | PaintTool;
+
+/** True for the tools that make a new shape point by point. */
+export function isPaintTool(tool: Tool): tool is PaintTool {
+  return tool !== 'select' && tool !== 'label' && tool !== 'fence';
+}
 
 /**
  * How a painted shape is stored: a closed region, a stroke with a width (rivers), or an open

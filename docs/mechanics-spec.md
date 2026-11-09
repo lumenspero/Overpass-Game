@@ -34,7 +34,7 @@ Gameplay numbers live in `packages/sim/src/config.ts`; this file documents them.
 
 ### Road budget
 
-- **Starting budget:** 120 road tiles, `ROAD_BUDGET_START`. `approximated`
+- **Starting budget:** 30 road tiles, `ROAD_BUDGET_START` (was 120). A map's pace can set its own. `approximated`
 - **Cost:** each newly placed road tile costs 1. Tiles that already have a road cost nothing.
 - **Refund:** removing a road tile refunds 1.
 - **Placement is all or nothing:** if the whole path doesn't fit in the budget, nothing is placed.
@@ -197,7 +197,8 @@ Elevated links for faster travel between two points on the ground network. `appr
 ### Destination growth and rule hooks
 
 - **Growth:** every week, every destination gains `DEMAND_GROWTH_STEP` (default 0.1) demand, so demand rises as the game goes on. It is automatic: the player has no choice in it, and destinations are not upgraded by hand. `approximated`
-- **Rule hooks:** a map's rules are a list passed to the sim when it starts, so a map changes by data, not code. The one map rule kind is `allowedOffers`, which leaves out upgrade offers the map does not want. Colours are not a map rule: they arrive with businesses (see Business arrival and house supply). `approximated`
+- **Rule hooks:** a map's rules are a list passed to the sim when it starts, so a map changes by data, not code. There are two map rule kinds. `allowedOffers` leaves out upgrade offers the map does not want. `pace` overrides some game-wide numbers for that map; a setting it leaves out uses the game's default. `approximated`
+- **Pace settings:** each is optional and kept inside its range when a run reads it. `colours` (1 to `BUILDING_COLOR_COUNT`): business colours in play, counted from the first. `fenceStepsPerWeek` (0 to 6): replaces `FENCE_STEPS_PER_WEEK`. `arrivalStartWeek` (1 to 30): replaces `BUSINESS_ARRIVAL_START_WEEK`. `arrivalsPerWeek` (0 to 4): replaces `BUSINESS_ARRIVALS_PER_WEEK`, before the bonus weeks. `demandPace` (0.25 to 4): divides every pin interval, so 2 draws pins twice as often, including a new business's first pin and the overflow fill. `startRoads` (0 to 500): replaces `ROAD_BUDGET_START`. Saved runs keep their map's rules, so a resumed run keeps its pace. `approximated`
 
 ### Campaign unlocks
 

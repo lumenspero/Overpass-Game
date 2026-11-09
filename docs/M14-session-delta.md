@@ -1,6 +1,6 @@
 # M14 · Content production: session delta
 
-**Status: in progress.** The campaign content, spawning and unlock chain are in, and the game is being readied for a public repo. The challenge set is dropped. Still open: the Studio rules panel, double lots in play, campaign card descriptions, the 300-car demo's label, the balance pass and Checkpoint F (a full play through the unlock path).
+**Status: in progress.** The campaign content, spawning and unlock chain are in, and the game is being readied for a public repo. The challenge set is dropped. Still open: double lots in play, campaign card descriptions, the 300-car demo's label, the balance pass and Checkpoint F (a full play through the unlock path).
 
 Covers M14 from the M13 close (2026-11-04) through 2026-11-08. Checks run by the author: playtests on Tulsa, Los Angeles and Pierre, which found most of the fixes listed below. Automated checks run for this delta: the sim suite (307 tests) passed after the last sim change; in the game, the game and save suites (18 files, 109 tests), the UI suite (7 files, 45 tests) and the audio suite (7 files, 34 tests) pass; typecheck, ESLint and Prettier are clean on the changed files. A full `pnpm check` and `pnpm build` were not run in the session.
 
@@ -44,6 +44,13 @@ Covers M14 from the M13 close (2026-11-04) through 2026-11-08. Checks run by the
   - the map box covers the whole US, including Alaska and Hawaii.
 - **Performance:** rivers are rounded with a disc at each end only, which removed a per-frame cost that slowed all traffic on Pierre.
 - **Build:** the production build copies every compiled map into the game. The README explains how to add your own map, playable straight away with `openByDefault`.
+
+### Studio rules panel
+
+- **Rules section:** the Studio has a Rules section with the starting fence, the upgrade pool (moved from Appearance) and the map's pace.
+- **Starting fence:** set by typing its left column, top row, width and height, or with "Edit on preview", a fence tool that moves it by dragging inside it and resizes it by dragging an edge or corner. Centre keeps its size. The preview always shows the fence, with the land outside it dimmed.
+- **Pace:** optional per-map overrides, each blank by default (the game's value shows as a hint): business colours, fence steps a week, the first arrival week, businesses a week, demand pace and starting road tiles. They are saved as a `pace` map rule, which the sim reads where it uses each number; saved runs keep it. Existing maps have no pace rule and are unchanged.
+- **Starting roads:** a run starts with 30 road tiles, not 120.
 
 ### Campaign and unlocks
 
@@ -91,7 +98,6 @@ Covers M14 from the M13 close (2026-11-04) through 2026-11-08. Checks run by the
 - **Stripe link:** `STRIPE_DONATE_URL` in `options-screen.ts` is empty, so the donate button is hidden.
 - **Unlock thresholds:** Pierre, Seattle and Chicago are at 500 trips; the balance pass should confirm or change them.
 - **Re-imports:** maps imported before waterway stitching may need re-importing to pick up joined rivers.
-- **Studio rules panel:** grid size, growth, colours, timing and upgrade pool are still not in the Studio.
 - **Mobile layout and device tests:** still deferred from M13.
 
 ## Decisions
@@ -102,11 +108,10 @@ See `docs/decisions.md`: the M14 Part 1 and Part 2 sections, and the rows from 2
 
 Finish M14, item by item, as listed in the plan:
 
-1. Studio rules panel: grid size, growth schedule, colours and timing, upgrade pool.
-2. Double lots in play: business arrivals use `lot: 'roll'`, so double lots appear at the week's chance.
-3. Campaign card descriptions on the map-select cards.
-4. 300-car demo: retire it or drop its "demo" label.
-5. Balance pass with fast-forward and recorded seeds, including each map's `unlockTrips`.
-6. Checkpoint F: a play through the full unlock path.
+1. Double lots in play: business arrivals use `lot: 'roll'`, so double lots appear at the week's chance.
+2. Campaign card descriptions on the map-select cards.
+3. 300-car demo: retire it or drop its "demo" label.
+4. Balance pass with fast-forward and recorded seeds, including each map's `unlockTrips`.
+5. Checkpoint F: a play through the full unlock path.
 
 Then M15 · Release: production builds (itch.io and Cloudflare Pages), OSM attribution with every map, contributing notes, the store page, and making the repo public.

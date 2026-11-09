@@ -55,6 +55,8 @@ export class PreviewCanvas {
   // The palette the map is drawn with: the map's family, in light or dark mode.
   private palette: MapPalette = PALETTE;
   private selectedLabel: string | null = null;
+  // True while the fence tool is on: the starting fence shows its grips.
+  private fenceEditing = false;
   private pending: {
     tool: PaintTool;
     points: readonly Pt[];
@@ -92,6 +94,13 @@ export class PreviewCanvas {
     this.editable = editable;
     this.selection = selection;
     this.shapes = shapes;
+    this.draw();
+  }
+
+  /** Shows the starting fence's grips, for the fence tool. */
+  setFenceEditing(on: boolean): void {
+    if (this.fenceEditing === on) return;
+    this.fenceEditing = on;
     this.draw();
   }
 
@@ -276,6 +285,8 @@ export class PreviewCanvas {
     ctx.lineWidth = 2 / scale;
     ctx.strokeRect(x0, y0, frame.cols, frame.rows);
 
+    if (this.source) this.drawFence(this.source, frame, scale);
+
     if (this.editable && this.source) {
       this.drawEditOverlay(this.source, frame, scale);
       this.drawLabelOverlay(this.source, frame, scale);
@@ -371,6 +382,49 @@ export class PreviewCanvas {
     ctx.fillStyle = hex(labelColour(this.palette, label.colour ?? label.kind));
     ctx.fillText(label.text, 0, 0);
     ctx.restore();
+  }
+
+  /**
+   * The starting fence: the land outside it dimmed, as the game shows it, and a dashed outline.
+   * While the fence tool is on, the outline is gold with grips on its corners and edges.
+   */
+  private drawFence(source: SourceMap, frame: Frame, scale: number): void {
+    const { ctx } = this;
+    const px = (n: number): number => n / scale;
+    const f = source.grid.fence;
+    // Source y runs south; the preview's local y runs north, so the fence's top edge is row + rows.
+    const u0 = f.col - frame.cols / 2;
+    const v0 = frame.rows / 2 - (f.row + f.rows);
+    ctx.beginPath();
+    ctx.rect(-frame.cols / 2, -frame.rows / 2, frame.cols, frame.rows);
+    ctx.rect(u0, v0, f.cols, f.rows);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+    ctx.fill('evenodd');
+
+    ctx.beginPath();
+    ctx.rect(u0, v0, f.cols, f.rows);
+    ctx.setLineDash([px(6), px(4)]);
+    ctx.strokeStyle = this.fenceEditing ? SELECTED_COLOUR : OUTLINE_COLOUR;
+    ctx.globalAlpha = this.fenceEditing ? 1 : 0.7;
+    ctx.lineWidth = px(this.fenceEditing ? 2 : 1.5);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+    if (!this.fenceEditing) return;
+
+    const size = px(EDIT.anchorPx);
+    for (const x of [u0, u0 + f.cols / 2, u0 + f.cols]) {
+      for (const y of [v0, v0 + f.rows / 2, v0 + f.rows]) {
+        if (x === u0 + f.cols / 2 && y === v0 + f.rows / 2) continue;
+        ctx.beginPath();
+        ctx.rect(x - size / 2, y - size / 2, size, size);
+        ctx.fillStyle = SELECTED_COLOUR;
+        ctx.fill();
+        ctx.strokeStyle = ANCHOR_EDGE_COLOUR;
+        ctx.lineWidth = px(1);
+        ctx.stroke();
+      }
+    }
   }
 
   /**

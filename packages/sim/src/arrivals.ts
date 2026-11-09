@@ -1,6 +1,6 @@
 import { tuning } from './config.ts';
 import { nextFloat } from './rng.ts';
-import { spawnsOff } from './rules.ts';
+import { paceOf, spawnsOff } from './rules.ts';
 import type { DestinationShape } from './buildings.ts';
 import type { SimState } from './sim.ts';
 import { placeInFence } from './start.ts';
@@ -20,7 +20,7 @@ import { weekOf } from './score.ts';
 function arrivalsOn(state: SimState): boolean {
   return (
     !spawnsOff(state) &&
-    weekOf(state.tick) >= tuning.BUSINESS_ARRIVAL_START_WEEK
+    weekOf(state.tick) >= paceOf(state.rules).arrivalStartWeek
   );
 }
 
@@ -74,17 +74,23 @@ function houseSites(state: SimState): number[] {
   return sites;
 }
 
-/** The colours a new business may take: every building colour. */
-function allColours(): number[] {
-  return Array.from({ length: tuning.BUILDING_COLOR_COUNT }, (_, c) => c);
+/** The colours a new business may take: the first colours, as many as the run's pace allows. */
+function allColours(state: SimState): number[] {
+  return Array.from({ length: paceOf(state.rules).colours }, (_, c) => c);
 }
 
-/** How many businesses arrive in a week: one, and more every BUSINESS_BONUS_EVERY_WEEKS. */
-export function arrivalsInWeek(week: number): number {
+/**
+ * How many businesses arrive in a week: `perWeek` (the game's by default), and more every
+ * BUSINESS_BONUS_EVERY_WEEKS.
+ */
+export function arrivalsInWeek(
+  week: number,
+  perWeek: number = tuning.BUSINESS_ARRIVALS_PER_WEEK,
+): number {
   const every = tuning.BUSINESS_BONUS_EVERY_WEEKS;
   const bonus =
     every > 0 && week % every === 0 ? tuning.BUSINESS_BONUS_ARRIVALS : 0;
-  return tuning.BUSINESS_ARRIVALS_PER_WEEK + bonus;
+  return perWeek + bonus;
 }
 
 /** Turns one square business, picked at random, round. Returns false when there is none. */
@@ -110,7 +116,8 @@ export function arriveBusinesses(state: SimState): number {
   if (!arrivalsOn(state)) return 0;
   const week = weekOf(state.tick);
   let arrived = 0;
-  for (let i = 0; i < arrivalsInWeek(week); i++) {
+  const perWeek = paceOf(state.rules).arrivalsPerWeek;
+  for (let i = 0; i < arrivalsInWeek(week, perWeek); i++) {
     let shape: DestinationShape = 'square';
     if (week >= tuning.SHAPE_SWITCH_WEEK) {
       const roll = nextFloat(state.rng);
@@ -127,7 +134,7 @@ export function arriveBusinesses(state: SimState): number {
         shape = 'round';
       }
     }
-    const colours = allColours();
+    const colours = allColours(state);
     if (colours.length === 0) break;
     const colour = colours[Math.floor(nextFloat(state.rng) * colours.length)];
     if (colour === undefined) break;
@@ -189,10 +196,7 @@ export function houseMomentNow(state: SimState): boolean {
  * houses. Returns how many houses were added.
  */
 export function topUpSupply(state: SimState, only?: number): number {
-  const colours =
-    only !== undefined
-      ? [only]
-      : Array.from({ length: tuning.BUILDING_COLOR_COUNT }, (_, c) => c);
+  const colours = only !== undefined ? [only] : allColours(state);
   let added = 0;
   for (const colour of colours) {
     let businesses = 0;
