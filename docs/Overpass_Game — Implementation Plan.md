@@ -351,12 +351,12 @@ Done when: a run survives a reload mid-game, and a save exported on one host imp
 - [x] Studio rules panel: a Rules section with the starting fence (typed, or moved and resized on the preview), the upgrade pool, and the map's pace (colours, fence growth, first arrival week, arrivals a week, demand pace, starting road tiles). Grid size stays with the frame, palettes with Appearance (moved from M8)
 - [x] Double lots in play: each business arrival rolls once for a double lot at the week's chance. A double lot is legal only with both inlet roads usable and inside the fence; when none fits, the arrival takes a single lot (roll wiring, deferred from M9)
 - [x] Campaign card descriptions: each campaign map has a short line about the place (`description` in `campaign-maps.ts`), shown small under the best score on its map-select card, locked or not
-- [ ] 300-car demo: retire it or drop its "demo" label, now that houses spawn cars in map play (M13 decision, 300-car check)
-- [ ] Balance pass using fast-forward and recorded seeds, including each map's `unlockTrips` (Pierre, Seattle and Chicago are at 500)
+- [x] 300-car demo: kept as it is, in the debug menu (decided 2026-11-09; it does no harm there)
+- [x] Balance pass: closed on the author's playtests (2026-11-09). The starting fences and the current tuning stay as they are, and each map's `unlockTrips` stays at 500. No fast-forward runs with recorded seeds were made
 
-> **Status (in progress):** content, spawning and the unlock chain are in; see `docs/M14-session-delta.md`. The 300-car demo and the balance pass remain, then Checkpoint F.
+> **Status (done, 2026-11-09):** see `docs/M14-session-delta.md`.
 
-> **Checkpoint F · Full campaign.** Play through the unlock path; sign off on difficulty curve and each map.
+> **Checkpoint F · Full campaign (signed off by the author, 2026-11-09).** Play through the unlock path; sign off on difficulty curve and each map. Signed off on the author's playtests and confidence in the starting fences, without a recorded play through all 23 maps.
 
 **M15 · Release**
 

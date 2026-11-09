@@ -1,6 +1,6 @@
 # M14 · Content production: session delta
 
-**Status: in progress.** The campaign content, spawning and unlock chain are in, and the game is being readied for a public repo. The challenge set is dropped. Still open: the 300-car demo's label, the balance pass and Checkpoint F (a full play through the unlock path).
+**Status: done (2026-11-09).** The campaign content, spawning and unlock chain are in, and the game is being readied for a public repo. The challenge set is dropped. The author closed the balance pass and signed off Checkpoint F on 2026-11-09, on playtests and confidence in the starting fences: the tuning and each map's `unlockTrips` (500) stay as they are, and no recorded-seed runs or full play through all 23 maps were made.
 
 Covers M14 from the M13 close (2026-11-04) through 2026-11-08. Checks run by the author: playtests on Tulsa, Los Angeles and Pierre, which found most of the fixes listed below. Automated checks run for this delta: the sim suite (307 tests) passed after the last sim change; in the game, the game and save suites (18 files, 109 tests), the UI suite (7 files, 45 tests) and the audio suite (7 files, 34 tests) pass; typecheck, ESLint and Prettier are clean on the changed files. A full `pnpm check` and `pnpm build` were not run in the session.
 
@@ -123,10 +123,4 @@ See `docs/decisions.md`: the M14 Part 1 and Part 2 sections, and the rows from 2
 
 ## Next
 
-Finish M14, item by item, as listed in the plan:
-
-1. 300-car demo: retire it or drop its "demo" label.
-2. Balance pass with fast-forward and recorded seeds, including each map's `unlockTrips`.
-3. Checkpoint F: a play through the full unlock path.
-
-Then M15 · Release: production builds (itch.io and Cloudflare Pages), OSM attribution with every map, contributing notes, the store page, and making the repo public.
+M14 is closed. M15 · Release: production builds (itch.io and Cloudflare Pages), OSM attribution with every map, contributing notes, the store page, and making the repo public.
