@@ -30,27 +30,27 @@ Overpass\_Game is a free browser game that recreates Mini Motorways' mechanics a
 
 Phaser 4 renders and handles input; all game rules live in a framework-free TypeScript simulation core that Phaser only draws. Phaser 4 is the current stable line (v4.0.0 shipped April 2026 with a rebuilt WebGL renderer and a near-identical API to Phaser 3). Pin exact versions in `package.json` when M0 starts.
 
-| Need                             | Library                                               | Used in                 | Why                                                                       |
-| -------------------------------- | ----------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------- |
-| Build, dev server                | Vite + TypeScript (strict)                            | All                     | Fast, simple multi-app setup                                              |
-| Workspace                        | pnpm workspaces                                       | All                     | Shared packages without publishing                                        |
-| Rendering, input, audio playback | Phaser 4                                              | Game, Studio canvas     | Familiar to you; scenes, cameras, tweens, pointer and multitouch input    |
-| Menus, HUD, Studio panels        | DOM + Preact (small)                                  | Game UI, Studio         | Crisp text and accessible UI at any screen size, easier than in-canvas UI |
-| Real-world map panel             | MapLibre GL JS                                        | Studio                  | Free vector map, no API key                                               |
-| Base map tiles                   | OpenFreeMap (or a self-hosted Protomaps PMTiles file) | Studio                  | Keyless; Protomaps if you want zero third-party dependency                |
-| Place search                     | Nominatim (Photon as an alternative for type-ahead)   | Studio                  | OSM-based geocoding; respect 1 request/second                             |
-| OSM features                     | Overpass API + `osmtogeojson`                         | Studio                  | Water, coastline, motorways, land use in a bounding box                   |
-| Elevation                        | AWS Terrain Tiles (Terrarium PNG)                     | Studio                  | Free elevation to seed mountains                                          |
-| Geometry                         | Turf.js, `simplify-js`, `polygon-clipping`            | Studio, map compiler    | Clip, simplify and smooth shapes                                          |
-| Curve smoothing                  | Own Catmull-Rom / Chaikin helpers                     | Studio, game renderer   | Rounded rivers and coastlines like the original                           |
-| Seeded randomness                | Own mulberry32/sfc32 (about 20 lines)                 | Sim                     | Deterministic runs, reproducible bugs                                     |
-| Pathfinding                      | Own A\* on the road graph                             | Sim                     | Needs custom congestion costs                                             |
-| Persistence                      | `idb-keyval`                                          | Game, Studio drafts     | Small IndexedDB wrapper                                                   |
-| Save compression                 | `fflate`                                              | Game                    | Small export codes and files                                              |
-| Validation                       | `zod`                                                 | Map schema, saves       | Catch bad map or save files with clear errors                             |
-| Tests                            | Vitest; Playwright for smoke tests                    | All                     | Sim unit tests; one browser boot test per app                             |
-| Offline install                  | `vite-plugin-pwa`                                     | Not used                | Dropped 2026-11-09: no offline play for launch                            |
-| Lint, format                     | ESLint + Prettier                                     | All                     | Keeps AI-written code consistent                                          |
+| Need                             | Library                                               | Used in               | Why                                                                       |
+| -------------------------------- | ----------------------------------------------------- | --------------------- | ------------------------------------------------------------------------- |
+| Build, dev server                | Vite + TypeScript (strict)                            | All                   | Fast, simple multi-app setup                                              |
+| Workspace                        | pnpm workspaces                                       | All                   | Shared packages without publishing                                        |
+| Rendering, input, audio playback | Phaser 4                                              | Game, Studio canvas   | Familiar to you; scenes, cameras, tweens, pointer and multitouch input    |
+| Menus, HUD, Studio panels        | DOM + Preact (small)                                  | Game UI, Studio       | Crisp text and accessible UI at any screen size, easier than in-canvas UI |
+| Real-world map panel             | MapLibre GL JS                                        | Studio                | Free vector map, no API key                                               |
+| Base map tiles                   | OpenFreeMap (or a self-hosted Protomaps PMTiles file) | Studio                | Keyless; Protomaps if you want zero third-party dependency                |
+| Place search                     | Nominatim (Photon as an alternative for type-ahead)   | Studio                | OSM-based geocoding; respect 1 request/second                             |
+| OSM features                     | Overpass API + `osmtogeojson`                         | Studio                | Water, coastline, motorways, land use in a bounding box                   |
+| Elevation                        | AWS Terrain Tiles (Terrarium PNG)                     | Studio                | Free elevation to seed mountains                                          |
+| Geometry                         | Turf.js, `simplify-js`, `polygon-clipping`            | Studio, map compiler  | Clip, simplify and smooth shapes                                          |
+| Curve smoothing                  | Own Catmull-Rom / Chaikin helpers                     | Studio, game renderer | Rounded rivers and coastlines like the original                           |
+| Seeded randomness                | Own mulberry32/sfc32 (about 20 lines)                 | Sim                   | Deterministic runs, reproducible bugs                                     |
+| Pathfinding                      | Own A\* on the road graph                             | Sim                   | Needs custom congestion costs                                             |
+| Persistence                      | `idb-keyval`                                          | Game, Studio drafts   | Small IndexedDB wrapper                                                   |
+| Save compression                 | `fflate`                                              | Game                  | Small export codes and files                                              |
+| Validation                       | `zod`                                                 | Map schema, saves     | Catch bad map or save files with clear errors                             |
+| Tests                            | Vitest; Playwright for smoke tests                    | All                   | Sim unit tests; one browser boot test per app                             |
+| Offline install                  | `vite-plugin-pwa`                                     | Not used              | Dropped 2026-11-09: no offline play for launch                            |
+| Lint, format                     | ESLint + Prettier                                     | All                   | Keeps AI-written code consistent                                          |
 
 **Not chosen, and why.** PixiJS would also work but adds no benefit over Phaser 4 for this game. A physics engine is unnecessary: cars move along road graph edges, not by physics. Leaflet is simpler than MapLibre but its raster tiles look worse beside the stylized preview.
 
