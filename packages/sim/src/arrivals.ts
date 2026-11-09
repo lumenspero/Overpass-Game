@@ -1,7 +1,7 @@
 import { tuning } from './config.ts';
 import { nextFloat } from './rng.ts';
 import { paceOf, spawnsOff } from './rules.ts';
-import type { DestinationShape } from './buildings.ts';
+import { rollLotKind, type DestinationShape } from './buildings.ts';
 import type { SimState } from './sim.ts';
 import { placeInFence } from './start.ts';
 import { currentFence, isOpenTile } from './expansion.ts';
@@ -138,8 +138,14 @@ export function arriveBusinesses(state: SimState): number {
     if (colours.length === 0) break;
     const colour = colours[Math.floor(nextFloat(state.rng) * colours.length)];
     if (colour === undefined) break;
-    if (placeInFence(state, 'destination', colour, undefined, shape) === null)
-      break;
+    // The lot is rolled once for the arrival. A double lot that fits nowhere falls back to a single.
+    const lot = rollLotKind(state);
+    const placed =
+      (lot === 'double' &&
+        placeInFence(state, 'destination', colour, undefined, shape, lot) !==
+          null) ||
+      placeInFence(state, 'destination', colour, undefined, shape) !== null;
+    if (!placed) break;
     // A new business comes with one house of its colour, so its first pins can be met at once.
     placeInFence(state, 'house', colour, houseSites(state));
     arrived += 1;

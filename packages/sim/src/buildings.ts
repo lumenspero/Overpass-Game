@@ -342,7 +342,11 @@ function resolveLotKind(
   state: SimState,
   lot: LotKind | 'roll' | undefined,
 ): LotKind {
-  if (lot !== 'roll') return lot ?? 'single';
+  return lot === 'roll' ? rollLotKind(state) : (lot ?? 'single');
+}
+
+/** Rolls a lot kind at the week's chance of a double lot (spec: Parking lots). Uses one random number. */
+export function rollLotKind(state: SimState): LotKind {
   const week = Math.floor(state.tick / tuning.WEEK_TICKS) + 1;
   const chance =
     week >= tuning.DOUBLE_LOT_WEEK
@@ -359,10 +363,12 @@ export function addSecondBuildings(state: SimState): void {
   for (const near of [...state.buildings]) {
     if (near.kind !== 'destination' || near.lot !== 'double') continue;
     if (near.lotOwner !== undefined || near.wing !== undefined) continue;
-    const due =
-      (near.placedTick ?? 0) +
-      tuning.SECOND_BUILDING_DELAY_WEEKS * tuning.WEEK_TICKS;
-    if (state.tick < due) continue;
+    // Counted in whole weeks: a business arrives a tick into its week, and this runs as a week ends,
+    // so counting ticks would make every lot wait one week more than the delay.
+    const weeksOld =
+      Math.floor(state.tick / tuning.WEEK_TICKS) -
+      Math.floor((near.placedTick ?? 0) / tuning.WEEK_TICKS);
+    if (weeksOld < tuning.SECOND_BUILDING_DELAY_WEEKS) continue;
     if (state.buildings.some((b) => b.lotOwner === near.id)) continue;
     const far = lotAt(state.grid, near.tile, near.entrance, 'double', 'far');
     if (!far) continue;

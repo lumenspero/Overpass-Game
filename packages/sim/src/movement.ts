@@ -76,6 +76,32 @@ function stepLength(state: SimState, a: number, b: number): number {
 }
 
 /**
+ * How far a car that rode a motorway from `from` on to the ramp tile `ramp` drives across it to leave
+ * for `to`, in tiles: from the curve's end on the tile's edge to the edge it leaves by.
+ */
+function offRampRun(
+  state: SimState,
+  from: number,
+  ramp: number,
+  to: number,
+): number {
+  const m = motorwayBetween(state.motorways, from, ramp);
+  if (!m) return 0;
+  // The curve travels along `aDir` out of `a` and along `bDir` into `b`, so a ride into `a` ends against `aDir`.
+  const dir =
+    ramp === m.b
+      ? m.bDir
+      : m.aDir === null
+        ? null
+        : { x: -m.aDir.x, y: -m.aDir.y };
+  const { cols } = state.grid;
+  const dx = (to % cols) - (ramp % cols);
+  const dy = Math.floor(to / cols) - Math.floor(ramp / cols);
+  const run = 0.5 * Math.hypot(dx - (dir?.x ?? 0), dy - (dir?.y ?? 0));
+  return run < 0.05 ? 0 : run;
+}
+
+/**
  * Length of the step the car is on, in budget units: the step out of its tile, or into it on
  * the last tile. On the last tile a motorway arrival costs 1, since the ride was paid on the
  * tile before it.
@@ -113,8 +139,12 @@ function segmentLength(state: SimState, car: Car): number {
       progress > 0 &&
       motorwayBetween(state.motorways, route[progress - 1], a) !== null;
     const leavesByMotorway = motorwayBetween(state.motorways, a, b) !== null;
-    // The curve already reaches this tile's exit edge, so the tile is passed at once.
-    if (arrivedByMotorway && !leavesByMotorway) return 0;
+    // The curve ends on this tile's far edge, the way it was travelling. A car that drives straight on is
+    // already at its exit edge, so the tile is passed at once; a car that turns still has to drive from
+    // there to the edge it leaves by.
+    if (arrivedByMotorway && !leavesByMotorway) {
+      return offRampRun(state, route[progress - 1], a, b);
+    }
     if (leavesByMotorway) return stepLength(state, a, b);
     // A roundabout's ring reaches this tile's centre, so the tile is drawn only on its other half: each side
     // the ring covers costs half a step less, which keeps the car's drawn speed even on and off the ring.
@@ -137,6 +167,29 @@ function segmentLength(state: SimState, car: Car): number {
   return 1;
 }
 
+/** The length of the motorway curve a car is riding out of its tile by, in tiles, or null on the ground. */
+function rideOf(state: SimState, car: Car): number | null {
+  if (state.motorways.length === 0) return null;
+  const { route, progress } = car;
+  if (progress >= route.length - 1) return null;
+  const m = motorwayBetween(
+    state.motorways,
+    route[progress],
+    route[progress + 1],
+  );
+  return m ? Math.max(m.length, EPSILON) : null;
+}
+
+/**
+ * Whether a car riding a motorway has left its ramp tile: it is more than a tile along the curve, up in
+ * the air. It still counts as on the ramp tile for its route, but it is not on that tile's road, so it
+ * holds no junction, light or lane there.
+ */
+function isAloft(state: SimState, car: Car): boolean {
+  const ride = rideOf(state, car);
+  return ride !== null && car.along * ride >= 1;
+}
+
 /** How far a turn is drawn across its tile, in tiles: a quarter of a curve from one edge to the other. */
 const TURN_DRAWN_TILES = 0.8;
 
@@ -147,6 +200,9 @@ const TURN_DRAWN_TILES = 0.8;
  */
 function drawnTiles(state: SimState, car: Car): number {
   const { route, progress } = car;
+  // A ride by motorway is drawn along the whole curve, so its `along` spans the curve, not the ramp tile.
+  const ride = rideOf(state, car);
+  if (ride !== null) return ride;
   if (progress === 0) return 1;
   if (progress >= route.length - 1) return 0.5;
   const tile = route[progress];
@@ -177,14 +233,25 @@ function roomAhead(state: SimState, car: Car): number {
   const lane = laneOf(state.grid, car);
   let room = 1;
   const mine = drawnTiles(state, car);
+  const riding = rideOf(state, car) !== null;
   for (const d of carsOn(state, tile)) {
     if (d === car || d.lot !== undefined) continue;
     if (laneOf(state.grid, d) !== lane) continue;
+    const theirs = drawnTiles(state, d);
+    if (riding || rideOf(state, d) !== null) {
+      // A motorway ride's `along` spans its whole curve, so with a rider the two are compared by distance
+      // from the tile's entry, in tiles. A rider up on the curve is far ahead of every car on the tile.
+      const here = car.along * mine;
+      const there = d.along * theirs;
+      if (there < here || (there === here && d.id > car.id)) continue;
+      room = Math.min(room, (there - tuning.CAR_GAP) / mine);
+      continue;
+    }
     const ahead =
       d.along > car.along || (d.along === car.along && d.id < car.id);
     if (!ahead) continue;
     // The gap is in drawn distance, so use the shorter of the two tiles' drawn lengths.
-    const gap = tuning.CAR_GAP / Math.min(mine, drawnTiles(state, d));
+    const gap = tuning.CAR_GAP / Math.min(mine, theirs);
     room = Math.min(room, d.along - gap);
   }
   // A car on the next tile in the same lane also limits how close this car may get to the
@@ -240,6 +307,8 @@ export function tileOpen(
   let here = 0;
   for (const d of carsOn(state, tile)) {
     if (d === mover || d.lot !== undefined) continue;
+    // A car up on a motorway has left the tile's road.
+    if (isAloft(state, d)) continue;
     // A car waiting on its destination's last tile for a lot space does not hold the tile: a car
     // leaving that lot needs the node, and the waiting car needs that lot's lane.
     if (
@@ -286,6 +355,7 @@ export function joinAlong(
     for (const d of state.cars) {
       if (d === mover || d.lot !== undefined || d.route[d.progress] !== tile)
         continue;
+      if (isAloft(state, d)) continue;
       if (laneOf(state.grid, d) !== lane) return null;
     }
   }
@@ -442,6 +512,7 @@ export function joinClear(
       continue;
     }
     if (d.route[d.progress] !== tile) continue;
+    if (isAloft(state, d)) continue;
     const last = d.progress === d.route.length - 1;
     const mine =
       d.route[d.progress + 1] === to || (last && laneOf(state.grid, d) === own);
@@ -518,6 +589,7 @@ function crossBlocked(state: SimState, car: Car): boolean {
   for (const d of state.cars) {
     if (d === car || d.lot !== undefined || d.state === 'parked') continue;
     if (d.route[d.progress] === tile) {
+      if (isAloft(state, d)) continue;
       if (laneOf(state.grid, d) === laneOf(state.grid, car)) continue;
       // Two cars waiting to cross each other's lane: the lower id goes first.
       const stop = crossingStop(state, d);

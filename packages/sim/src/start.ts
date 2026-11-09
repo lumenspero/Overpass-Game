@@ -4,7 +4,7 @@ import {
   type DestinationShape,
   type Side,
 } from './buildings.ts';
-import { lotAt } from './lots.ts';
+import { lotAt, lotRoads, type LotKind } from './lots.ts';
 import { currentFence, isOpenTile } from './expansion.ts';
 import { nextFloat, type RngState } from './rng.ts';
 import type { SimState } from './sim.ts';
@@ -45,7 +45,7 @@ function placePair(state: SimState, colour: number): boolean {
 
 /**
  * Places one building of `kind` and colour at random on the given tiles (by default, anywhere in the
- * fence), or returns null if none fits.
+ * fence), or returns null if none fits. A destination takes a single lot unless `lot` says double.
  */
 export function placeInFence(
   state: SimState,
@@ -53,8 +53,9 @@ export function placeInFence(
   colour: number,
   tiles: number[] = tilesInFence(state),
   shape?: DestinationShape,
+  lot: LotKind = 'single',
 ): number | null {
-  return placeOn(state, tiles, kind, colour, shape);
+  return placeOn(state, tiles, kind, colour, shape, lot);
 }
 
 /** Every tile inside the fence now, row by row. */
@@ -84,19 +85,21 @@ function placeOn(
   kind: 'house' | 'destination',
   colour: number,
   shape?: DestinationShape,
+  lot: LotKind = 'single',
 ): number | null {
   if (candidates.length === 0) return null;
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
     const tile =
       candidates[Math.floor(nextFloat(state.rng) * candidates.length)];
     for (const side of shuffled(SIDES, state.rng)) {
-      if (!fitsInFence(state, kind, tile, side)) continue;
+      if (!fitsInFence(state, kind, tile, side, lot)) continue;
       const result = placeBuilding(state, {
         kind,
         color: colour,
         tile,
         entrance: side,
         ...(kind === 'destination' && shape ? { shape } : {}),
+        ...(kind === 'destination' && lot === 'double' ? { lot } : {}),
       });
       if (result.ok) return tile;
     }
@@ -115,21 +118,24 @@ function shuffled<T>(items: readonly T[], rng: RngState): T[] {
 
 /**
  * Whether a building and the road it needs lie wholly inside the fence. A destination's lot is
- * checked tile by tile, so a lot cannot spill past the edge (spec: Starting pair).
+ * checked tile by tile, so a lot cannot spill past the edge (spec: Starting pair). A double lot
+ * needs the road tiles outside both its inlets, so it can be reached from either side.
  */
 function fitsInFence(
   state: SimState,
   kind: 'house' | 'destination',
   tile: number,
   side: Side,
+  lotKind: LotKind = 'single',
 ): boolean {
   if (kind === 'house') {
     const next = neighbour(state, tile, side);
     return next !== null && isOpenTile(state, next);
   }
-  const lot = lotAt(state.grid, tile, side, 'single', 'near');
+  const lot = lotAt(state.grid, tile, side, lotKind, 'near');
   if (!lot) return false;
-  return [...lot.tiles, lot.road].every((t) => isOpenTile(state, t));
+  if (lotKind === 'double' && lot.farRoad === undefined) return false;
+  return [...lot.tiles, ...lotRoads(lot)].every((t) => isOpenTile(state, t));
 }
 
 /** The tile next to `tile` on `side`, or null past the grid edge. */

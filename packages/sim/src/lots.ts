@@ -192,6 +192,8 @@ export function lotBlocker(
 ): LotReason | null {
   const lot = lotAt(sim.grid, origin, side, kind, 'near');
   if (!lot) return 'no-lot';
+  // A double lot is reached from both sides, so its far road must be on the map too.
+  if (kind === 'double' && lot.farRoad === undefined) return 'no-lot';
   const reserved = reservedLotTiles(sim);
   const access = lotAccessTiles(sim);
   for (const t of lot.tiles) {
