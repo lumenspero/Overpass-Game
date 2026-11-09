@@ -49,7 +49,7 @@ Phaser 4 renders and handles input; all game rules live in a framework-free Type
 | Save compression                 | `fflate`                                              | Game                    | Small export codes and files                                              |
 | Validation                       | `zod`                                                 | Map schema, saves       | Catch bad map or save files with clear errors                             |
 | Tests                            | Vitest; Playwright for smoke tests                    | All                     | Sim unit tests; one browser boot test per app                             |
-| Offline install                  | `vite-plugin-pwa`                                     | Game (Cloudflare build) | Plays offline once loaded                                                 |
+| Offline install                  | `vite-plugin-pwa`                                     | Not used                | Dropped 2026-11-09: no offline play for launch                            |
 | Lint, format                     | ESLint + Prettier                                     | All                     | Keeps AI-written code consistent                                          |
 
 **Not chosen, and why.** PixiJS would also work but adds no benefit over Phaser 4 for this game. A physics engine is unnecessary: cars move along road graph edges, not by physics. Leaflet is simpler than MapLibre but its raster tiles look worse beside the stylized preview.
@@ -360,14 +360,16 @@ Done when: a run survives a reload mid-game, and a save exported on one host imp
 
 **M15 · Release**
 
-- [ ] Production builds: itch.io zip and Cloudflare Pages (with PWA)
+- [ ] Production builds: itch.io zip and Cloudflare Pages (static build, no PWA; PWA dropped 2026-11-09)
 - [x] Credits and licenses screen (Options, Credits: official release, licences, sounds), and an About tab (pulled forward into M14)
-- [ ] OSM attribution shown with every map in the game (today only the general line in Credits)
+- [x] OSM attribution: shown in Options, Credits and in the Studio. No on-map watermark, by decision on 2026-11-09
 - [x] `LICENSE` (MIT) and README, with the unofficial-fan-project notice (pulled forward into M14)
 - [x] Local `.env` values kept out of the repo, and the original game's reference screenshots removed from its history
-- [ ] Contributing notes
+- ~~Contributing notes~~ (dropped by the author on 2026-11-09; the README covers what is needed)
 - [ ] Make the repo public
-- [ ] itch.io page, screenshots, short trailer GIF
+- [ ] itch.io page, screenshots, short trailer GIF (author's task)
+
+> **Status (2026-11-09):** scope revised. Remaining: itch.io zip check, Cloudflare Pages deploy on the custom domain (handled separately from itch.io), making the repo public (author's task; history checked clean of screenshots and `.env` files), and the itch.io page (author's task).
 
 ## Audio
 
@@ -415,7 +417,7 @@ Code is MIT; I recommend CC BY 4.0 for your original art and audio, and ODbL 1.0
 **Hosting**
 
 - **itch.io:** zip of the game build with relative paths, uploaded as an HTML game; set the viewport size and enable fullscreen and mobile-friendly options.
-- **Cloudflare Pages:** same build plus the PWA service worker, with long cache headers on hashed assets.
+- **Cloudflare Pages:** same build with no PWA (dropped 2026-11-09), with long cache headers on hashed assets.
 - Saves don't move between the two hosts automatically; the export/import feature from M11 covers it.
 
 ## Risks and open questions
