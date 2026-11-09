@@ -1,6 +1,6 @@
 # M14 · Content production: session delta
 
-**Status: in progress.** The campaign content, spawning and unlock chain are in, and the game is being readied for a public repo. The challenge set, the balance pass and Checkpoint F (a full play through the unlock path) are still open.
+**Status: in progress.** The campaign content, spawning and unlock chain are in, and the game is being readied for a public repo. The challenge set is dropped. Still open: the Studio rules panel, double lots in play, campaign card descriptions, the 300-car demo's label, the balance pass and Checkpoint F (a full play through the unlock path).
 
 Covers M14 from the M13 close (2026-11-04) through 2026-11-08. Checks run by the author: playtests on Tulsa, Los Angeles and Pierre, which found most of the fixes listed below. Automated checks run for this delta: the sim suite (307 tests) passed after the last sim change; in the game, the game and save suites (18 files, 109 tests), the UI suite (7 files, 45 tests) and the audio suite (7 files, 34 tests) pass; typecheck, ESLint and Prettier are clean on the changed files. A full `pnpm check` and `pnpm build` were not run in the session.
 
@@ -100,4 +100,13 @@ See `docs/decisions.md`: the M14 Part 1 and Part 2 sections, and the rows from 2
 
 ## Next
 
-Finish M14: the challenge set with starter roads, the balance pass with fast-forward and recorded seeds, and Checkpoint F, a play through the full unlock path. Then M15 · Release: production builds (itch.io and Cloudflare Pages), store page and screenshots, and making the repo public once its history is clean.
+Finish M14, item by item, as listed in the plan:
+
+1. Studio rules panel: grid size, growth schedule, colours and timing, upgrade pool.
+2. Double lots in play: business arrivals use `lot: 'roll'`, so double lots appear at the week's chance.
+3. Campaign card descriptions on the map-select cards.
+4. 300-car demo: retire it or drop its "demo" label.
+5. Balance pass with fast-forward and recorded seeds, including each map's `unlockTrips`.
+6. Checkpoint F: a play through the full unlock path.
+
+Then M15 · Release: production builds (itch.io and Cloudflare Pages), OSM attribution with every map, contributing notes, the store page, and making the repo public.

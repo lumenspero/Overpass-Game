@@ -343,19 +343,30 @@ Done when: a run survives a reload mid-game, and a save exported on one host imp
 
 **M14 · Content production**
 
-- [ ] Pick the 25 locations and their unlock order (variety of water, mountains, grid shapes)
-- [ ] Author the remaining 22 maps in the Studio; per-map rules and palettes
-- [ ] Challenge set with starter roads
+- [x] Pick the locations and their unlock order: 23 maps, not 25, unlocked as a daisy chain on each map's `unlockTrips` (variety of water, mountains, grid shapes)
+- [x] Author the remaining maps in the Studio, with per-map palettes from the Studio's presets
+- [x] Business arrivals and house supply, placed by the fence and reach rules (spawn zones removed)
 - [x] Houses connect through a free, permanent stub that the player can drag to any of their 8 neighbours (pulled forward from M14 on 2026-11-03; see the Buildings section of the spec)
-- [ ] Balance pass using fast-forward and recorded seeds
+- ~~Challenge set with starter roads~~ (dropped by the author on 2026-11-08)
+- [ ] Studio rules panel: grid size, growth schedule, colours and timing, upgrade pool (moved from M8)
+- [ ] Double lots in play: business arrivals place with `lot: 'roll'`, so a new business gets a double lot at the week's chance. Today every arrival gets a single lot (roll wiring, deferred from M9)
+- [ ] Campaign card descriptions: a short description for each map on its map-select card; the map data has no field for one yet
+- [ ] 300-car demo: retire it or drop its "demo" label, now that houses spawn cars in map play (M13 decision, 300-car check)
+- [ ] Balance pass using fast-forward and recorded seeds, including each map's `unlockTrips` (Pierre, Seattle and Chicago are at 500)
+
+> **Status (in progress):** content, spawning and the unlock chain are in; see `docs/M14-session-delta.md`. The rules panel, double lots in play, card descriptions, the 300-car demo and the balance pass remain, then Checkpoint F.
 
 > **Checkpoint F · Full campaign.** Play through the unlock path; sign off on difficulty curve and each map.
 
 **M15 · Release**
 
 - [ ] Production builds: itch.io zip and Cloudflare Pages (with PWA)
-- [ ] Credits and licenses screen, OSM attribution on every map
-- [ ] `LICENSE` files, README, contributing notes; strip any local `.env` values; make the repo public
+- [x] Credits and licenses screen (Options, Credits: official release, licences, sounds), and an About tab (pulled forward into M14)
+- [ ] OSM attribution shown with every map in the game (today only the general line in Credits)
+- [x] `LICENSE` (MIT) and README, with the unofficial-fan-project notice (pulled forward into M14)
+- [x] Local `.env` values kept out of the repo, and the original game's reference screenshots removed from its history
+- [ ] Contributing notes
+- [ ] Make the repo public
 - [ ] itch.io page, screenshots, short trailer GIF
 
 ## Audio
